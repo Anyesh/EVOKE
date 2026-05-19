@@ -4,8 +4,9 @@ import ctypes
 import os
 from pathlib import Path
 
-import llama_cpp
 import numpy as np
+
+from evoke._engine_lib import llama_cpp
 
 
 @llama_cpp.llama_log_callback

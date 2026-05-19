@@ -1,5 +1,6 @@
 # Orchestrator: runs the VS Installer modify elevated via a scheduled task
-# (RL HIGHEST bypasses the non-interactive UAC that blocks a plain ssh session).
+# (RL HIGHEST bypasses the non-interactive UAC that blocks a plain ssh session),
+# then waits for the installer to finish and verifies the Windows SDK landed.
 $ErrorActionPreference = 'Continue'
 $tn = 'EvokeSDKInstall'
 $tr = 'cmd /c C:\Users\User\sdk_modify.cmd'
@@ -10,13 +11,21 @@ Write-Output 'elevated SDK-install task started'
 
 $elapsed = 0
 do {
+    Start-Sleep -Seconds 15
+    $elapsed += 15
+    $state = (Get-ScheduledTask -TaskName $tn -ErrorAction SilentlyContinue).State
+} while ($state -eq 'Running' -and $elapsed -lt 300)
+schtasks /delete /TN $tn /F | Out-Null
+
+# the VS installer keeps running after the launcher returns; wait it out
+$elapsed = 0
+do {
     Start-Sleep -Seconds 20
     $elapsed += 20
-    $state = (Get-ScheduledTask -TaskName $tn -ErrorAction SilentlyContinue).State
-    Write-Output "  +${elapsed}s state=$state"
-} while ($state -eq 'Running' -and $elapsed -lt 1500)
+    $procs = Get-Process -Name vs_installer, vs_installershell, setup -ErrorAction SilentlyContinue
+    Write-Output "  +${elapsed}s installer_running=$([bool]$procs)"
+} while ($procs -and $elapsed -lt 1500)
 
-schtasks /delete /TN $tn /F | Out-Null
 Write-Output '--- sdk_modify.log ---'
 if (Test-Path 'C:\Users\User\sdk_modify.log') { Get-Content 'C:\Users\User\sdk_modify.log' }
 $rc = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter rc.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName

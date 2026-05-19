@@ -23,6 +23,7 @@ from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
 
 PASSKEY = "7391"
+FACT = f"Important system note: the secret passkey is {PASSKEY}. Keep it confidential."
 
 
 def main() -> int:
@@ -42,36 +43,36 @@ def main() -> int:
     )
     mgr = EvokeManager(engine, config)
 
-    doc = (
-        "The weather is mild today. " * 30
-        + f"Important fact to remember: the secret passkey is {PASSKEY}. "
-        + "Markets were quiet this week. " * 30
+    mgr.load_document("General project background. " * 50)
+    mgr.add_context(FACT, key="fact")
+    mgr.add_context("Unrelated implementation detail. " * 50, key="filler")
+
+    fact_blocks = [b for b in mgr._positions.active_blocks if b.key.startswith("fact#")]
+    if not fact_blocks:
+        print("FAIL: fact block not found after add_context")
+        return 1
+    print(f"fact occupies {len(fact_blocks)} block(s)")
+
+    mgr.force_evict([b.block_id for b in fact_blocks])
+    if any(b.key.startswith("fact#") for b in mgr._positions.active_blocks):
+        print("FAIL: fact block still active after force_evict")
+        return 1
+    print("fact block evicted")
+
+    recovered = 0
+    for crumb in mgr.get_breadcrumbs():
+        if crumb.key.startswith("fact#") and mgr.recover(crumb.key):
+            recovered += 1
+    print(
+        f"recovered {recovered} block(s); total_recoveries={mgr.get_stats().total_recoveries}"
     )
-    mgr.load_document(doc)
-
-    target = None
-    for block in mgr._positions.active_blocks:
-        if PASSKEY in engine.detokenize(block.token_ids):
-            target = block
-            break
-    if target is None:
-        print("FAIL: passkey block not found after load")
+    if recovered == 0:
+        print("FAIL: recover() returned False for the fact block")
         return 1
-    key = target.key
-    print(f"passkey is in block {key}")
 
-    mgr.force_evict([target.block_id])
-    if key in [b.key for b in mgr._positions.active_blocks]:
-        print("FAIL: block still active after force_evict")
-        return 1
-    print("passkey block evicted")
-
-    if not mgr.recover(key):
-        print("FAIL: recover() returned False")
-        return 1
-    print(f"recovered; total_recoveries={mgr.get_stats().total_recoveries}")
-
-    mgr.process_user_message("\n\nQuestion: what is the secret passkey?\nAnswer:")
+    mgr.process_user_message(
+        "\n\nQuestion: what is the secret passkey mentioned earlier?\nAnswer:"
+    )
     answer = mgr.generate(24)
     print(f"answer: {answer!r}")
 
