@@ -76,7 +76,7 @@ def run_multi_turn(engine, template, config):
 
     for i, turn in enumerate(turns):
         suffix = template.wrap_question_suffix(turn["user"])
-        mgr.process_user_message(suffix)
+        mgr.process_user_message(suffix, raw_query=turn["user"])
 
         if template.think_close:
             raw = mgr.generate(

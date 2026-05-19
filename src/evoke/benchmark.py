@@ -18,6 +18,7 @@ class QAPair:
     question: str
     expected_answer: str
     position_hint: str = ""
+    is_eval: bool = True
 
 
 @dataclass
@@ -103,6 +104,16 @@ STRATEGIES: dict[str, EvokeConfig] = {
         high_watermark=0.95,
         low_watermark=0.75,
     ),
+    "evoke_no_ret": EvokeConfig(
+        block_size=32,
+        w_recency=0.4,
+        w_sink=1.0,
+        w_coherence=0.6,
+        retrieval_threshold=2.0,
+        demotion_policy="watermark",
+        high_watermark=0.95,
+        low_watermark=0.75,
+    ),
     "evoke": EvokeConfig(
         block_size=32,
         w_recency=0.4,
@@ -152,6 +163,7 @@ def run_benchmark(
     budgets: list[int],
     strategies: list[str] | None = None,
     max_gen_tokens: int = 256,
+    inject_gen_tokens: int = 32,
     chat_template: ChatTemplate | None = None,
 ) -> BenchmarkReport:
     template = chat_template or PassthroughTemplate()
@@ -178,6 +190,7 @@ def run_benchmark(
                 "full",
                 budget,
                 max_gen_tokens,
+                inject_gen_tokens,
                 template,
             )
             report.results.extend(full_results)
@@ -193,6 +206,7 @@ def run_benchmark(
                     strat_name,
                     budget,
                     max_gen_tokens,
+                    inject_gen_tokens,
                     template,
                 )
                 report.results.extend(results)
@@ -228,6 +242,7 @@ def _run_case(
     strategy: str,
     budget: int,
     max_gen_tokens: int,
+    inject_gen_tokens: int,
     template: ChatTemplate,
 ) -> list[TrialResult]:
     results: list[TrialResult] = []
@@ -241,16 +256,31 @@ def _run_case(
     engine.reset()
     mgr = EvokeManager(engine, config)
 
-    doc_prefix = template.wrap_document_prefix(case.document)
-    mgr.load_document(doc_prefix)
+    if case.document:
+        doc_prefix = template.wrap_document_prefix(case.document)
+        mgr.load_document(doc_prefix)
 
     for qa in case.qa_pairs:
         question_suffix = template.wrap_question_suffix(qa.question)
-        mgr.process_user_message(question_suffix)
+        mgr.process_user_message(question_suffix, raw_query=qa.question)
+
+        gen_budget = max_gen_tokens if qa.is_eval else inject_gen_tokens
 
         t0 = time.monotonic()
-        raw_answer = mgr.generate(max_gen_tokens, stop_token_ids=stop_token_ids)
+        if template.think_close:
+            raw_answer = mgr.generate(
+                0,
+                stop_token_ids=stop_token_ids,
+                think_close=template.think_close,
+                thinking_budget=16384,
+                answer_budget=gen_budget,
+            )
+        else:
+            raw_answer = mgr.generate(gen_budget, stop_token_ids=stop_token_ids)
         gen_time = time.monotonic() - t0
+
+        if not qa.is_eval:
+            continue
 
         answer = template.extract_answer(raw_answer)
 
@@ -299,6 +329,29 @@ def make_needle_case(
     )
 
 
+def make_multi_turn_case(
+    name: str,
+    document: str,
+    inject_turns: list[str],
+    eval_question: str,
+    expected_answer: str,
+    description: str = "",
+) -> BenchmarkCase:
+    qa_pairs = [
+        QAPair(question=turn, expected_answer="", is_eval=False)
+        for turn in inject_turns
+    ]
+    qa_pairs.append(
+        QAPair(question=eval_question, expected_answer=expected_answer, is_eval=True)
+    )
+    return BenchmarkCase(
+        name=name,
+        document=document,
+        qa_pairs=qa_pairs,
+        description=description,
+    )
+
+
 def load_cases_from_json(path: Path) -> list[BenchmarkCase]:
     data = json.loads(path.read_text())
     cases = []
@@ -308,6 +361,7 @@ def load_cases_from_json(path: Path) -> list[BenchmarkCase]:
                 question=qa["question"],
                 expected_answer=qa["expected"],
                 position_hint=qa.get("position_hint", ""),
+                is_eval=qa.get("is_eval", True),
             )
             for qa in item["qa_pairs"]
         ]

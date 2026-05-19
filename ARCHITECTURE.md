@@ -1,21 +1,14 @@
-# UNLEARN: A Memory Management Unit for LLM Inference
+# EVOKE Architecture
 
-## Abstract
+## The Problem
 
-UNLEARN is a runtime memory management layer that sits between a transformer's attention mechanism and its physical KV cache, managing context as a hierarchy of storage levels with continuous, relevance-driven promotion and demotion. Unlike existing approaches that permanently evict tokens (H2O, SnapKV) or naively page text in and out (MemGPT), UNLEARN operates at the KV cache level with a retrieval path for demoted content and predictive relevance scoring that anticipates future information needs.
+During LLM inference, the KV cache is append-only. Every token loaded into context persists for the lifetime of the session, consuming O(n) memory and O(n) attention compute per generation step. There is no mechanism to free irrelevant tokens or recover them later when the conversation circles back.
 
-## 1. The Problem
+A 200K-token document loaded into context keeps its full resource footprint even when only a fraction remains relevant to the ongoing conversation.
 
-During LLM inference, the KV cache is append-only. Every token loaded into context persists for the lifetime of the session, consuming both memory (O(n) storage) and compute (O(n^2) attention per step, or O(n) with FlashAttention but still linear in cache size). There is no mechanism to:
+## Overview
 
-- Identify which cached tokens are irrelevant to the current conversation direction
-- Free the resources consumed by irrelevant tokens
-- Retrieve previously freed tokens if they become relevant again
-- Manage positions coherently after mid-sequence modifications
-
-The result is that a 200K-token document loaded into context consumes its full resource footprint even when only 10K tokens remain relevant to the ongoing conversation.
-
-## 2. Architecture Overview
+EVOKE treats the KV cache as a managed memory system. It enforces a token budget on the active cache, scores context blocks by relevance, evicts the lowest-scoring blocks to an archive, and retrieves them when query similarity indicates they matter again. Retrieved blocks are re-encoded into the KV cache via a full rebuild, giving the model genuine attention over recovered context.
 
 ```
 +-----------------------------------------------------+
@@ -24,22 +17,16 @@ The result is that a 200K-token document loaded into context consumes its full r
 +----------------------+------------------------------+
                        |
 +----------------------v------------------------------+
-|                 UNLEARN Manager                      |
+|                  EvokeManager                        |
 |                                                      |
 |  +-------------+  +--------------+  +------------+  |
-|  |  Relevance  |  |   Position   |  |  Retrieval |  |
-|  |   Scorer    |  |   Manager    |  |    Gate    |  |
+|  |  Relevance  |  |   Position   |  |  Archive   |  |
+|  |   Scorer    |  |   Manager    |  |   Store    |  |
 |  +------+------+  +------+-------+  +-----+------+  |
 |         |                |                 |         |
 |  +------v----------------v-----------------v------+  |
-|  |            Demotion / Promotion Engine          |  |
-|  +--------------------+-------------------------+    |
-|                       |                              |
-|  +--------------------v--------------------------+   |
-|  |              Archive Store                     |  |
-|  |  (CPU DRAM: token IDs, positions, embeddings, |  |
-|  |   optionally saved KV tensors, block index)   |  |
-|  +------------------------------------------------+  |
+|  |         Demotion / Promotion via Rebuild        | |
+|  +--------------------+---------------------------+  |
 +----------------------+------------------------------+
                        |
 +----------------------v------------------------------+
@@ -49,26 +36,25 @@ The result is that a 200K-token document loaded into context consumes its full r
 |  +------------------------------------------------+  |
 |  |    Active KV Cache (GPU/system memory)         |  |
 |  |    Budget-limited, contiguous positions         |  |
-|  |    Standard attention computation               |  |
 |  +------------------------------------------------+  |
 +-----------------------------------------------------+
 ```
 
-## 3. Components
+## Components
 
-### 3.1 Active Cache (managed by inference engine)
+### Active Cache
 
-The standard KV cache maintained by llama.cpp, but with UNLEARN enforcing a budget: a maximum number of tokens allowed in the cache at any time. When the budget is exceeded, the Demotion Engine is triggered.
+The standard KV cache maintained by llama.cpp, with EVOKE enforcing a token budget. When active tokens exceed the budget, the lowest-scoring blocks are demoted to the archive and the entire KV cache is rebuilt from the remaining blocks.
 
 Properties:
-- Stored in GPU/system memory (wherever the inference engine keeps it)
+- Stored in GPU or system memory (wherever the inference engine places it)
 - Participates in every attention computation
-- Positions are always contiguous integers (maintained by Position Manager)
-- Budget is configurable (e.g., 4096, 8192, 16384 tokens)
+- Positions are always contiguous integers (enforced by full rebuild after every structural change)
+- Budget is configurable (e.g., 512, 1024, 4096, 8192 tokens)
 
-### 3.2 Archive Store
+### Archive Store (`archive.py`)
 
-A CPU-side data structure holding information about demoted tokens. Organized in blocks for efficient retrieval.
+A CPU-side ordered dictionary holding demoted blocks. Each block retains its token IDs, original positions, text, and a representative embedding for retrieval matching.
 
 ```python
 @dataclass
@@ -79,314 +65,219 @@ class ArchiveBlock:
     text: str
     representative_embedding: np.ndarray
     timestamp: int
-    access_count: int
-    kv_tensors: bytes              # saved KV cache tensors (required, not optional)
-    kv_quantized: bool = False     # whether tensors are int8 quantized for storage
+    access_count: int = 0
 ```
 
-Block size is aligned with the scoring granularity (e.g., 128 tokens per block). Each block maintains a representative embedding computed from the mean of its token embeddings, used for retrieval matching.
+Block size is configurable (default 128 tokens, 32 for tighter budgets). The archive has a capacity limit (`max_archive_blocks`); when exceeded, the oldest blocks are dropped via LRU.
 
-### 3.3 Relevance Scorer
+Retrieval uses a hybrid strategy: lexical overlap (word recall against query) combined with embedding cosine similarity. Lexical hits are prioritized because they catch exact keyword matches that embedding similarity can miss. Neighbor expansion promotes blocks adjacent to any hit, preserving local coherence.
 
-Runs every `score_interval` generation steps (default: 32). Assigns a relevance score in [0, 1] to each block in the active cache.
+### Relevance Scorer (`scorer.py`)
 
-#### Scoring Signals
+Assigns a relevance score in [0, 1] to each active block based on three signals:
 
-**Signal 1: Recency (always available)**
-```
-recency_score(block) = exp(-decay * (current_pos - block_max_pos) / context_length)
-```
-Tokens closer to the current generation position score higher. Decay rate controls how aggressively old content is penalized.
+**Recency**: `exp(-decay * distance / context_length)`. Tokens closer to the current generation position score higher.
 
-**Signal 2: Attention Sink (always available)**
-```
-sink_score(block) = 1.0 if block contains positions [0..sink_count-1] else 0.0
-```
-First N tokens (typically 4) are always retained per StreamingLLM's finding that attention sinks are structurally necessary.
+**Sink**: Blocks containing positions [0..sink_count-1] always score 1.0. Attention sinks are structurally necessary per StreamingLLM's finding.
 
-**Signal 3: Semantic Coherence (requires embeddings)**
-```
-coherence_score(block) = cosine_similarity(block.embedding, recent_context_embedding)
-```
-How semantically related is this block to what's currently being discussed? `recent_context_embedding` is the mean embedding of the last K generated tokens.
+**Coherence**: Cosine similarity between the block's representative embedding and the most recent context embedding. Measures semantic relatedness to what is currently being discussed. Returns 0.5 when no embeddings are available.
 
-**Signal 4: Query Relevance (requires attention weights, Phase 2+)**
-```
-attention_score(block) = mean(attention_weights[:, block_positions]) over recent queries
-```
-How much attention did recent queries actually pay to tokens in this block?
+Composite: `(w_recency * recency + w_coherence * coherence) / (w_recency + w_coherence)`. Sink blocks bypass the composite entirely and always return 1.0.
 
-**Signal 5: Predictive Relevance (Phase 3+)**
-```
-predictive_score(block) = predict_future_topic(recent_trajectory) . block.embedding
-```
-Given the conversation's trajectory, predict what topics will come up next and score blocks by alignment.
+### Position Manager (`position.py`)
 
-#### Composite Score
-```
-relevance(block) = w_recency * recency + w_sink * sink + w_coherence * coherence + ...
-```
-Weights are configurable and can be learned from retrieval-miss feedback (Phase 4).
+Maintains the ordered list of active blocks and computes contiguous logical positions after every rebuild. The position manager does not interact with the engine directly; it only tracks bookkeeping.
 
-### 3.4 Demotion Engine
+After any structural change (demotion, promotion), the manager sorts blocks by `original_start` and recomputes contiguous positions starting from 0. This ensures the KV cache rebuild always produces positions 0..N-1 with no gaps.
 
-Triggered when active cache size exceeds the budget.
+### Demotion
 
-```
-procedure demote():
-    scores = scorer.score_all_blocks()
-    blocks_to_demote = select_lowest(scores, count=overflow_blocks)
+Triggered when active tokens exceed the budget. Two policies:
 
-    for block in blocks_to_demote:
-        archive.store(block)
-        engine.kv_cache_seq_rm(block.start_pos, block.end_pos)
+**Watermark** (default): demote when active tokens exceed `high_watermark * budget`, free blocks until active tokens are at or below `low_watermark * budget`. This amortizes rebuild cost by batching demotions.
 
-    position_manager.reindex()
-```
+**Hard**: demote as soon as active tokens exceed the budget, free the minimum needed. More frequent but smaller rebuilds.
 
-Demotion policy options:
-- Hard budget: demote as soon as budget is exceeded
-- Watermark: demote when cache hits high watermark, demote down to low watermark (amortizes re-indexing)
-- Gradual: demote the single lowest-scoring block every K steps
+In both cases, blocks are sorted by relevance score (lowest first) and demoted until enough tokens are freed. Sink blocks and pinned generation blocks are never demoted.
 
-### 3.5 Retrieval Gate
+After demoting, the manager removes blocks from the position list, and the engine rebuilds the entire KV cache from the remaining blocks' token IDs. This is the only correct approach with newer llama.cpp, which requires consecutive KV positions. Removing blocks from the middle via `kv_cache_seq_rm` creates gaps that crash inference.
 
-Monitors for signals that archived content should be promoted back to the active cache.
+### Promotion
 
-**Semantic trigger (default):** compute similarity between current output embeddings and all archive block representatives. If any similarity exceeds a threshold, trigger retrieval.
+When a user message matches archived blocks, those blocks are promoted back to the active set. The promotion path:
 
-**Perplexity trigger (Phase 2+):** a spike in generation perplexity suggests missing context. Search archive for relevant blocks.
+1. Retrieve matching blocks from the archive (lexical + semantic similarity)
+2. Create `ActiveBlock` entries from the archived data, placed at their original positions
+3. Insert into the position manager's list (sorted by `original_start`)
+4. Rebuild the entire KV cache from all active blocks' token IDs
+5. Recompute contiguous positions
+6. If the budget is now exceeded, run demotion immediately
 
-**Explicit trigger:** user or application requests retrieval of earlier context.
+Promoted blocks get fresh K/V tensors via full re-encoding. This is more expensive than restoring saved tensors, but llama.cpp's state save API (`llama_state_seq_set_data`) is destructive internally (calls `seq_keep` + `seq_rm`, wiping the entire cache), making per-block KV tensor save/restore unviable. Re-encoding is the correct path.
 
-### 3.6 Promotion Engine
+### Thinking-Aware Generation
 
-Re-injects archived content into the active cache.
-
-```
-procedure promote(archive_block):
-    # 1. Write saved KV tensors back to cache slots at their ORIGINAL positions
-    engine.kv_cache_restore(archive_block.kv_tensors, archive_block.original_positions)
-
-    # 2. Compute position delta to place them at the correct LOGICAL position
-    target_logical = position_manager.compute_insertion_point(archive_block)
-    delta = target_logical - archive_block.original_positions[0]
-
-    # 3. Use seq_add to shift positions; deferred correction handles RoPE re-rotation
-    engine.kv_cache_seq_add(archive_block.original_positions, delta)
-    engine.memory_update()  # triggers build_rope_shift -> ggml_rope_ext_inplace
-
-    # 4. Update position mappings
-    position_manager.register_promoted(archive_block, target_logical)
-
-    # 5. If budget exceeded, demote other low-relevance blocks
-    if active_cache_size > budget:
-        demote()
-```
-
-Promoted blocks are inserted at a logical position that preserves the original document order relative to other active blocks, maintaining semantic coherence. The saved KV tensors are exact originals with corrected positions, not re-computed approximations.
-
-### 3.7 Position Manager
-
-Maintains coherent, contiguous logical positions regardless of demotion/promotion activity.
+Thinking models (Qwen 3.x, DeepSeek R1) emit `<think>...</think>` blocks that can consume thousands of tokens before producing an answer. The `generate()` method supports two-phase generation:
 
 ```python
-class PositionManager:
-    position_map: dict[int, tuple[str, int]]  # logical_pos -> (source, original_pos)
-    next_logical_pos: int
-
-    def reindex(self):
-        active_entries = sorted(engine.get_active_entries(), key=lambda e: e.original_pos)
-        for i, entry in enumerate(active_entries):
-            if entry.logical_pos != i:
-                engine.kv_cache_seq_add(entry.logical_pos, entry.logical_pos + 1, i - entry.logical_pos)
-                entry.logical_pos = i
-        self.next_logical_pos = len(active_entries)
+def generate(
+    self,
+    max_tokens: int,
+    stop_token_ids: set[int] | None = None,
+    *,
+    think_close: str | None = None,
+    thinking_budget: int = 16384,
+    answer_budget: int = 512,
+) -> str:
 ```
 
-llama.cpp's `llama_kv_cache_seq_add` shifts position indices and handles RoPE re-rotation internally.
+When `think_close` is provided, the generator runs in thinking mode: it generates up to `thinking_budget` tokens looking for the close tag in the token stream, then switches to answer mode and caps output at `answer_budget` tokens. The close tag is model-agnostic; it comes from the chat template layer, not hardcoded in the manager.
 
-## 4. Data Flow
+### Chat Templates (`chat_template.py`)
 
-### 4.1 Normal Generation (no demotion/promotion needed)
+Handles model-specific prompt formatting and thinking tag detection:
 
-1. User sends message
-2. UNLEARN Manager tokenizes and forwards to engine
-3. Engine processes tokens, appends to KV cache
-4. Engine generates response tokens
-5. Every score_interval steps: scorer runs, checks budget
-6. If within budget: continue. If exceeded: trigger demotion.
-7. Response returned to user
+- `ChatMLTemplate` for Qwen 2.x (ChatML format, `<|im_start|>` / `<|im_end|>`)
+- `ChatMLThinkingTemplate` for Qwen 3.x (ChatML + `think_close = "</think>"`)
+- `Llama3Template` for Llama 3.x (`<|begin_of_text|>`, `<|start_header_id|>`)
+- `PassthroughTemplate` for unknown models (plain text, no special tokens)
 
-### 4.2 Demotion Event
+`detect_template(model_name)` selects the template from the GGUF filename. `strip_thinking(text)` removes `<think>` blocks and chat stop tokens from generated output.
 
-1. Cache size exceeds budget
-2. Scorer provides relevance scores for all blocks
-3. Lowest-scoring blocks selected for demotion
-4. Each block: save to archive, remove from KV cache via seq_rm
-5. Reindex positions to contiguous via seq_add
-6. Resume generation
+## Data Flow
 
-### 4.3 Retrieval Event
+### Loading a document
 
-1. Retrieval Gate detects similarity between current context and archived block
-2. Select best matching archive block(s)
-3. Determine insertion position (preserving document order)
-4. Re-process archived tokens through the model at new positions
-5. If budget exceeded after promotion, demote other low-relevance blocks
-6. Resume generation with enriched context
+1. Tokenize text into token IDs
+2. Split into fixed-size blocks (default 128 tokens)
+3. Process all tokens through the engine (populates KV cache)
+4. Compute representative embeddings for each block
+5. Register blocks with the position manager
+6. Enforce budget (may demote low-scoring blocks immediately)
 
-## 5. Implementation Phases
+### User message (multi-turn)
 
-### Phase 0: Infrastructure and Baselines
-- Project structure, configuration, CLI
-- Connect to llama.cpp on gpu-host (HOST)
-- Verify KV cache manipulation APIs work (seq_rm, seq_add)
-- Implement baseline strategies: full context, naive truncation, StreamingLLM-style (sinks + window)
-- Set up benchmark suite (LongBench subset, needle-in-haystack, custom doc QA)
-- Measure baseline quality and resource usage
+1. Check if a KV rebuild is needed (position space > 90% of n_ctx)
+2. If rebuild needed: rebuild KV from active blocks, recompute positions
+3. Search archive for blocks matching the user message (lexical + semantic)
+4. If matches found: promote them via rebuild
+5. Tokenize and process the user message tokens
+6. Track as a conversation block in the position manager
+7. Update the recent context embedding for future scoring
+8. Enforce budget (demote if over threshold)
 
-### Phase 1: Demotion (scored eviction with archival)
-- Implement block-based KV cache abstraction
-- Implement Relevance Scorer (recency + sink + semantic coherence)
-- Implement Demotion Engine (score, select, archive, evict, reindex)
-- Implement Archive Store (in-memory, block-indexed)
-- Test: does scored demotion beat naive truncation and StreamingLLM?
-- Measure: quality at various budget levels (25%, 50%, 75% of full cache)
+### Generation
 
-### Phase 2: Retrieval (promotion from archive)
-- Implement Retrieval Gate (semantic trigger)
-- Implement Promotion Engine (re-process archived tokens)
-- Implement position-aware insertion (preserve document order)
-- Test: can the system retrieve and use archived content?
-- Measure: retrieval precision/recall, quality improvement over demotion-only
+1. Generate tokens one at a time via `engine.generate_next()`
+2. Every `score_interval` steps, run a scoring round (may trigger demotion)
+3. Stop on EOS, stop tokens, or budget exhaustion
+4. For thinking models: detect close tag in token stream, then cap answer phase
 
-### Phase 3: Predictive Scoring
-- Implement conversation trajectory tracking
-- Train/implement predictive relevance signal
-- Replace retrospective-only scoring with hybrid retrospective+predictive
-- Test: does predictive scoring reduce retrieval-miss rate?
+### Demotion event
 
-### Phase 4: Per-Head Management (if attention weights accessible)
-- Analyze per-head attention patterns, classify heads
-- Implement per-head eviction budgets
-- Test: quality improvement at same total budget
+1. Score all active blocks
+2. Sort by score, select lowest-scoring non-protected blocks
+3. Archive each selected block (preserve token IDs, original positions, embedding, text)
+4. Remove from position manager
+5. Rebuild entire KV cache from remaining blocks
+6. Recompute contiguous positions
 
-### Paper: Continuous alongside implementation
-- Introduction + related work (ready from RESEARCH.md)
-- Method section tracks architecture evolution
-- Experiments populated as benchmarks run
-- Analysis from ablation studies
+### Promotion event
 
-## 6. API Design
+1. Query matches archived blocks above threshold
+2. Move matched blocks from archive into position manager
+3. Rebuild entire KV cache from all active blocks (including promoted ones)
+4. Recompute contiguous positions
+5. Enforce budget (promoted blocks may push over threshold)
 
-### UNLEARN Manager API
+## API
+
+### EvokeManager
 
 ```python
-class UnlearnManager:
-    def __init__(self, engine: LlamaCppEngine, config: UnlearnConfig): ...
+class EvokeManager:
+    def __init__(self, engine: InferenceEngine, config: EvokeConfig): ...
 
-    def process_input(self, tokens: list[int]) -> None:
-        """Process input tokens, managing cache budget."""
+    def load_document(self, text: str) -> None: ...
+    def process_user_message(self, text: str) -> None: ...
+    def generate(self, max_tokens: int, stop_token_ids=None, *,
+                 think_close=None, thinking_budget=16384, answer_budget=512) -> str: ...
+    def get_stats(self) -> CacheStats: ...
+    def get_event_log(self) -> list[EvokeEvent]: ...
+    def get_relevance_scores(self) -> dict[int, float]: ...
+    def force_demote(self, block_ids: list[int]) -> None: ...
+    def force_promote(self, block_ids: list[int]) -> None: ...
+```
 
-    def generate(self, max_tokens: int) -> str:
-        """Generate with continuous cache management."""
+### EvokeConfig
 
-    def get_cache_stats(self) -> CacheStats:
-        """Current cache utilization, archive size, scores."""
-
-    def force_demote(self, block_ids: list[int]) -> None:
-        """Manually demote specific blocks."""
-
-    def force_promote(self, block_ids: list[int]) -> None:
-        """Manually promote specific archived blocks."""
-
-    def get_relevance_scores(self) -> dict[int, float]:
-        """Current relevance scores for all active blocks."""
-
-    def get_archive_index(self) -> list[ArchiveBlockInfo]:
-        """List of all archived blocks with metadata."""
-
-    def get_event_log(self) -> list[UnlearnEvent]:
-        """Log of all demotion/promotion events."""
-
-
-class UnlearnConfig:
+```python
+@dataclass
+class EvokeConfig:
     max_active_tokens: int = 8192
-    score_interval: int = 32
     block_size: int = 128
     sink_count: int = 4
+    score_interval: int = 32
     recency_decay: float = 0.01
-    demotion_policy: str = "watermark"
-    high_watermark: float = 0.95
-    low_watermark: float = 0.75
-    retrieval_threshold: float = 0.7
-    max_retrieve_blocks: int = 4
     w_recency: float = 0.4
     w_sink: float = 1.0
     w_coherence: float = 0.6
-    quantize_archive: bool = False
+    demotion_policy: str = "watermark"    # "watermark" or "hard"
+    high_watermark: float = 0.95
+    low_watermark: float = 0.75
+    retrieval_threshold: float = 0.85
+    max_retrieve_blocks: int = 2
     max_archive_blocks: int = 1024
+    pin_generated: bool = True
 ```
 
-### Engine Interface
+### InferenceEngine Protocol
 
 ```python
-class LlamaCppEngine(Protocol):
-    """Interface UNLEARN expects from the inference engine."""
+class InferenceEngine(Protocol):
+    def tokenize(self, text: str) -> list[int]: ...
+    def detokenize(self, tokens: list[int]) -> str: ...
+    def process_tokens(self, tokens: list[int]) -> None: ...
+    def generate_next(self) -> int: ...
+    def get_kv_cache_token_count(self) -> int: ...
+    def kv_cache_seq_rm(self, pos_start: int, pos_end: int) -> None: ...
+    def get_embeddings(self, token_positions: list[int]) -> np.ndarray: ...
+    def rebuild_kv(self, token_blocks: list[list[int]]) -> None: ...
+    def reset(self) -> None: ...
 
-    def process_tokens(self, tokens: list[int]) -> None:
-        """Process tokens, appending to KV cache."""
-
-    def generate_next(self) -> int:
-        """Generate one token."""
-
-    def get_kv_cache_size(self) -> int:
-        """Number of tokens in KV cache."""
-
-    def kv_cache_seq_rm(self, pos_start: int, pos_end: int) -> None:
-        """Remove KV entries in position range [start, end)."""
-
-    def kv_cache_seq_add(self, pos_start: int, pos_end: int, delta: int) -> None:
-        """Shift positions in range by delta (handles RoPE re-rotation)."""
-
-    def get_embeddings(self, tokens: list[int]) -> np.ndarray:
-        """Get token embeddings (for semantic scoring)."""
-
-    def kv_cache_export(self, pos_start: int, pos_end: int) -> bytes:
-        """Export KV tensors for archival. Optional."""
-
-    def kv_cache_import(self, data: bytes, target_pos: int) -> None:
-        """Restore archived KV tensors at target position. Optional."""
+    next_write_pos: int   # property
+    n_ctx: int            # property
+    n_embd: int           # property
+    eos_token: int        # property
 ```
 
-## 7. Key Design Decisions
+The critical method is `rebuild_kv`: it clears the entire KV cache, then re-processes each token block sequentially, producing a fresh cache with positions 0..N-1. This is the only safe way to modify the KV cache structure with current llama.cpp.
+
+## Key Design Decisions
+
+### Why rebuild instead of seq_rm + seq_add?
+
+Newer llama.cpp requires consecutive KV positions. Removing blocks from the middle via `kv_cache_seq_rm` creates position gaps that crash inference with `llama_decode failed with code -1`. The only correct path is to rebuild: clear the cache, re-process all remaining tokens from scratch. This is more expensive per operation but always correct.
+
+### Why not save and restore KV tensors?
+
+We investigated `llama_state_seq_set_data` for per-block KV state caching. It is destructive internally: it calls `seq_keep` + `seq_rm`, wiping the entire cache before writing the restored state. Per-block state save is not viable through the current llama.cpp API. Re-encoding via full rebuild is the correct path.
 
 ### Why blocks, not individual tokens?
-1. FlashAttention operates on blocks (16-128 tokens). Individual token eviction is incompatible.
-2. Semantic coherence: a sentence fragment is meaningless; a 128-token block preserves meaning.
-3. Reduced scoring overhead: scoring 100 blocks is cheaper than scoring 12,800 tokens.
-4. Reduced archive index size: one representative embedding per block, not per token.
 
-### Why save KV tensors instead of re-processing tokens?
-Re-processing tokens in a different context produces DIFFERENT KV vectors (transformer attention is context-dependent). Saved KV tensors preserve the exact original representations, which actually encode information from tokens that may have since been evicted (a feature, not a bug, because causal attention bakes preceding context into each token's KV vectors).
+1. Semantic coherence: a 128-token block preserves enough meaning for retrieval matching. An individual token does not.
+2. Scoring overhead: scoring 100 blocks is cheaper than scoring 12,800 tokens.
+3. Archive index size: one representative embedding per block, not per token.
+4. Retrieval quality: blocks carry enough text for lexical matching to work.
 
-Restoration uses llama.cpp's existing deferred RoPE correction: write saved tensors to cache slots, set positions to originals, call `seq_add` with the position delta, and `memory_update()` applies the corrective rotation via `ggml_rope_ext_inplace`.
+### Why hybrid lexical + semantic retrieval?
 
-Storage cost for Qwen 2.5 7B (28 layers, 4 GQA KV heads, head_dim 128): ~56KB per token, ~7MB per 128-token block, ~5.5GB for a full 100K document archive in CPU DRAM. Reducible to ~2.7GB with int8 quantization.
+Embedding similarity alone misses exact keyword matches (proper nouns, codes, numbers). Lexical recall catches these reliably. Combining both gives better retrieval precision for the needle-in-haystack pattern that matters most in multi-turn conversations.
 
-### Why contiguous position re-indexing instead of sparse positions?
-Non-contiguous positions are catastrophic for RoPE models (arXiv 2511.04686). The corrective rotation needed for re-indexing is already implemented in llama.cpp's `llama_kv_cache_seq_add`. The overhead is O(remaining_tokens x layers x heads x head_dim) per reindex event, amortized by batching demotions.
+### Why model-agnostic thinking support?
 
-### Why not modify the attention mechanism itself (like FoX)?
-FoX's learned forget gates require training from scratch. UNLEARN works with any existing pretrained model, no fine-tuning required. Immediately deployable.
+Different models use different thinking tags (Qwen 3.x uses `<think>`, Gemma uses different markers). The thinking close tag comes from the chat template layer, not hardcoded in the generation logic. Adding a new thinking model means adding one template subclass with a `think_close` property.
 
-## 8. Expected Outcomes
+### Why pure Python?
 
-**Quality target:** at 25% cache budget (keeping only 1/4 of the original context), UNLEARN should match or exceed StreamingLLM and H2O on LongBench benchmarks.
-
-**Advantage over StreamingLLM:** StreamingLLM keeps recent context and discards everything else. UNLEARN keeps RELEVANT context regardless of recency, and can retrieve archived content. For document QA where the answer is in the middle of a long document (not at the end), UNLEARN should dramatically outperform StreamingLLM.
-
-**Advantage over H2O:** H2O scores by cumulative attention and has no retrieval path. UNLEARN uses semantic coherence (not just attention), scores predictively, and can retrieve evicted content. For multi-turn conversations where topic shifts cause previously evicted content to become relevant, UNLEARN recovers while H2O cannot.
-
-**Advantage over InfLLM:** InfLLM uses a fixed sliding window for eviction and simple representative-token matching for retrieval. UNLEARN uses learned relevance scoring (not a fixed window) and semantic embedding matching (richer than attention-max representative tokens). UNLEARN should make fewer retrieval-miss errors.
+The bottleneck is `llama_decode`, not Python overhead. The management logic (scoring, eviction decisions, position tracking, archival) is negligible compared to transformer forward passes. Keeping the orchestration in Python makes it easy to experiment with different strategies.

@@ -14,9 +14,11 @@ from evoke.benchmark import (
     compute_exact_match,
     compute_f1,
     load_cases_from_json,
+    make_multi_turn_case,
     make_needle_case,
     run_benchmark,
 )
+from evoke.chat_template import ChatMLThinkingTemplate
 from evoke.mock_engine import MockEngine
 
 
@@ -184,3 +186,72 @@ class TestRunBenchmark:
         )
         strategies_seen = {r.strategy for r in report.results}
         assert strategies_seen == {"full", "truncate", "streaming_llm", "evoke"}
+
+    def test_multi_turn_case_inject_turns_not_scored(self):
+        engine = MockEngine(n_ctx=4096)
+        case = make_multi_turn_case(
+            name="recall",
+            document="filler " * 100,
+            inject_turns=[
+                "The secret code is ZEBRA-NINE.",
+                "What is the weather like today?",
+                "Tell me about something else.",
+            ],
+            eval_question="What was the secret code?",
+            expected_answer="ZEBRA-NINE",
+        )
+        assert len(case.qa_pairs) == 4
+        assert sum(1 for qa in case.qa_pairs if not qa.is_eval) == 3
+        assert sum(1 for qa in case.qa_pairs if qa.is_eval) == 1
+
+        report = run_benchmark(
+            engine,
+            cases=[case],
+            budgets=[512],
+            strategies=["evoke"],
+            max_gen_tokens=8,
+            inject_gen_tokens=4,
+        )
+        evoke_results = [r for r in report.results if r.strategy == "evoke"]
+        assert len(evoke_results) == 1
+        assert evoke_results[0].question == "What was the secret code?"
+
+    def test_empty_document_case(self):
+        engine = MockEngine(n_ctx=4096)
+        case = BenchmarkCase(
+            name="no_doc",
+            document="",
+            qa_pairs=[QAPair(question="hello", expected_answer="hi")],
+        )
+        report = run_benchmark(
+            engine,
+            cases=[case],
+            budgets=[512],
+            strategies=["evoke"],
+            max_gen_tokens=4,
+        )
+        assert len(report.results) >= 1
+
+    def test_thinking_template_generates(self):
+        engine = MockEngine(n_ctx=4096)
+        template = ChatMLThinkingTemplate()
+        think_text = "<think>reasoning</think>the answer"
+        for _ in range(10):
+            engine.queue_tokens([ord(c) for c in think_text])
+
+        case = BenchmarkCase(
+            name="think",
+            document="doc " * 50,
+            qa_pairs=[QAPair(question="what?", expected_answer="answer")],
+        )
+        report = run_benchmark(
+            engine,
+            cases=[case],
+            budgets=[2048],
+            strategies=["evoke"],
+            max_gen_tokens=32,
+            chat_template=template,
+        )
+        evoke_results = [r for r in report.results if r.strategy == "evoke"]
+        assert len(evoke_results) == 1
+        assert "</think>" in evoke_results[0].generated

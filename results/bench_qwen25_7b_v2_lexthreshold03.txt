@@ -1,0 +1,407 @@
+Model: Qwen2.5-7B-Instruct-Q4_K_M
+Template: ChatMLTemplate
+Thinking: False
+n_ctx=131072, n_embd=3584
+Filler document: ~3001 tokens
+
+Cases: 5 needle + 3 multi-turn
+Budgets: [512, 1024, 2048]
+Strategies: ['truncate', 'streaming_llm', 'evoke_no_ret', 'evoke'] + full
+Max gen tokens: 128
+
+Strategy         Budget Type         F1 Contains Promo  Demo   Time
+-------------------------------------------------------------------
+evoke               512 needle    0.178      80%   2.4    84   1.58
+evoke               512 recall    0.274      67%   8.7    92   0.19
+evoke              1024 needle    0.222     100%   2.4    71   0.17
+evoke              1024 recall    0.449     100%   7.3    78   0.21
+evoke              2048 needle    0.222     100%   1.6    47   0.17
+evoke              2048 recall    0.449     100%   6.3    47   0.21
+evoke_no_ret        512 needle    0.044      20%   0.0    83   1.52
+evoke_no_ret        512 recall    0.449     100%   0.0    83   0.20
+evoke_no_ret       1024 needle    0.044      20%   0.0    71   0.22
+evoke_no_ret       1024 recall    0.449     100%   0.0    71   0.21
+evoke_no_ret       2048 needle    0.089      40%   0.0    47   0.25
+evoke_no_ret       2048 recall    0.449     100%   0.0    47   0.21
+full                512 needle    0.222     100%   0.0     0   1.68
+full                512 recall    0.466     100%   0.0     0   0.21
+full               1024 needle    0.222     100%   0.0     0   0.24
+full               1024 recall    0.466     100%   0.0     0   0.20
+full               2048 needle    0.222     100%   0.0     0   0.17
+full               2048 recall    0.466     100%   0.0     0   0.21
+streaming_llm       512 needle    0.044      20%   0.0    83   0.33
+streaming_llm       512 recall    0.449     100%   0.0    83   0.20
+streaming_llm      1024 needle    0.044      20%   0.0    71   0.21
+streaming_llm      1024 recall    0.449     100%   0.0    71   0.21
+streaming_llm      2048 needle    0.089      40%   0.0    47   0.24
+streaming_llm      2048 recall    0.449     100%   0.0    47   0.21
+truncate            512 needle    0.044      20%   0.0    83   1.57
+truncate            512 recall    0.449     100%   0.0    83   0.20
+truncate           1024 needle    0.044      20%   0.0    71   0.22
+truncate           1024 recall    0.449     100%   0.0    71   0.20
+truncate           2048 needle    0.089      40%   0.0    47   0.24
+truncate           2048 recall    0.449     100%   0.0    47   0.21
+
+=== Per-case detail ===
+  full           budget=  512 needle@10%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget=  512 needle@10%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  streaming_llm  budget=  512 needle@10%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke_no_ret   budget=  512 needle@10%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke          budget=  512 needle@10%      f1=0.000 promo=3 demo=86
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   '<|im_start|>user\nThe question "What is the secret password for the vault?" is not addressed in the provided context. The context discusses weather, ma'
+  full           budget= 1024 needle@10%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 1024 needle@10%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  streaming_llm  budget= 1024 needle@10%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke_no_ret   budget= 1024 needle@10%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke          budget= 1024 needle@10%      f1=0.222 promo=3 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 2048 needle@10%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 2048 needle@10%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  streaming_llm  budget= 2048 needle@10%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  evoke_no_ret   budget= 2048 needle@10%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  evoke          budget= 2048 needle@10%      f1=0.222 promo=3 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget=  512 needle@25%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget=  512 needle@25%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  streaming_llm  budget=  512 needle@25%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke_no_ret   budget=  512 needle@25%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke          budget=  512 needle@25%      f1=0.222 promo=3 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 1024 needle@25%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 1024 needle@25%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  streaming_llm  budget= 1024 needle@25%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke_no_ret   budget= 1024 needle@25%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke          budget= 1024 needle@25%      f1=0.222 promo=3 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 2048 needle@25%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 2048 needle@25%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  streaming_llm  budget= 2048 needle@25%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  evoke_no_ret   budget= 2048 needle@25%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  evoke          budget= 2048 needle@25%      f1=0.222 promo=3 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget=  512 needle@50%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget=  512 needle@50%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  streaming_llm  budget=  512 needle@50%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke_no_ret   budget=  512 needle@50%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke          budget=  512 needle@50%      f1=0.222 promo=3 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 1024 needle@50%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 1024 needle@50%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  streaming_llm  budget= 1024 needle@50%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke_no_ret   budget= 1024 needle@50%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke          budget= 1024 needle@50%      f1=0.222 promo=3 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 2048 needle@50%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 2048 needle@50%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  streaming_llm  budget= 2048 needle@50%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  evoke_no_ret   budget= 2048 needle@50%      f1=0.000 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It describes the weather, stock market performance, and a scientific discovery about a new'
+  evoke          budget= 2048 needle@50%      f1=0.222 promo=2 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget=  512 needle@75%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget=  512 needle@75%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  streaming_llm  budget=  512 needle@75%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke_no_ret   budget=  512 needle@75%      f1=0.000 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The provided context does not contain information about a secret password for a vault. The text discusses weather, market performance, and a scientifi'
+  evoke          budget=  512 needle@75%      f1=0.222 promo=3 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 1024 needle@75%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 1024 needle@75%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  streaming_llm  budget= 1024 needle@75%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke_no_ret   budget= 1024 needle@75%      f1=0.000 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The passage does not contain a secret password for a vault. It discusses weather conditions, market performance, and a scientific discovery.'
+  evoke          budget= 1024 needle@75%      f1=0.222 promo=3 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 2048 needle@75%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 2048 needle@75%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  streaming_llm  budget= 2048 needle@75%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke_no_ret   budget= 2048 needle@75%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke          budget= 2048 needle@75%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget=  512 needle@90%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget=  512 needle@90%      f1=0.222 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  streaming_llm  budget=  512 needle@90%      f1=0.222 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke_no_ret   budget=  512 needle@90%      f1=0.222 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke          budget=  512 needle@90%      f1=0.222 promo=0 demo=83
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 1024 needle@90%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 1024 needle@90%      f1=0.222 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  streaming_llm  budget= 1024 needle@90%      f1=0.222 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke_no_ret   budget= 1024 needle@90%      f1=0.222 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke          budget= 1024 needle@90%      f1=0.222 promo=0 demo=71
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget= 2048 needle@90%      f1=0.222 promo=0 demo=0
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  truncate       budget= 2048 needle@90%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  streaming_llm  budget= 2048 needle@90%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke_no_ret   budget= 2048 needle@90%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  evoke          budget= 2048 needle@90%      f1=0.222 promo=0 demo=47
+    expected: 'CRYSTALLINE-HORIZON-42'
+    answer:   'The secret password for the vault is CRYSTALLINE-HORIZON-42.'
+  full           budget=  512 recall-code     f1=0.471 promo=0 demo=0
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The secret project codename is AURORA-SEVEN and its budget is $4.2 million.'
+  truncate       budget=  512 recall-code     f1=0.421 promo=0 demo=83
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  streaming_llm  budget=  512 recall-code     f1=0.421 promo=0 demo=83
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  evoke_no_ret   budget=  512 recall-code     f1=0.421 promo=0 demo=83
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  evoke          budget=  512 recall-code     f1=0.421 promo=11 demo=94
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  full           budget= 1024 recall-code     f1=0.471 promo=0 demo=0
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The secret project codename is AURORA-SEVEN and its budget is $4.2 million.'
+  truncate       budget= 1024 recall-code     f1=0.421 promo=0 demo=71
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  streaming_llm  budget= 1024 recall-code     f1=0.421 promo=0 demo=71
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  evoke_no_ret   budget= 1024 recall-code     f1=0.421 promo=0 demo=71
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  evoke          budget= 1024 recall-code     f1=0.421 promo=11 demo=82
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  full           budget= 2048 recall-code     f1=0.471 promo=0 demo=0
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The secret project codename is AURORA-SEVEN and its budget is $4.2 million.'
+  truncate       budget= 2048 recall-code     f1=0.421 promo=0 demo=47
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The secret project has a codename of AURORA-SEVEN and its budget is $4.2 million.'
+  streaming_llm  budget= 2048 recall-code     f1=0.421 promo=0 demo=47
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The secret project has a codename of AURORA-SEVEN and its budget is $4.2 million.'
+  evoke_no_ret   budget= 2048 recall-code     f1=0.421 promo=0 demo=47
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The secret project has a codename of AURORA-SEVEN and its budget is $4.2 million.'
+  evoke          budget= 2048 recall-code     f1=0.421 promo=9 demo=47
+    expected: 'AURORA-SEVEN $4.2 million'
+    answer:   'The codename of the secret project is AURORA-SEVEN, and its budget is $4.2 million.'
+  full           budget=  512 recall-date     f1=0.526 promo=0 demo=0
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  truncate       budget=  512 recall-date     f1=0.526 promo=0 demo=83
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  streaming_llm  budget=  512 recall-date     f1=0.526 promo=0 demo=83
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  evoke_no_ret   budget=  512 recall-date     f1=0.526 promo=0 demo=83
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  evoke          budget=  512 recall-date     f1=0.000 promo=15 demo=99
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The passage does not contain information about a quarterly review meeting or its location and timing.'
+  full           budget= 1024 recall-date     f1=0.526 promo=0 demo=0
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  truncate       budget= 1024 recall-date     f1=0.526 promo=0 demo=71
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  streaming_llm  budget= 1024 recall-date     f1=0.526 promo=0 demo=71
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  evoke_no_ret   budget= 1024 recall-date     f1=0.526 promo=0 demo=71
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  evoke          budget= 1024 recall-date     f1=0.526 promo=11 demo=82
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  full           budget= 2048 recall-date     f1=0.526 promo=0 demo=0
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  truncate       budget= 2048 recall-date     f1=0.526 promo=0 demo=47
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  streaming_llm  budget= 2048 recall-date     f1=0.526 promo=0 demo=47
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  evoke_no_ret   budget= 2048 recall-date     f1=0.526 promo=0 demo=47
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  evoke          budget= 2048 recall-date     f1=0.526 promo=10 demo=47
+    expected: 'March 15th 2pm Room 407'
+    answer:   'The quarterly review meeting is scheduled for March 15th at 2pm in Room 407.'
+  full           budget=  512 recall-name     f1=0.400 promo=0 demo=0
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  truncate       budget=  512 recall-name     f1=0.400 promo=0 demo=83
+    expected: 'Dr. Elena Vasquez'
+    answer:   'Dr. Elena Vasquez is the lead researcher on the deep-sea bioluminescence project.'
+  streaming_llm  budget=  512 recall-name     f1=0.400 promo=0 demo=83
+    expected: 'Dr. Elena Vasquez'
+    answer:   'Dr. Elena Vasquez is the lead researcher on the deep-sea bioluminescence project.'
+  evoke_no_ret   budget=  512 recall-name     f1=0.400 promo=0 demo=83
+    expected: 'Dr. Elena Vasquez'
+    answer:   'Dr. Elena Vasquez is the lead researcher on the deep-sea bioluminescence project.'
+  evoke          budget=  512 recall-name     f1=0.400 promo=0 demo=83
+    expected: 'Dr. Elena Vasquez'
+    answer:   'Dr. Elena Vasquez is the lead researcher on the deep-sea bioluminescence project.'
+  full           budget= 1024 recall-name     f1=0.400 promo=0 demo=0
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  truncate       budget= 1024 recall-name     f1=0.400 promo=0 demo=71
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  streaming_llm  budget= 1024 recall-name     f1=0.400 promo=0 demo=71
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  evoke_no_ret   budget= 1024 recall-name     f1=0.400 promo=0 demo=71
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  evoke          budget= 1024 recall-name     f1=0.400 promo=0 demo=71
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  full           budget= 2048 recall-name     f1=0.400 promo=0 demo=0
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  truncate       budget= 2048 recall-name     f1=0.400 promo=0 demo=47
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  streaming_llm  budget= 2048 recall-name     f1=0.400 promo=0 demo=47
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  evoke_no_ret   budget= 2048 recall-name     f1=0.400 promo=0 demo=47
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+  evoke          budget= 2048 recall-name     f1=0.400 promo=0 demo=47
+    expected: 'Dr. Elena Vasquez'
+    answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
+
+Results saved to C:\Users\User\projects\unlearn\results\benchmark.json
