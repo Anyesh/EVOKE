@@ -1,6 +1,7 @@
 from evoke.config import EvokeConfig
 from evoke.manager import EvokeManager
 from evoke.mock_engine import MockEngine
+from evoke.types import BlockSource
 
 
 def _make_long_text(n_chars: int) -> str:
@@ -445,6 +446,75 @@ class TestEvokeManagerRebuildPromotion:
         new_order = [b.original_start for b in manager._positions.active_blocks]
         assert new_order == sorted(new_order)
         assert set(new_order) == set(original_order)
+
+
+class TestBlockSourceClassification:
+    def test_document_blocks_tagged_as_document(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=128)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(512))
+
+        for block in manager._positions.active_blocks:
+            assert block.source == BlockSource.DOCUMENT
+
+    def test_conversation_block_tagged_as_user(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=64)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(256))
+        doc_block_count = len(manager._positions.active_blocks)
+
+        manager.process_user_message("What is the meaning of life?")
+
+        blocks = manager._positions.active_blocks
+        new_blocks = blocks[doc_block_count:]
+        assert len(new_blocks) > 0
+        for block in new_blocks:
+            assert block.source == BlockSource.USER
+
+    def test_source_preserved_through_demotion(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=64)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(256))
+        manager.process_user_message("The secret code is ZEBRA-NINE.")
+
+        user_blocks = [
+            b for b in manager._positions.active_blocks if b.source == BlockSource.USER
+        ]
+        assert user_blocks
+        bid = user_blocks[0].block_id
+
+        manager.force_demote([bid])
+        archived = manager._archive.get(bid)
+        assert archived is not None
+        assert archived.source == BlockSource.USER
+
+    def test_source_preserved_through_promotion(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=64)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(256))
+        manager.process_user_message("The secret code is ZEBRA-NINE.")
+
+        user_blocks = [
+            b for b in manager._positions.active_blocks if b.source == BlockSource.USER
+        ]
+        assert user_blocks
+        bid = user_blocks[0].block_id
+
+        manager.force_demote([bid])
+        manager.force_promote([bid])
+
+        promoted = [b for b in manager._positions.active_blocks if b.block_id == bid]
+        assert promoted
+        assert promoted[0].source == BlockSource.USER
+        assert promoted[0].promotion_step >= 0
 
 
 class TestEvokeManagerPinning:

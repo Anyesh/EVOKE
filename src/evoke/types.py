@@ -1,8 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 
 import numpy as np
+
+
+class BlockSource(str, Enum):
+    SYSTEM = "system"
+    DOCUMENT = "document"
+    USER = "user"
+    ASSISTANT = "assistant"
 
 
 @dataclass
@@ -14,6 +22,7 @@ class ArchiveBlock:
     representative_embedding: np.ndarray
     timestamp: int
     access_count: int = 0
+    source: BlockSource = BlockSource.DOCUMENT
 
     @property
     def size(self) -> int:
@@ -38,6 +47,8 @@ class ActiveBlock:
     token_ids: list[int]
     representative_embedding: np.ndarray | None = None
     relevance_score: float = 1.0
+    source: BlockSource = BlockSource.DOCUMENT
+    promotion_step: int = -1
 
 
 @dataclass
