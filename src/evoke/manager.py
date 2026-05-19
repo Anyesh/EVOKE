@@ -5,6 +5,7 @@ import numpy as np
 from evoke.config import EvokeConfig
 from evoke.engine import InferenceEngine
 from evoke.position import PositionManager
+from evoke.recovery import Breadcrumb, make_recovery_backend
 from evoke.scorer import RelevanceScorer
 from evoke.types import ActiveBlock, BlockSource, CacheStats, EvokeEvent
 
@@ -14,6 +15,7 @@ class EvokeManager:
         self._engine = engine
         self._config = config or EvokeConfig()
         self._scorer = RelevanceScorer(self._config)
+        self._recovery = make_recovery_backend(self._config.recovery_mode)
         self._positions = PositionManager()
         self._events: list[EvokeEvent] = []
         self._step = 0
@@ -34,13 +36,15 @@ class EvokeManager:
 
         for i in range(0, len(tokens), block_size):
             chunk = tokens[i : i + block_size]
+            bid = self._new_block_id()
             block = ActiveBlock(
-                block_id=self._new_block_id(),
+                block_id=bid,
                 logical_start=i,
                 logical_end=i + len(chunk),
                 token_ids=chunk,
                 source=BlockSource.DOCUMENT,
                 is_sink=i < self._config.sink_count,
+                key=f"doc#{bid}",
             )
             blocks.append(block)
 
@@ -161,6 +165,9 @@ class EvokeManager:
     def get_event_log(self) -> list[EvokeEvent]:
         return list(self._events)
 
+    def get_breadcrumbs(self) -> list[Breadcrumb]:
+        return self._recovery.list_evicted()
+
     def get_relevance_scores(self) -> dict[int, float]:
         blocks = self._positions.active_blocks
         pos = self._positions.next_logical_pos
@@ -222,6 +229,7 @@ class EvokeManager:
         if not blocks:
             return
 
+        self._recovery.on_evict(blocks, self._step)
         ranges = sorted((b.logical_start, b.logical_end) for b in blocks)
         self._engine.evict_ranges(ranges)
         self._positions.remove_blocks(block_ids)
@@ -237,12 +245,14 @@ class EvokeManager:
         )
 
     def _track_conversation_block(self, tokens: list[int], start_pos: int) -> None:
+        bid = self._new_block_id()
         block = ActiveBlock(
-            block_id=self._new_block_id(),
+            block_id=bid,
             logical_start=start_pos,
             logical_end=start_pos + len(tokens),
             token_ids=tokens,
             source=BlockSource.USER,
+            key=f"user#{bid}",
         )
         self._positions.append_block(block, start_pos)
         block.representative_embedding = self._last_token_embedding(
@@ -250,12 +260,14 @@ class EvokeManager:
         )
 
     def _track_generated_block(self, tokens: list[int], start_pos: int) -> None:
+        bid = self._new_block_id()
         block = ActiveBlock(
-            block_id=self._new_block_id(),
+            block_id=bid,
             logical_start=start_pos,
             logical_end=start_pos + len(tokens),
             token_ids=tokens,
             source=BlockSource.ASSISTANT,
+            key=f"assistant#{bid}",
         )
         self._positions.append_block(block, start_pos)
 

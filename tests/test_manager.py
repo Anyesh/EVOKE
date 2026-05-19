@@ -346,3 +346,37 @@ class TestThinkingGeneration:
         )
         after_think = raw.split("</think>", 1)[1]
         assert len(after_think) <= 10
+
+
+class TestRecovery:
+    def test_discard_mode_keeps_no_breadcrumbs(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=256,
+            block_size=128,
+            recovery_mode="discard",
+            high_watermark=0.95,
+            low_watermark=0.75,
+        )
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(1024))
+
+        assert manager.get_stats().total_evictions > 0
+        assert manager.get_breadcrumbs() == []
+
+    def test_breadcrumb_mode_records_evicted(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=256,
+            block_size=128,
+            recovery_mode="breadcrumb",
+            high_watermark=0.95,
+            low_watermark=0.75,
+        )
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(1024))
+
+        crumbs = manager.get_breadcrumbs()
+        assert len(crumbs) > 0
+        assert all(c.token_count > 0 for c in crumbs)
+        assert all(c.key for c in crumbs)
