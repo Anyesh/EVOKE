@@ -15,7 +15,7 @@ class EvokeManager:
         self._engine = engine
         self._config = config or EvokeConfig()
         self._scorer = RelevanceScorer(self._config)
-        self._recovery = make_recovery_backend(self._config.recovery_mode)
+        self._recovery = make_recovery_backend(self._config.recovery_mode, engine)
         self._positions = PositionManager()
         self._events: list[EvokeEvent] = []
         self._step = 0
@@ -175,6 +175,33 @@ class EvokeManager:
 
     def force_evict(self, block_ids: list[int]) -> None:
         self._evict_blocks(set(block_ids))
+
+    def recover(self, key: str) -> bool:
+        saved = self._recovery.take(key)
+        if saved is None:
+            return False
+
+        new_p0 = self._engine.next_write_pos
+        if not self._engine.kv_block_load(saved.kv_bytes, new_p0):
+            return False
+
+        bid = self._new_block_id()
+        block = ActiveBlock(
+            block_id=bid,
+            logical_start=new_p0,
+            logical_end=new_p0 + len(saved.token_ids),
+            token_ids=saved.token_ids,
+            representative_embedding=saved.representative_embedding,
+            source=saved.source,
+            key=saved.key,
+        )
+        self._positions.append_block(block, new_p0)
+        self._total_recoveries += 1
+        self._events.append(
+            EvokeEvent(step=self._step, event_type="recovery", block_ids=[bid])
+        )
+        self._enforce_budget()
+        return True
 
     def _enforce_budget(self) -> None:
         cfg = self._config

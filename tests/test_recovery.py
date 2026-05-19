@@ -1,6 +1,12 @@
 import pytest
 
-from evoke.recovery import BreadcrumbBackend, DiscardBackend, make_recovery_backend
+from evoke.mock_engine import MockEngine
+from evoke.recovery import (
+    BreadcrumbBackend,
+    DiscardBackend,
+    KVRestoreBackend,
+    make_recovery_backend,
+)
 from evoke.types import ActiveBlock
 
 
@@ -54,3 +60,31 @@ class TestMakeRecoveryBackend:
     def test_unknown_mode_raises(self):
         with pytest.raises(ValueError):
             make_recovery_backend("nonsense")
+
+
+class TestKVRestoreBackend:
+    def test_requires_engine(self):
+        with pytest.raises(ValueError):
+            make_recovery_backend("kv_restore")
+
+    def test_make_with_engine(self):
+        backend = make_recovery_backend("kv_restore", MockEngine())
+        assert isinstance(backend, KVRestoreBackend)
+
+    def test_on_evict_saves_block(self):
+        engine = MockEngine()
+        engine.process_tokens(list(range(200)))
+        backend = KVRestoreBackend(engine)
+
+        block = _block(0, "doc#0", size=64)
+        backend.on_evict([block], step=4)
+
+        crumbs = backend.list_evicted()
+        assert [c.key for c in crumbs] == ["doc#0"]
+        assert crumbs[0].token_count == 64
+
+        saved = backend.take("doc#0")
+        assert saved is not None
+        assert saved.token_ids == block.token_ids
+        assert saved.saved_at_step == 4
+        assert backend.take("doc#0") is None

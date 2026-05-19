@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import os
 from pathlib import Path
 
 import llama_cpp
@@ -14,6 +15,39 @@ def _null_log_callback(level, text, user_data):
 
 def _suppress_llama_log():
     llama_cpp.llama_log_set(_null_log_callback, None)
+
+
+def _bind_kv_block_primitives() -> ctypes.CDLL | None:
+    # the EVOKE KV block primitives exist only in the custom llama.cpp build;
+    # LLAMA_CPP_LIB must point at it for both llama-cpp-python and this binding
+    lib_path = os.environ.get("LLAMA_CPP_LIB")
+    if not lib_path:
+        return None
+    try:
+        lib = ctypes.CDLL(lib_path)
+        lib.llama_kv_block_save.restype = ctypes.c_size_t
+        lib.llama_kv_block_save.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int32,
+            ctypes.c_int32,
+            ctypes.c_int32,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+        ]
+        lib.llama_kv_block_load.restype = ctypes.c_bool
+        lib.llama_kv_block_load.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int32,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_int32,
+        ]
+        return lib
+    except (OSError, AttributeError):
+        return None
+
+
+_kv_block_lib = _bind_kv_block_primitives()
 
 
 class LlamaCppEngine:
@@ -175,6 +209,44 @@ class LlamaCppEngine:
             shift = sum(e - s for s, e in ranges if e <= pos)
             new_emb[pos - shift] = emb
         self._emb_cache = new_emb
+
+    @property
+    def supports_kv_block(self) -> bool:
+        return _kv_block_lib is not None
+
+    def kv_block_save(self, p0: int, p1: int, seq_id: int = 0) -> bytes:
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "KV block primitives unavailable; set LLAMA_CPP_LIB to the "
+                "EVOKE llama.cpp build"
+            )
+        needed = _kv_block_lib.llama_kv_block_save(self._ctx, seq_id, p0, p1, None, 0)
+        if needed == 0:
+            return b""
+        buf = ctypes.create_string_buffer(needed)
+        written = _kv_block_lib.llama_kv_block_save(
+            self._ctx, seq_id, p0, p1, buf, needed
+        )
+        return buf.raw[:written]
+
+    def kv_block_load(self, data: bytes, new_p0: int, seq_id: int = 0) -> bool:
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "KV block primitives unavailable; set LLAMA_CPP_LIB to the "
+                "EVOKE llama.cpp build"
+            )
+        ok = bool(
+            _kv_block_lib.llama_kv_block_load(
+                self._ctx, seq_id, data, len(data), new_p0
+            )
+        )
+        if ok and len(data) >= 4:
+            # the first 4 bytes of the buffer are the cell count (uint32) written
+            # by block_write; advance our position tracking past the spliced span
+            n_cells = int.from_bytes(data[:4], "little")
+            self._next_write_pos = new_p0 + n_cells
+            self._token_count += n_cells
+        return ok
 
     def reset(self) -> None:
         llama_cpp.llama_memory_clear(self._memory, True)

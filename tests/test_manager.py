@@ -380,3 +380,50 @@ class TestRecovery:
         assert len(crumbs) > 0
         assert all(c.token_count > 0 for c in crumbs)
         assert all(c.key for c in crumbs)
+
+
+class TestKVRestore:
+    def test_recover_brings_block_back(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=10000, block_size=128, recovery_mode="kv_restore"
+        )
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(512))
+
+        non_sink = [b for b in manager._positions.active_blocks if not b.is_sink]
+        target = non_sink[0]
+        key = target.key
+        tokens = list(target.token_ids)
+
+        manager.force_evict([target.block_id])
+        assert key not in [b.key for b in manager._positions.active_blocks]
+
+        assert manager.recover(key) is True
+        recovered = [b for b in manager._positions.active_blocks if b.key == key]
+        assert len(recovered) == 1
+        assert recovered[0].token_ids == tokens
+        assert recovered[0].source == BlockSource.DOCUMENT
+        assert manager.get_stats().total_recoveries == 1
+
+    def test_recover_unknown_key_returns_false(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=10000, block_size=128, recovery_mode="kv_restore"
+        )
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(256))
+        assert manager.recover("no-such-key") is False
+
+    def test_recover_unavailable_in_discard_mode(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=256,
+            block_size=128,
+            recovery_mode="discard",
+            high_watermark=0.95,
+            low_watermark=0.75,
+        )
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(1024))
+        assert manager.recover("doc#1") is False

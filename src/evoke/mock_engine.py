@@ -67,6 +67,51 @@ class MockEngine:
         }
         self._next_write_pos = len(survivors)
 
+    def kv_block_save(self, p0: int, p1: int, seq_id: int = 0) -> bytes:
+        n = p1 - p0
+        payload = {
+            "tokens": [self._token_at_pos.get(p) for p in range(p0, p1)],
+            "embeddings": [self._embeddings.get(p) for p in range(p0, p1)],
+        }
+        return n.to_bytes(4, "little") + pickle.dumps(payload)
+
+    def kv_block_load(self, data: bytes, new_p0: int, seq_id: int = 0) -> bool:
+        if len(data) < 4:
+            return False
+        n = int.from_bytes(data[:4], "little")
+        payload = pickle.loads(data[4:])
+        for i in range(n):
+            pos = new_p0 + i
+            self._kv_positions.add(pos)
+            token = payload["tokens"][i]
+            if token is not None:
+                self._token_at_pos[pos] = token
+            emb = payload["embeddings"][i]
+            if emb is not None:
+                self._embeddings[pos] = emb
+        self._next_write_pos = new_p0 + n
+        return True
+
+    def kv_block_save(self, p0: int, p1: int, seq_id: int = 0) -> bytes:
+        tokens = [self._token_at_pos.get(p, 0) for p in range(p0, p1)]
+        out = bytearray(len(tokens).to_bytes(4, "little"))
+        for tok in tokens:
+            out += int(tok).to_bytes(4, "little", signed=True)
+        return bytes(out)
+
+    def kv_block_load(self, data: bytes, new_p0: int, seq_id: int = 0) -> bool:
+        if len(data) < 4:
+            return False
+        n = int.from_bytes(data[:4], "little")
+        for i in range(n):
+            tok = int.from_bytes(data[4 + i * 4 : 8 + i * 4], "little", signed=True)
+            pos = new_p0 + i
+            self._kv_positions.add(pos)
+            self._token_at_pos[pos] = tok
+            self._embeddings[pos] = self._rng.randn(self._n_embd).astype(np.float32)
+        self._next_write_pos = new_p0 + n
+        return True
+
     def reset(self) -> None:
         self._kv_positions.clear()
         self._token_at_pos.clear()
