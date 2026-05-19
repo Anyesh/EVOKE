@@ -73,6 +73,41 @@ class TestLoad:
         assert stats.active_tokens > 0
 
 
+class TestAddContext:
+    def test_creates_keyed_document_blocks(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=64)
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(128))
+        before = len(manager._positions.active_blocks)
+
+        manager.add_context(_make_long_text(192), key="file:utils.py")
+
+        new_blocks = manager._positions.active_blocks[before:]
+        assert len(new_blocks) == 3
+        assert all(b.source == BlockSource.DOCUMENT for b in new_blocks)
+        assert [b.key for b in new_blocks] == [
+            "file:utils.py#0",
+            "file:utils.py#1",
+            "file:utils.py#2",
+        ]
+
+    def test_old_context_evictable_under_budget(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=512,
+            block_size=64,
+            high_watermark=0.95,
+            low_watermark=0.75,
+        )
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(128))
+        manager.add_context(_make_long_text(256), key="file:a")
+        manager.add_context(_make_long_text(256), key="file:b")
+
+        assert manager.get_stats().active_tokens <= 512
+
+
 class TestEviction:
     def test_eviction_reclaims_budget(self):
         engine = MockEngine()

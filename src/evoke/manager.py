@@ -55,6 +55,29 @@ class EvokeManager:
         self._current_turn_start_id = self._next_block_id
         self._enforce_budget()
 
+    def add_context(self, text: str, key: str) -> None:
+        self._current_turn_start_id = self._next_block_id
+        start = self._engine.next_write_pos
+        tokens = self._engine.tokenize(text)
+        self._engine.process_tokens(tokens)
+
+        block_size = self._config.block_size
+        for i in range(0, len(tokens), block_size):
+            chunk = tokens[i : i + block_size]
+            bstart = start + i
+            block = ActiveBlock(
+                block_id=self._new_block_id(),
+                logical_start=bstart,
+                logical_end=bstart + len(chunk),
+                token_ids=chunk,
+                source=BlockSource.DOCUMENT,
+                key=f"{key}#{i // block_size}",
+                representative_embedding=self._last_token_embedding(bstart, len(chunk)),
+            )
+            self._positions.append_block(block, bstart)
+
+        self._enforce_budget()
+
     def generate(
         self,
         max_tokens: int,
