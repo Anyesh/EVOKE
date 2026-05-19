@@ -7,6 +7,15 @@ import llama_cpp
 import numpy as np
 
 
+@llama_cpp.llama_log_callback
+def _null_log_callback(level, text, user_data):
+    pass
+
+
+def _suppress_llama_log():
+    llama_cpp.llama_log_set(_null_log_callback, None)
+
+
 class LlamaCppEngine:
     def __init__(
         self,
@@ -18,6 +27,9 @@ class LlamaCppEngine:
         verbose: bool = False,
     ):
         self._n_batch = n_batch
+
+        if not verbose:
+            _suppress_llama_log()
 
         llama_cpp.llama_backend_init()
 
