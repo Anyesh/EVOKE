@@ -83,7 +83,11 @@ class LlamaCppEngine:
         ctx_params.n_seq_max = 1
         ctx_params.embeddings = True
         ctx_params.pooling_type = llama_cpp.LLAMA_POOLING_TYPE_NONE
-        ctx_params.flash_attn_type = 0
+        # FA must be on: it makes V row-aligned (v_trans=false), so kv_block_save
+        # and kv_block_load take the contiguous single-memcpy-per-layer path. With
+        # v_trans=true the V loop runs n_embd_v_gqa times per layer, dominating
+        # recovery latency.
+        ctx_params.flash_attn_type = 1
         ctx_params.no_perf = True
 
         self._ctx = llama_cpp.llama_init_from_model(self._model_ptr, ctx_params)
