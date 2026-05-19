@@ -7,7 +7,7 @@ from evoke.config import EvokeConfig
 from evoke.engine import InferenceEngine
 from evoke.position import PositionManager
 from evoke.scorer import RelevanceScorer, cosine_similarity
-from evoke.types import ActiveBlock, ArchiveBlock, CacheStats, EvokeEvent
+from evoke.types import ActiveBlock, ArchiveBlock, BlockSource, CacheStats, EvokeEvent
 
 
 class EvokeManager:
@@ -122,12 +122,12 @@ class EvokeManager:
 
         return self._engine.detokenize(output_tokens)
 
-    def process_user_message(self, text: str) -> None:
+    def process_user_message(self, text: str, raw_query: str = "") -> None:
         self._check_rebuild()
-        self._recent_query_text = text
+        self._recent_query_text = raw_query or text
         self._current_turn_start = self._engine.next_write_pos
 
-        recalled_blocks = self._retrieve_from_archive(text)
+        recalled_blocks = self._retrieve_from_archive(self._recent_query_text)
 
         if recalled_blocks:
             self._promote_via_rebuild(recalled_blocks)
@@ -227,6 +227,13 @@ class EvokeManager:
             ):
                 continue
 
+            if (
+                block.promotion_step >= 0
+                and (self._step - block.promotion_step)
+                < self._config.promotion_grace_steps
+            ):
+                continue
+
             demotable.append(block)
         return demotable
 
@@ -247,6 +254,7 @@ class EvokeManager:
                 if block.representative_embedding is not None
                 else np.zeros(self._engine.n_embd),
                 timestamp=self._step,
+                source=block.source,
             )
             self._archive.store(archive_block)
 
@@ -300,6 +308,7 @@ class EvokeManager:
             self._config.retrieval_threshold,
             self._config.max_retrieve_blocks,
             query_text=query_text,
+            min_lexical_recall=self._config.min_lexical_recall,
         )
 
     def _promote_via_rebuild(self, blocks: list[ArchiveBlock]) -> None:
@@ -313,6 +322,8 @@ class EvokeManager:
                 original_end=block.pos_end,
                 token_ids=block.token_ids,
                 representative_embedding=block.representative_embedding,
+                source=block.source,
+                promotion_step=self._step,
             )
             self._positions.append_block(active_block, block.pos_start)
             self._archive.remove(block.block_id)
@@ -354,6 +365,7 @@ class EvokeManager:
             original_start=start_pos,
             original_end=start_pos + len(tokens),
             token_ids=tokens,
+            source=BlockSource.USER,
         )
         self._positions.append_block(block, start_pos)
 

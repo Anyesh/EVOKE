@@ -2,7 +2,7 @@ import numpy as np
 
 from evoke.config import EvokeConfig
 from evoke.scorer import RelevanceScorer, cosine_similarity
-from evoke.types import ActiveBlock
+from evoke.types import ActiveBlock, BlockSource
 
 
 def _make_block(
@@ -99,3 +99,69 @@ class TestRelevanceScorer:
         scores = scorer.score_blocks(blocks, current_pos=384, context_length=1000)
         assert len(scores) == 3
         assert all(0 <= s <= 1.0 for s in scores.values())
+
+
+class TestSourceAwareScoring:
+    def test_user_block_has_score_floor(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            recency_decay=0.01,
+            conversation_score_floor=0.6,
+        )
+        scorer = RelevanceScorer(config)
+
+        old_user_block = _make_block(1, 100, 200, original_start=100)
+        old_user_block.source = BlockSource.USER
+
+        score = scorer.score(old_user_block, current_pos=5000, context_length=5000)
+        assert score >= 0.6
+
+    def test_assistant_block_has_score_floor(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            recency_decay=0.01,
+            assistant_score_floor=0.5,
+        )
+        scorer = RelevanceScorer(config)
+
+        old_assistant = _make_block(1, 100, 200, original_start=100)
+        old_assistant.source = BlockSource.ASSISTANT
+
+        score = scorer.score(old_assistant, current_pos=5000, context_length=5000)
+        assert score >= 0.5
+
+    def test_document_block_has_no_floor(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            recency_decay=0.01,
+            conversation_score_floor=0.6,
+        )
+        scorer = RelevanceScorer(config)
+
+        old_doc = _make_block(1, 100, 200, original_start=100)
+        old_doc.source = BlockSource.DOCUMENT
+
+        score = scorer.score(old_doc, current_pos=5000, context_length=5000)
+        assert score < 0.6
+
+    def test_eviction_prefers_document_over_conversation(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            recency_decay=0.01,
+            conversation_score_floor=0.6,
+        )
+        scorer = RelevanceScorer(config)
+
+        doc_block = _make_block(1, 100, 200, original_start=100)
+        doc_block.source = BlockSource.DOCUMENT
+
+        user_block = _make_block(2, 200, 300, original_start=200)
+        user_block.source = BlockSource.USER
+
+        score_doc = scorer.score(doc_block, current_pos=5000, context_length=5000)
+        score_user = scorer.score(user_block, current_pos=5000, context_length=5000)
+        assert score_user > score_doc

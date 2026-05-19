@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 from evoke.config import EvokeConfig
-from evoke.types import ActiveBlock
+from evoke.types import ActiveBlock, BlockSource
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -35,9 +35,16 @@ class RelevanceScorer:
 
         total_weight = cfg.w_recency + cfg.w_coherence
         if total_weight == 0:
-            return recency
+            raw = recency
+        else:
+            raw = (cfg.w_recency * recency + cfg.w_coherence * coherence) / total_weight
 
-        return (cfg.w_recency * recency + cfg.w_coherence * coherence) / total_weight
+        if block.source == BlockSource.USER:
+            raw = max(raw, cfg.conversation_score_floor)
+        elif block.source == BlockSource.ASSISTANT:
+            raw = max(raw, cfg.assistant_score_floor)
+
+        return raw
 
     def score_blocks(
         self, blocks: list[ActiveBlock], current_pos: int, context_length: int
