@@ -44,25 +44,15 @@ class TestLlamaCppEngine:
         assert isinstance(generated, int)
         assert engine.get_kv_cache_token_count() == len(tokens) + 1
 
-    def test_kv_cache_seq_rm(self, engine):
+    def test_evict_ranges(self, engine):
         engine.reset()
         tokens = engine.tokenize("one two three four five")
         engine.process_tokens(tokens)
         count_before = engine.get_kv_cache_token_count()
 
-        engine.kv_cache_seq_rm(0, 2)
-        count_after = engine.get_kv_cache_token_count()
-        assert count_after == count_before - 2
-
-    def test_rebuild_kv(self, engine):
-        engine.reset()
-        tokens = engine.tokenize("alpha beta gamma")
-        engine.process_tokens(tokens)
-        count_before = engine.get_kv_cache_token_count()
-
-        engine.rebuild_kv([tokens])
-        assert engine.get_kv_cache_token_count() == count_before
-        assert engine.next_write_pos == len(tokens)
+        engine.evict_ranges([(0, 2)])
+        assert engine.get_kv_cache_token_count() == count_before - 2
+        assert engine.next_write_pos == count_before - 2
 
     def test_n_ctx(self, engine):
         assert engine.n_ctx == 2048

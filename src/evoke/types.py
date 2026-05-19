@@ -14,54 +14,29 @@ class BlockSource(str, Enum):
 
 
 @dataclass
-class ArchiveBlock:
-    block_id: int
-    token_ids: list[int]
-    original_positions: list[int]
-    text: str
-    representative_embedding: np.ndarray
-    timestamp: int
-    access_count: int = 0
-    source: BlockSource = BlockSource.DOCUMENT
-
-    @property
-    def size(self) -> int:
-        return len(self.token_ids)
-
-    @property
-    def pos_start(self) -> int:
-        return self.original_positions[0]
-
-    @property
-    def pos_end(self) -> int:
-        return self.original_positions[-1] + 1
-
-
-@dataclass
 class ActiveBlock:
     block_id: int
     logical_start: int
     logical_end: int
-    original_start: int
-    original_end: int
     token_ids: list[int]
     representative_embedding: np.ndarray | None = None
-    relevance_score: float = 1.0
     source: BlockSource = BlockSource.DOCUMENT
-    promotion_step: int = -1
+    is_sink: bool = False
+    key: str = ""
+
+    @property
+    def size(self) -> int:
+        return len(self.token_ids)
 
 
 @dataclass
 class CacheStats:
     active_tokens: int
     active_blocks: int
-    archive_blocks: int
-    archive_tokens: int
     budget: int
     budget_utilization: float
-    total_demotions: int
-    total_promotions: int
-    total_retrieval_misses: int
+    total_evictions: int
+    total_recoveries: int = 0
 
 
 @dataclass

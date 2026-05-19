@@ -9,20 +9,17 @@ def _make_block(
     block_id: int,
     logical_start: int,
     logical_end: int,
-    original_start: int | None = None,
+    is_sink: bool = False,
     embedding: np.ndarray | None = None,
 ) -> ActiveBlock:
-    if original_start is None:
-        original_start = logical_start
     size = logical_end - logical_start
     return ActiveBlock(
         block_id=block_id,
         logical_start=logical_start,
         logical_end=logical_end,
-        original_start=original_start,
-        original_end=original_start + size,
         token_ids=list(range(size)),
         representative_embedding=embedding,
+        is_sink=is_sink,
     )
 
 
@@ -52,7 +49,7 @@ class TestRelevanceScorer:
         config = EvokeConfig(sink_count=4, block_size=4)
         scorer = RelevanceScorer(config)
 
-        sink_block = _make_block(0, 0, 4, original_start=0)
+        sink_block = _make_block(0, 0, 4, is_sink=True)
         score = scorer.score(sink_block, current_pos=1000, context_length=2000)
         assert score == 1.0
 
@@ -60,8 +57,8 @@ class TestRelevanceScorer:
         config = EvokeConfig(sink_count=4, block_size=128, recency_decay=0.01)
         scorer = RelevanceScorer(config)
 
-        recent = _make_block(1, 900, 1000, original_start=900)
-        old = _make_block(2, 100, 200, original_start=100)
+        recent = _make_block(1, 900, 1000)
+        old = _make_block(2, 100, 200)
 
         score_recent = scorer.score(recent, current_pos=1000, context_length=2000)
         score_old = scorer.score(old, current_pos=1000, context_length=2000)
@@ -73,15 +70,10 @@ class TestRelevanceScorer:
         )
         scorer = RelevanceScorer(config)
 
-        context_emb = np.array([1.0, 0.0, 0.0, 0.0])
-        scorer.update_recent_context(context_emb)
+        scorer.update_recent_context(np.array([1.0, 0.0, 0.0, 0.0]))
 
-        similar = _make_block(
-            1, 100, 200, original_start=100, embedding=np.array([0.9, 0.1, 0.0, 0.0])
-        )
-        dissimilar = _make_block(
-            2, 200, 300, original_start=200, embedding=np.array([0.0, 0.0, 0.9, 0.1])
-        )
+        similar = _make_block(1, 100, 200, embedding=np.array([0.9, 0.1, 0.0, 0.0]))
+        dissimilar = _make_block(2, 200, 300, embedding=np.array([0.0, 0.0, 0.9, 0.1]))
 
         score_sim = scorer.score(similar, current_pos=500, context_length=1000)
         score_dis = scorer.score(dissimilar, current_pos=500, context_length=1000)
@@ -92,9 +84,9 @@ class TestRelevanceScorer:
         scorer = RelevanceScorer(config)
 
         blocks = [
-            _make_block(0, 0, 128, original_start=0),
-            _make_block(1, 128, 256, original_start=128),
-            _make_block(2, 256, 384, original_start=256),
+            _make_block(0, 0, 128),
+            _make_block(1, 128, 256),
+            _make_block(2, 256, 384),
         ]
         scores = scorer.score_blocks(blocks, current_pos=384, context_length=1000)
         assert len(scores) == 3
@@ -112,17 +104,11 @@ class TestRollingContextEmbedding:
         )
         scorer = RelevanceScorer(config)
 
-        topic_a = np.array([1.0, 0.0, 0.0, 0.0])
-        topic_b = np.array([0.0, 1.0, 0.0, 0.0])
-        topic_c = np.array([0.0, 0.0, 1.0, 0.0])
+        scorer.update_recent_context(np.array([1.0, 0.0, 0.0, 0.0]))
+        scorer.update_recent_context(np.array([0.0, 1.0, 0.0, 0.0]))
+        scorer.update_recent_context(np.array([0.0, 0.0, 1.0, 0.0]))
 
-        scorer.update_recent_context(topic_a)
-        scorer.update_recent_context(topic_b)
-        scorer.update_recent_context(topic_c)
-
-        block_a = _make_block(
-            1, 100, 200, original_start=100, embedding=np.array([0.95, 0.05, 0.0, 0.0])
-        )
+        block_a = _make_block(1, 100, 200, embedding=np.array([0.95, 0.05, 0.0, 0.0]))
         score = scorer.score(block_a, current_pos=500, context_length=1000)
         assert score > 0.9
 
@@ -136,14 +122,11 @@ class TestRollingContextEmbedding:
         )
         scorer = RelevanceScorer(config)
 
-        old_topic = np.array([1.0, 0.0, 0.0, 0.0])
-        scorer.update_recent_context(old_topic)
+        scorer.update_recent_context(np.array([1.0, 0.0, 0.0, 0.0]))
         scorer.update_recent_context(np.array([0.0, 1.0, 0.0, 0.0]))
         scorer.update_recent_context(np.array([0.0, 0.0, 1.0, 0.0]))
 
-        block_old = _make_block(
-            1, 100, 200, original_start=100, embedding=np.array([0.95, 0.05, 0.0, 0.0])
-        )
+        block_old = _make_block(1, 100, 200, embedding=np.array([0.95, 0.05, 0.0, 0.0]))
         score = scorer.score(block_old, current_pos=500, context_length=1000)
         assert score < 0.7
 
@@ -158,7 +141,7 @@ class TestSourceAwareScoring:
         )
         scorer = RelevanceScorer(config)
 
-        old_user_block = _make_block(1, 100, 200, original_start=100)
+        old_user_block = _make_block(1, 100, 200)
         old_user_block.source = BlockSource.USER
 
         score = scorer.score(old_user_block, current_pos=5000, context_length=5000)
@@ -173,7 +156,7 @@ class TestSourceAwareScoring:
         )
         scorer = RelevanceScorer(config)
 
-        old_assistant = _make_block(1, 100, 200, original_start=100)
+        old_assistant = _make_block(1, 100, 200)
         old_assistant.source = BlockSource.ASSISTANT
 
         score = scorer.score(old_assistant, current_pos=5000, context_length=5000)
@@ -188,7 +171,7 @@ class TestSourceAwareScoring:
         )
         scorer = RelevanceScorer(config)
 
-        old_doc = _make_block(1, 100, 200, original_start=100)
+        old_doc = _make_block(1, 100, 200)
         old_doc.source = BlockSource.DOCUMENT
 
         score = scorer.score(old_doc, current_pos=5000, context_length=5000)
@@ -203,10 +186,10 @@ class TestSourceAwareScoring:
         )
         scorer = RelevanceScorer(config)
 
-        doc_block = _make_block(1, 100, 200, original_start=100)
+        doc_block = _make_block(1, 100, 200)
         doc_block.source = BlockSource.DOCUMENT
 
-        user_block = _make_block(2, 200, 300, original_start=200)
+        user_block = _make_block(2, 200, 300)
         user_block.source = BlockSource.USER
 
         score_doc = scorer.score(doc_block, current_pos=5000, context_length=5000)

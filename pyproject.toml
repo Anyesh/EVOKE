@@ -9,9 +9,6 @@ dependencies = [
     "llama-cpp-python>=0.3.0",
 ]
 
-[project.scripts]
-evoke-bench = "evoke.cli:main"
-
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",

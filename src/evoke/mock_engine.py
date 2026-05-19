@@ -12,7 +12,6 @@ class MockEngine:
         self._token_at_pos: dict[int, int] = {}
         self._next_gen_token = 0
         self._next_write_pos = 0
-        self._seq_rm_calls: list[tuple[int, int]] = []
         self._rng = np.random.RandomState(42)
         self._embeddings: dict[int, np.ndarray] = {}
         self._gen_queue: list[int] = []
@@ -51,20 +50,22 @@ class MockEngine:
     def get_kv_cache_token_count(self) -> int:
         return len(self._kv_positions)
 
-    def kv_cache_seq_rm(self, pos_start: int, pos_end: int) -> None:
-        self._seq_rm_calls.append((pos_start, pos_end))
-        for pos in range(pos_start, pos_end):
-            self._kv_positions.discard(pos)
-            self._token_at_pos.pop(pos, None)
-            self._embeddings.pop(pos, None)
-
-    def rebuild_kv(self, token_blocks: list[list[int]]) -> None:
-        self._kv_positions.clear()
-        self._token_at_pos.clear()
-        self._embeddings.clear()
-        self._next_write_pos = 0
-        for tokens in token_blocks:
-            self.process_tokens(tokens)
+    def evict_ranges(self, ranges: list[tuple[int, int]]) -> None:
+        if not ranges:
+            return
+        removed: set[int] = set()
+        for pos_start, pos_end in ranges:
+            removed.update(range(pos_start, pos_end))
+        survivors = [p for p in range(self._next_write_pos) if p not in removed]
+        remap = {p: i for i, p in enumerate(survivors)}
+        self._kv_positions = set(remap.values())
+        self._token_at_pos = {
+            remap[p]: t for p, t in self._token_at_pos.items() if p in remap
+        }
+        self._embeddings = {
+            remap[p]: e for p, e in self._embeddings.items() if p in remap
+        }
+        self._next_write_pos = len(survivors)
 
     def reset(self) -> None:
         self._kv_positions.clear()

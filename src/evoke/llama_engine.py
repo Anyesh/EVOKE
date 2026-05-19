@@ -144,19 +144,37 @@ class LlamaCppEngine:
     def get_kv_cache_token_count(self) -> int:
         return self._token_count
 
-    def kv_cache_seq_rm(self, pos_start: int, pos_end: int) -> None:
-        llama_cpp.llama_memory_seq_rm(self._memory, 0, pos_start, pos_end)
-        self._token_count -= pos_end - pos_start
-        for pos in range(pos_start, pos_end):
-            self._emb_cache.pop(pos, None)
+    def evict_ranges(self, ranges: list[tuple[int, int]]) -> None:
+        if not ranges:
+            return
+        ranges = sorted(ranges)
+        n = self._next_write_pos
+        for pos_start, pos_end in ranges:
+            llama_cpp.llama_memory_seq_rm(self._memory, 0, pos_start, pos_end)
+        removed = 0
+        cursor = 0
+        for pos_start, pos_end in ranges:
+            if removed > 0 and pos_start > cursor:
+                llama_cpp.llama_memory_seq_add(
+                    self._memory, 0, cursor, pos_start, -removed
+                )
+            removed += pos_end - pos_start
+            cursor = pos_end
+        if removed > 0 and cursor < n:
+            llama_cpp.llama_memory_seq_add(self._memory, 0, cursor, n, -removed)
+        self._next_write_pos = n - removed
+        self._token_count = n - removed
 
-    def rebuild_kv(self, token_blocks: list[list[int]]) -> None:
-        llama_cpp.llama_memory_clear(self._memory, True)
-        self._token_count = 0
-        self._next_write_pos = 0
-        self._emb_cache.clear()
-        for tokens in token_blocks:
-            self.process_tokens(tokens)
+        removed_set: set[int] = set()
+        for pos_start, pos_end in ranges:
+            removed_set.update(range(pos_start, pos_end))
+        new_emb: dict[int, np.ndarray] = {}
+        for pos, emb in self._emb_cache.items():
+            if pos in removed_set:
+                continue
+            shift = sum(e - s for s, e in ranges if e <= pos)
+            new_emb[pos - shift] = emb
+        self._emb_cache = new_emb
 
     def reset(self) -> None:
         llama_cpp.llama_memory_clear(self._memory, True)

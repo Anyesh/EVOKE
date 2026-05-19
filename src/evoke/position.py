@@ -22,7 +22,7 @@ class PositionManager:
         return max(b.logical_end for b in self._active_blocks)
 
     def register_blocks(self, blocks: list[ActiveBlock]) -> None:
-        self._active_blocks = sorted(blocks, key=lambda b: b.original_start)
+        self._active_blocks = sorted(blocks, key=lambda b: b.block_id)
         self._recompute_contiguous()
 
     def remove_blocks(self, block_ids: set[int]) -> None:
@@ -35,16 +35,10 @@ class PositionManager:
         block.logical_start = kv_start_pos
         block.logical_end = kv_start_pos + size
         self._active_blocks.append(block)
-        self._active_blocks.sort(key=lambda b: b.original_start)
+        self._active_blocks.sort(key=lambda b: b.block_id)
 
-    def needs_rebuild(self, n_ctx: int) -> bool:
-        if not self._active_blocks:
-            return False
-        max_pos = max(b.logical_end for b in self._active_blocks)
-        return max_pos > int(n_ctx * 0.9)
-
-    def rebuild_positions(self) -> None:
-        self._active_blocks.sort(key=lambda b: b.original_start)
+    def recompact(self) -> None:
+        self._active_blocks.sort(key=lambda b: b.block_id)
         self._recompute_contiguous()
 
     def _recompute_contiguous(self) -> None:
@@ -54,9 +48,3 @@ class PositionManager:
             block.logical_start = pos
             block.logical_end = pos + block_size
             pos += block_size
-
-    def get_block_at_original_pos(self, original_pos: int) -> ActiveBlock | None:
-        for block in self._active_blocks:
-            if block.original_start <= original_pos < block.original_end:
-                return block
-        return None

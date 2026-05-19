@@ -65,9 +65,7 @@ class RelevanceScorer:
         return math.exp(-self._config.recency_decay * distance * context_length)
 
     def _score_sink(self, block: ActiveBlock) -> float:
-        if block.original_start < self._config.sink_count:
-            return 1.0
-        return 0.0
+        return 1.0 if block.is_sink else 0.0
 
     def _score_coherence(self, block: ActiveBlock) -> float:
         if not self._context_history or block.representative_embedding is None:
