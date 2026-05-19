@@ -89,8 +89,28 @@ class TestArchiveStore:
         store.store(_make_archive_block(1))
         assert store.total_tokens == 256
 
-    def test_neighbor_expansion(self):
+    def test_neighbor_expansion_disabled_by_default(self):
         store = ArchiveStore(EvokeConfig())
+        b0 = _make_archive_block(0)
+        b1 = _make_archive_block(1)
+        b2 = _make_archive_block(2)
+        b1.text = "needle content here"
+        store.store(b0)
+        store.store(b1)
+        store.store(b2)
+
+        query = np.zeros(8, dtype=np.float32)
+        results = store.retrieve_by_similarity(
+            query, threshold=0.5, max_results=4, query_text="needle content"
+        )
+
+        result_ids = {b.block_id for b in results}
+        assert 1 in result_ids
+        assert 0 not in result_ids
+        assert 2 not in result_ids
+
+    def test_neighbor_expansion_when_enabled(self):
+        store = ArchiveStore(EvokeConfig(expand_neighbors=True))
         b0 = _make_archive_block(0)
         b1 = _make_archive_block(1)
         b2 = _make_archive_block(2)
@@ -126,3 +146,66 @@ class TestArchiveStore:
 
         positions = [b.pos_start for b in results]
         assert positions == sorted(positions)
+
+    def test_min_lexical_recall_filters_weak_matches(self):
+        store = ArchiveStore(EvokeConfig())
+        weak_match = ArchiveBlock(
+            block_id=0,
+            token_ids=list(range(128)),
+            original_positions=list(range(128)),
+            text="The weather today is partly cloudy with rain in the afternoon",
+            representative_embedding=np.zeros(8, dtype=np.float32),
+            timestamp=0,
+        )
+        strong_match = ArchiveBlock(
+            block_id=1,
+            token_ids=list(range(128, 256)),
+            original_positions=list(range(128, 256)),
+            text="The secret project codename is AURORA-SEVEN budget $4.2 million",
+            representative_embedding=np.zeros(8, dtype=np.float32),
+            timestamp=0,
+        )
+        store.store(weak_match)
+        store.store(strong_match)
+
+        query = np.zeros(8, dtype=np.float32)
+
+        results_no_threshold = store.retrieve_by_similarity(
+            query,
+            threshold=0.5,
+            max_results=4,
+            query_text="What is the weather forecast for tomorrow?",
+            min_lexical_recall=0.0,
+        )
+        assert any(b.block_id == 0 for b in results_no_threshold)
+
+        results_with_threshold = store.retrieve_by_similarity(
+            query,
+            threshold=0.5,
+            max_results=4,
+            query_text="What is the weather forecast for tomorrow?",
+            min_lexical_recall=0.4,
+        )
+        assert not any(b.block_id == 0 for b in results_with_threshold)
+
+    def test_min_lexical_recall_keeps_strong_matches(self):
+        store = ArchiveStore(EvokeConfig())
+        block = ArchiveBlock(
+            block_id=0,
+            token_ids=list(range(128)),
+            original_positions=list(range(128)),
+            text="The secret project codename is AURORA-SEVEN budget million",
+            representative_embedding=np.zeros(8, dtype=np.float32),
+            timestamp=0,
+        )
+        store.store(block)
+
+        query = np.zeros(8, dtype=np.float32)
+        results = store.retrieve_by_similarity(
+            query,
+            threshold=0.5,
+            max_results=4,
+            query_text="What is the codename of the secret project and its budget?",
+            min_lexical_recall=0.4,
+        )
+        assert any(b.block_id == 0 for b in results)

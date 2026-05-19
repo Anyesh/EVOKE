@@ -517,6 +517,92 @@ class TestBlockSourceClassification:
         assert promoted[0].promotion_step >= 0
 
 
+class TestPromotionBudget:
+    def test_promotion_respects_fraction_cap(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=512,
+            block_size=64,
+            max_promote_fraction=0.25,
+            high_watermark=0.95,
+            low_watermark=0.75,
+        )
+        manager = EvokeManager(engine, config)
+
+        text = _make_long_text(1024)
+        manager.load_document(text)
+
+        stats = manager.get_stats()
+        assert stats.archive_blocks > 0
+
+        cap = int(512 * 0.25)
+        archived = manager._archive.all_blocks()
+        for block in archived[:6]:
+            block.text = "unique searchable keyword xylophone"
+
+        manager.process_user_message("tell me about xylophone")
+
+        promoted_events = [
+            e for e in manager.get_event_log() if e.event_type == "promotion"
+        ]
+        if promoted_events:
+            total_promoted_tokens = 0
+            for event in promoted_events:
+                total_promoted_tokens += len(event.block_ids) * config.block_size
+            assert total_promoted_tokens <= cap
+
+    def test_promotion_skipped_when_above_high_watermark(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=300,
+            block_size=64,
+            high_watermark=0.95,
+            low_watermark=0.90,
+            demotion_policy="hard",
+        )
+        manager = EvokeManager(engine, config)
+
+        text = _make_long_text(300)
+        manager.load_document(text)
+
+        stats = manager.get_stats()
+        assert stats.active_tokens <= 300
+
+        blocks = manager._positions.active_blocks
+        non_sink = [b for b in blocks if b.original_start >= config.sink_count]
+        assert non_sink
+        bid = non_sink[0].block_id
+        manager.force_demote([bid])
+
+        archived = manager._archive.get(bid)
+        assert archived is not None
+
+        filler = _make_long_text(64)
+        filler_tokens = engine.tokenize(filler)
+        engine.process_tokens(filler_tokens)
+        from evoke.types import ActiveBlock as AB
+
+        filler_id = manager._archive.allocate_id()
+        filler_block = AB(
+            block_id=filler_id,
+            logical_start=engine.next_write_pos - len(filler_tokens),
+            logical_end=engine.next_write_pos,
+            original_start=9000,
+            original_end=9000 + len(filler_tokens),
+            token_ids=filler_tokens,
+        )
+        manager._positions.append_block(
+            filler_block, engine.next_write_pos - len(filler_tokens)
+        )
+
+        active_now = manager._positions.active_token_count
+        assert active_now > int(300 * 0.95)
+
+        misses_before = manager._total_recall_misses
+        manager.force_promote([bid])
+        assert manager._total_recall_misses == misses_before + 1
+
+
 class TestEvokeManagerPinning:
     def test_generated_tokens_are_pinned(self):
         engine = MockEngine()

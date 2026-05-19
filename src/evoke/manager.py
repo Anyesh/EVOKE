@@ -312,8 +312,19 @@ class EvokeManager:
         )
 
     def _promote_via_rebuild(self, blocks: list[ArchiveBlock]) -> None:
+        budget = self._config.max_active_tokens
+        active = self._positions.active_token_count
+        if active > int(budget * self._config.high_watermark):
+            self._total_recall_misses += len(blocks)
+            return
+        cap = int(budget * self._config.max_promote_fraction)
+
         promoted_ids = []
+        promoted_tokens = 0
         for block in blocks:
+            block_size = len(block.token_ids)
+            if promoted_tokens + block_size > cap:
+                continue
             active_block = ActiveBlock(
                 block_id=block.block_id,
                 logical_start=block.pos_start,
@@ -328,6 +339,11 @@ class EvokeManager:
             self._positions.append_block(active_block, block.pos_start)
             self._archive.remove(block.block_id)
             promoted_ids.append(block.block_id)
+            promoted_tokens += block_size
+
+        if not promoted_ids:
+            self._total_recall_misses += len(blocks)
+            return
 
         all_blocks = self._positions.active_blocks
         token_blocks = [b.token_ids for b in all_blocks]

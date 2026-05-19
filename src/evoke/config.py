@@ -25,6 +25,9 @@ class EvokeConfig:
 
     max_archive_blocks: int = 1024
 
+    expand_neighbors: bool = False
+    max_promote_fraction: float = 0.25
+
     pin_generated: bool = True
 
     conversation_score_floor: float = 0.6

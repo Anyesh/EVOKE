@@ -26,6 +26,7 @@ class ArchiveStore:
         threshold: float,
         max_results: int,
         query_text: str = "",
+        min_lexical_recall: float = 0.0,
     ) -> list[ArchiveBlock]:
         semantic_hits: list[tuple[float, ArchiveBlock]] = []
         for block in self._blocks.values():
@@ -40,7 +41,7 @@ class ArchiveStore:
             if query_words:
                 for block in self._blocks.values():
                     lex = _lexical_recall(query_words, block.text)
-                    if lex > 0:
+                    if lex > min_lexical_recall:
                         lexical_hits.append((lex, block))
                 lexical_hits.sort(key=lambda x: x[0], reverse=True)
 
@@ -55,7 +56,10 @@ class ArchiveStore:
                 seen.add(block.block_id)
                 hits.append(block)
 
-        results = self._expand_neighbors(hits, seen)
+        if self._config.expand_neighbors:
+            results = self._expand_neighbors(hits, seen)
+        else:
+            results = hits
         results.sort(key=lambda b: b.pos_start)
 
         for block in results:
