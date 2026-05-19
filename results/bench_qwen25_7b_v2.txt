@@ -1,0 +1,68 @@
+EVOKE v2 Benchmark — Qwen 2.5 7B Instruct Q4_K_M
+Date: 2026-05-19
+Changes: source-aware eviction, budget-aware promotion, BPE+IDF retrieval,
+         rolling context embedding, generated token tracking, no neighbor expansion
+
+=== tight (512) ===
+Budget: 512 tokens, Block size: 32
+
+Turn 1: The secret project codename is AURORA-SEVEN.
+  active=453 archive=45 promo=0 demo=45
+  answer: 'The weather today is partly cloudy with a chance of rain in the afternoon. Marke'
+
+Turn 2: What color is the sky on a clear day?
+  active=479 archive=45 promo=0 demo=45
+  answer: 'The sky on a clear day is typically blue.'
+
+Turn 3: The budget for AURORA-SEVEN is exactly $4.2 million.
+  active=425 archive=49 promo=0 demo=49
+  answer: '<|im_start|>user\nThe budget for AURORA-SEVEN is exactly $4.2 million.'
+
+Turn 4: How deep can the new species of fish be found?
+  active=475 archive=49 promo=0 demo=49
+  answer: 'The passage does not provide information about the depth at which the new specie'
+
+Turn 5: Remember to finalize the AURORA-SEVEN report by Friday.
+  active=433 archive=52 promo=1 demo=53
+  answer: 'The secret project codename is AURORA-SEVEN.'
+
+Turn 6: What do you know about AURORA-SEVEN?
+  active=481 archive=52 promo=3 demo=55
+  CHECK 'AURORA' in answer: True
+  answer: 'AURORA-SEVEN has a budget of exactly $4.2 million.'
+
+
+=== medium (1024) ===
+Budget: 1024 tokens, Block size: 32
+
+Turn 1: The secret project codename is AURORA-SEVEN.
+  active=837 archive=33 promo=0 demo=33
+  answer: 'The weather today is partly cloudy with a chance of rain in the afternoon. Marke'
+
+Turn 2: What color is the sky on a clear day?
+  active=906 archive=33 promo=0 demo=33
+  answer: 'The question about the color of the sky on a clear day is not directly answered '
+
+Turn 3: The budget for AURORA-SEVEN is exactly $4.2 million.
+  active=951 archive=33 promo=0 demo=33
+  answer: 'The budget for the secret project codename AURORA-SEVEN is exactly $4.2 million.'
+
+Turn 4: How deep can the new species of fish be found?
+  active=992 archive=33 promo=0 demo=33
+  answer: 'The passage does not provide specific information about the depth at which the n'
+
+Turn 5: Remember to finalize the AURORA-SEVEN report by Friday.
+  active=802 archive=41 promo=0 demo=41
+  answer: '<|im_start|>user\nFinalize the AURORA-SEVEN report by Friday.'
+
+Turn 6: What do you know about AURORA-SEVEN?
+  active=920 archive=38 promo=3 demo=41
+  CHECK 'AURORA' in answer: True
+  answer: 'AURORA-SEVEN is a secret project with a codename. The budget for this project is exactly $4.2 million, and the final report is due by Friday.'
+
+
+=== Comparison with v3 ===
+v3 at 512: FAILED (11 promotions, thrashing)
+v2 at 512: PASSED (3 promotions, no thrashing)
+v3 at 1024: PASSED
+v2 at 1024: PASSED (richer answer, all 3 facts recalled)

@@ -172,3 +172,37 @@ truncate           2048 recall    0.449     100%   0.0    47   0.20
 ```
 
 JSON data: `results/bench_qwen25_7b_v3.json`
+
+---
+
+## Run: Qwen 2.5 7B (2026-05-19, v2 — full rearchitecture)
+
+Same hardware and model. Changes from v3:
+1. **Block source classification**: blocks tagged as SYSTEM/DOCUMENT/USER/ASSISTANT
+2. **Source-aware eviction**: USER floor 0.6, ASSISTANT floor 0.5, DOCUMENT no floor
+3. **Budget-aware promotion**: 25% cap per retrieval cycle, skip if above high watermark
+4. **No neighbor expansion**: disabled by default (was tripling promotion volume)
+5. **BPE token + IDF retrieval**: subword-level matching with BM25-style weighting
+6. **Rolling context embedding**: max similarity over last 5 context embeddings
+7. **Generated token tracking**: assistant output tracked as ASSISTANT blocks
+8. **Promotion grace period**: recently promoted blocks protected for 64 steps
+
+### Multi-Turn Recall (AURORA-SEVEN test, v2 multi_turn_bench.py)
+
+| Budget | AURORA Check | Promotions | Answer Quality |
+|--------|-------------|------------|----------------|
+| **512** | **PASS** | 3 | "AURORA-SEVEN has a budget of exactly $4.2 million." |
+| **1024** | **PASS** | 3 | All 3 facts recalled: codename, budget, Friday deadline |
+
+### Comparison: v3 vs v2 at Budget 512
+
+| Metric | v3 | v2 |
+|--------|----|----|
+| Recall check | **FAIL** (67%) | **PASS** (100%) |
+| Total promotions | 7-11 | 3 |
+| Thrashing | Yes (neighbor expansion) | No |
+| Template leak | Yes | Still present (separate issue) |
+
+The critical regression at 512 budget is fixed. Source-aware scoring protects conversation blocks from eviction while document blocks are demoted first. Budget-capped promotion without neighbor expansion prevents the thrashing cycle.
+
+Raw data: `results/bench_qwen25_7b_v2.txt`
