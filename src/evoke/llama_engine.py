@@ -82,6 +82,7 @@ class LlamaCppEngine:
         ctx_params.n_ubatch = min(n_batch, 512)
         ctx_params.n_seq_max = 1
         ctx_params.embeddings = True
+        ctx_params.pooling_type = llama_cpp.LLAMA_POOLING_TYPE_NONE
         ctx_params.flash_attn_type = 0
         ctx_params.no_perf = True
 
