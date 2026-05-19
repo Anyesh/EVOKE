@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 from collections import OrderedDict
+from typing import Callable
 
 import numpy as np
 
@@ -10,14 +12,24 @@ from evoke.types import ArchiveBlock
 
 
 class ArchiveStore:
-    def __init__(self, config: EvokeConfig):
+    def __init__(
+        self,
+        config: EvokeConfig,
+        tokenize_fn: Callable[[str], list[int]] | None = None,
+    ):
         self._config = config
         self._blocks: OrderedDict[int, ArchiveBlock] = OrderedDict()
         self._next_id = 0
+        self._tokenize_fn = tokenize_fn
+        self._block_token_sets: dict[int, set[int]] = {}
+        self._doc_freq: dict[int, int] = {}
 
     def store(self, block: ArchiveBlock) -> None:
+        if block.block_id in self._blocks:
+            self._remove_from_idf(block.block_id)
         self._blocks[block.block_id] = block
         self._blocks.move_to_end(block.block_id)
+        self._add_to_idf(block)
         self._evict_if_over_capacity()
 
     def retrieve_by_similarity(
@@ -37,13 +49,22 @@ class ArchiveStore:
 
         lexical_hits: list[tuple[float, ArchiveBlock]] = []
         if query_text and threshold <= 1.0:
-            query_words = _tokenize_words(query_text)
-            if query_words:
-                for block in self._blocks.values():
-                    lex = _lexical_recall(query_words, block.text)
-                    if lex > min_lexical_recall:
-                        lexical_hits.append((lex, block))
-                lexical_hits.sort(key=lambda x: x[0], reverse=True)
+            if self._tokenize_fn is not None:
+                query_token_ids = set(self._tokenize_fn(query_text))
+                if query_token_ids:
+                    for block in self._blocks.values():
+                        score = self._bpe_recall(query_token_ids, block.block_id)
+                        if score > min_lexical_recall:
+                            lexical_hits.append((score, block))
+                    lexical_hits.sort(key=lambda x: x[0], reverse=True)
+            else:
+                query_words = _tokenize_words(query_text)
+                if query_words:
+                    for block in self._blocks.values():
+                        lex = _lexical_recall(query_words, block.text)
+                        if lex > min_lexical_recall:
+                            lexical_hits.append((lex, block))
+                    lexical_hits.sort(key=lambda x: x[0], reverse=True)
 
         seen: set[int] = set()
         hits: list[ArchiveBlock] = []
@@ -80,6 +101,7 @@ class ArchiveStore:
         return results
 
     def remove(self, block_id: int) -> ArchiveBlock | None:
+        self._remove_from_idf(block_id)
         return self._blocks.pop(block_id, None)
 
     def get(self, block_id: int) -> ArchiveBlock | None:
@@ -101,9 +123,40 @@ class ArchiveStore:
         self._next_id += 1
         return bid
 
+    def _add_to_idf(self, block: ArchiveBlock) -> None:
+        token_set = set(block.token_ids)
+        self._block_token_sets[block.block_id] = token_set
+        for token_id in token_set:
+            self._doc_freq[token_id] = self._doc_freq.get(token_id, 0) + 1
+
+    def _remove_from_idf(self, block_id: int) -> None:
+        token_set = self._block_token_sets.pop(block_id, None)
+        if token_set is None:
+            return
+        for token_id in token_set:
+            count = self._doc_freq.get(token_id, 1) - 1
+            if count <= 0:
+                self._doc_freq.pop(token_id, None)
+            else:
+                self._doc_freq[token_id] = count
+
+    def _idf(self, token_id: int) -> float:
+        n = len(self._blocks)
+        df = self._doc_freq.get(token_id, 0)
+        return math.log((n + 0.5) / (df + 0.5))
+
+    def _bpe_recall(self, query_tokens: set[int], block_id: int) -> float:
+        block_tokens = self._block_token_sets.get(block_id, set())
+        total_weight = sum(self._idf(t) for t in query_tokens)
+        if total_weight <= 0:
+            return 0.0
+        hit_weight = sum(self._idf(t) for t in query_tokens if t in block_tokens)
+        return hit_weight / total_weight
+
     def _evict_if_over_capacity(self) -> None:
         while len(self._blocks) > self._config.max_archive_blocks:
-            self._blocks.popitem(last=False)
+            oldest_id, _ = self._blocks.popitem(last=False)
+            self._remove_from_idf(oldest_id)
 
 
 _STOPWORDS = frozenset(

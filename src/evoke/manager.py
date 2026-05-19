@@ -15,7 +15,7 @@ class EvokeManager:
         self._engine = engine
         self._config = config or EvokeConfig()
         self._scorer = RelevanceScorer(self._config)
-        self._archive = ArchiveStore(self._config)
+        self._archive = ArchiveStore(self._config, tokenize_fn=engine.tokenize)
         self._positions = PositionManager()
         self._events: list[EvokeEvent] = []
         self._step = 0
