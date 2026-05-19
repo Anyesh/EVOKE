@@ -33,3 +33,4 @@ class EvokeConfig:
     conversation_score_floor: float = 0.6
     assistant_score_floor: float = 0.5
     promotion_grace_steps: int = 64
+    context_history_size: int = 5

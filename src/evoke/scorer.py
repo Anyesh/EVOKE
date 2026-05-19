@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections import deque
 
 import numpy as np
 
@@ -19,10 +20,14 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 class RelevanceScorer:
     def __init__(self, config: EvokeConfig):
         self._config = config
+        self._context_history: deque[np.ndarray] = deque(
+            maxlen=config.context_history_size
+        )
         self._recent_embedding: np.ndarray | None = None
 
     def update_recent_context(self, embedding: np.ndarray) -> None:
         self._recent_embedding = embedding
+        self._context_history.append(embedding)
 
     def score(self, block: ActiveBlock, current_pos: int, context_length: int) -> float:
         recency = self._score_recency(block, current_pos, context_length)
@@ -65,7 +70,10 @@ class RelevanceScorer:
         return 0.0
 
     def _score_coherence(self, block: ActiveBlock) -> float:
-        if self._recent_embedding is None or block.representative_embedding is None:
+        if not self._context_history or block.representative_embedding is None:
             return 0.5
-        sim = cosine_similarity(block.representative_embedding, self._recent_embedding)
-        return (sim + 1.0) / 2.0
+        best_sim = max(
+            cosine_similarity(block.representative_embedding, ctx_emb)
+            for ctx_emb in self._context_history
+        )
+        return (best_sim + 1.0) / 2.0

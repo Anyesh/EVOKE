@@ -101,6 +101,53 @@ class TestRelevanceScorer:
         assert all(0 <= s <= 1.0 for s in scores.values())
 
 
+class TestRollingContextEmbedding:
+    def test_block_matches_older_context_via_history(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.0,
+            w_coherence=1.0,
+            context_history_size=5,
+        )
+        scorer = RelevanceScorer(config)
+
+        topic_a = np.array([1.0, 0.0, 0.0, 0.0])
+        topic_b = np.array([0.0, 1.0, 0.0, 0.0])
+        topic_c = np.array([0.0, 0.0, 1.0, 0.0])
+
+        scorer.update_recent_context(topic_a)
+        scorer.update_recent_context(topic_b)
+        scorer.update_recent_context(topic_c)
+
+        block_a = _make_block(
+            1, 100, 200, original_start=100, embedding=np.array([0.95, 0.05, 0.0, 0.0])
+        )
+        score = scorer.score(block_a, current_pos=500, context_length=1000)
+        assert score > 0.9
+
+    def test_history_bounded_by_config(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.0,
+            w_coherence=1.0,
+            context_history_size=2,
+        )
+        scorer = RelevanceScorer(config)
+
+        old_topic = np.array([1.0, 0.0, 0.0, 0.0])
+        scorer.update_recent_context(old_topic)
+        scorer.update_recent_context(np.array([0.0, 1.0, 0.0, 0.0]))
+        scorer.update_recent_context(np.array([0.0, 0.0, 1.0, 0.0]))
+
+        block_old = _make_block(
+            1, 100, 200, original_start=100, embedding=np.array([0.95, 0.05, 0.0, 0.0])
+        )
+        score = scorer.score(block_old, current_pos=500, context_length=1000)
+        assert score < 0.7
+
+
 class TestSourceAwareScoring:
     def test_user_block_has_score_floor(self):
         config = EvokeConfig(
