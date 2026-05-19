@@ -316,7 +316,7 @@ class TestEvokeManagerMultiTurn:
         blocks_after = len(manager._positions.active_blocks)
         assert blocks_after > blocks_before
 
-    def test_generation_not_tracked(self):
+    def test_generation_tracked_as_assistant(self):
         engine = MockEngine()
         config = EvokeConfig(max_active_tokens=10000, block_size=64)
         manager = EvokeManager(engine, config)
@@ -327,7 +327,11 @@ class TestEvokeManagerMultiTurn:
 
         manager.generate(32)
         blocks_after = len(manager._positions.active_blocks)
-        assert blocks_after == blocks_before
+        assert blocks_after == blocks_before + 1
+
+        new_block = manager._positions.active_blocks[-1]
+        assert new_block.source == BlockSource.ASSISTANT
+        assert len(new_block.token_ids) > 0
 
     def test_old_turns_evictable(self):
         engine = MockEngine()
@@ -621,6 +625,29 @@ class TestEvokeManagerPinning:
 
 
 class TestEvokeManagerThinkingGeneration:
+    def test_thinking_generation_tracked_as_assistant(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=128)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(256))
+        blocks_before = len(manager._positions.active_blocks)
+
+        think_text = "<think>ok</think>answer"
+        engine.queue_tokens([ord(c) for c in think_text])
+
+        manager.generate(
+            0,
+            think_close="</think>",
+            thinking_budget=1000,
+            answer_budget=20,
+        )
+        blocks_after = len(manager._positions.active_blocks)
+        assert blocks_after == blocks_before + 1
+
+        new_block = manager._positions.active_blocks[-1]
+        assert new_block.source == BlockSource.ASSISTANT
+
     def test_thinking_generation_stops_after_answer_budget(self):
         engine = MockEngine()
         config = EvokeConfig(max_active_tokens=10000, block_size=128)

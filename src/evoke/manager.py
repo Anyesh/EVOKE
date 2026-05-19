@@ -67,10 +67,12 @@ class EvokeManager:
         stop = stop_token_ids or set()
 
         if think_close is not None:
-            return self._generate_thinking(
+            text = self._generate_thinking(
                 think_close, thinking_budget, answer_budget, stop, eos
             )
+            return text
 
+        gen_start = self._engine.next_write_pos
         output_tokens: list[int] = []
         for _ in range(max_tokens):
             token = self._engine.generate_next()
@@ -83,6 +85,9 @@ class EvokeManager:
             if token == eos or token in stop:
                 break
 
+        if output_tokens:
+            self._track_generated_block(output_tokens, gen_start)
+
         return self._engine.detokenize(output_tokens)
 
     def _generate_thinking(
@@ -93,6 +98,7 @@ class EvokeManager:
         stop: set[int],
         eos: int,
     ) -> str:
+        gen_start = self._engine.next_write_pos
         output_tokens: list[int] = []
         in_thinking = True
         answer_tokens_generated = 0
@@ -119,6 +125,9 @@ class EvokeManager:
                 answer_tokens_generated += 1
                 if token in stop or answer_tokens_generated >= answer_budget:
                     break
+
+        if output_tokens:
+            self._track_generated_block(output_tokens, gen_start)
 
         return self._engine.detokenize(output_tokens)
 
@@ -371,6 +380,19 @@ class EvokeManager:
 
     def _promote_block(self, archive_block: ArchiveBlock) -> None:
         self._promote_via_rebuild([archive_block])
+
+    def _track_generated_block(self, tokens: list[int], start_pos: int) -> None:
+        block_id = self._archive.allocate_id()
+        block = ActiveBlock(
+            block_id=block_id,
+            logical_start=start_pos,
+            logical_end=start_pos + len(tokens),
+            original_start=start_pos,
+            original_end=start_pos + len(tokens),
+            token_ids=tokens,
+            source=BlockSource.ASSISTANT,
+        )
+        self._positions.append_block(block, start_pos)
 
     def _track_conversation_block(self, tokens: list[int], start_pos: int) -> None:
         block_id = self._archive.allocate_id()
