@@ -45,6 +45,10 @@ class ChatTemplate:
     def stop_strings(self) -> list[str]:
         return []
 
+    @property
+    def think_close(self) -> str | None:
+        return None
+
     def extract_answer(self, generated: str) -> str:
         return strip_thinking(generated)
 
@@ -63,6 +67,12 @@ class ChatMLTemplate(ChatTemplate):
         if add_generation_prompt:
             parts.append("<|im_start|>assistant\n")
         return "".join(parts)
+
+
+class ChatMLThinkingTemplate(ChatMLTemplate):
+    @property
+    def think_close(self) -> str | None:
+        return "</think>"
 
 
 class Llama3Template(ChatTemplate):
@@ -121,6 +131,8 @@ TEMPLATES: dict[str, type[ChatTemplate]] = {
 def detect_template(model_name: str) -> ChatTemplate:
     name = model_name.lower()
     if "qwen" in name:
+        if "qwen3" in name or "qwen-3" in name:
+            return ChatMLThinkingTemplate()
         return ChatMLTemplate()
     if "llama" in name and "3" in name:
         return Llama3Template()

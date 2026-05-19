@@ -54,12 +54,24 @@ class EvokeManager:
         self._current_turn_start = self._positions.next_logical_pos
         self._enforce_budget()
 
-    def generate(self, max_tokens: int, stop_token_ids: set[int] | None = None) -> str:
-        output_tokens: list[int] = []
+    def generate(
+        self,
+        max_tokens: int,
+        stop_token_ids: set[int] | None = None,
+        *,
+        think_close: str | None = None,
+        thinking_budget: int = 16384,
+        answer_budget: int = 512,
+    ) -> str:
         eos = self._engine.eos_token
         stop = stop_token_ids or set()
-        gen_start = self._engine.next_write_pos
 
+        if think_close is not None:
+            return self._generate_thinking(
+                think_close, thinking_budget, answer_budget, stop, eos
+            )
+
+        output_tokens: list[int] = []
         for _ in range(max_tokens):
             token = self._engine.generate_next()
             output_tokens.append(token)
@@ -70,6 +82,43 @@ class EvokeManager:
 
             if token == eos or token in stop:
                 break
+
+        return self._engine.detokenize(output_tokens)
+
+    def _generate_thinking(
+        self,
+        think_close: str,
+        thinking_budget: int,
+        answer_budget: int,
+        stop: set[int],
+        eos: int,
+    ) -> str:
+        output_tokens: list[int] = []
+        in_thinking = True
+        answer_tokens_generated = 0
+        close_tokens = self._engine.tokenize(think_close)
+
+        for _ in range(thinking_budget + answer_budget):
+            token = self._engine.generate_next()
+            output_tokens.append(token)
+            self._step += 1
+
+            if self._step % self._config.score_interval == 0:
+                self._scoring_round()
+
+            if token == eos:
+                break
+
+            if in_thinking:
+                if (
+                    len(output_tokens) >= len(close_tokens)
+                    and output_tokens[-len(close_tokens) :] == close_tokens
+                ):
+                    in_thinking = False
+            else:
+                answer_tokens_generated += 1
+                if token in stop or answer_tokens_generated >= answer_budget:
+                    break
 
         return self._engine.detokenize(output_tokens)
 

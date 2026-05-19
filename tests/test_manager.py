@@ -462,3 +462,60 @@ class TestEvokeManagerPinning:
 
         scores = manager.get_relevance_scores()
         assert len(scores) > 0
+
+
+class TestEvokeManagerThinkingGeneration:
+    def test_thinking_generation_stops_after_answer_budget(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=128)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(256))
+
+        think_text = "<think>reasoning here</think>the answer"
+        engine.queue_tokens([ord(c) for c in think_text])
+
+        raw = manager.generate(
+            0,
+            think_close="</think>",
+            thinking_budget=1000,
+            answer_budget=20,
+        )
+        assert "</think>" in raw
+        assert "the answer" in raw
+
+    def test_thinking_generation_respects_thinking_budget(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=128)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(256))
+
+        raw = manager.generate(
+            0,
+            think_close="</think>",
+            thinking_budget=50,
+            answer_budget=10,
+        )
+        tokens = engine.tokenize(raw)
+        assert len(tokens) <= 60
+
+    def test_thinking_generation_caps_answer_after_think_close(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=128)
+        manager = EvokeManager(engine, config)
+
+        manager.load_document(_make_long_text(256))
+
+        think_part = "<think>ok</think>"
+        answer_part = "A" * 100
+        engine.queue_tokens([ord(c) for c in think_part + answer_part])
+
+        raw = manager.generate(
+            0,
+            think_close="</think>",
+            thinking_budget=1000,
+            answer_budget=10,
+        )
+        after_think = raw.split("</think>", 1)[1]
+        assert len(after_think) <= 10

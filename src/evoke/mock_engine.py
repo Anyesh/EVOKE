@@ -15,6 +15,7 @@ class MockEngine:
         self._seq_rm_calls: list[tuple[int, int]] = []
         self._rng = np.random.RandomState(42)
         self._embeddings: dict[int, np.ndarray] = {}
+        self._gen_queue: list[int] = []
 
     def tokenize(self, text: str) -> list[int]:
         return [ord(ch) for ch in text]
@@ -31,9 +32,15 @@ class MockEngine:
             self._embeddings[pos] = self._rng.randn(self._n_embd).astype(np.float32)
         self._next_write_pos += len(tokens)
 
+    def queue_tokens(self, tokens: list[int]) -> None:
+        self._gen_queue.extend(tokens)
+
     def generate_next(self) -> int:
-        token = self._next_gen_token % self._vocab_size
-        self._next_gen_token += 1
+        if self._gen_queue:
+            token = self._gen_queue.pop(0)
+        else:
+            token = self._next_gen_token % self._vocab_size
+            self._next_gen_token += 1
         pos = self._next_write_pos
         self._kv_positions.add(pos)
         self._token_at_pos[pos] = token

@@ -85,8 +85,10 @@ class TestDetectTemplate:
     def test_qwen_gets_chatml(self):
         assert type(detect_template("Qwen2.5-7B-Instruct")).__name__ == "ChatMLTemplate"
 
-    def test_qwen3_gets_chatml(self):
-        assert type(detect_template("Qwen3.5-9B-Q4_K_M")).__name__ == "ChatMLTemplate"
+    def test_qwen3_gets_thinking_chatml(self):
+        t = detect_template("Qwen3.5-9B-Q4_K_M")
+        assert type(t).__name__ == "ChatMLThinkingTemplate"
+        assert t.think_close == "</think>"
 
     def test_llama3_gets_llama3(self):
         assert type(detect_template("Llama-3.1-8B")).__name__ == "Llama3Template"

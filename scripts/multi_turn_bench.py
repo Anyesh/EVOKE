@@ -29,9 +29,7 @@ FILLER = (
 )
 
 
-def run_multi_turn(engine, template, config, is_thinking):
-    max_gen = 4096 if is_thinking else 128
-
+def run_multi_turn(engine, template, config):
     stop_token_ids: set[int] = set()
     for s in template.stop_strings:
         toks = engine.tokenize(s)
@@ -80,7 +78,16 @@ def run_multi_turn(engine, template, config, is_thinking):
         suffix = template.wrap_question_suffix(turn["user"])
         mgr.process_user_message(suffix)
 
-        raw = mgr.generate(max_gen, stop_token_ids=stop_token_ids)
+        if template.think_close:
+            raw = mgr.generate(
+                0,
+                stop_token_ids=stop_token_ids,
+                think_close=template.think_close,
+                thinking_budget=16384,
+                answer_budget=512,
+            )
+        else:
+            raw = mgr.generate(128, stop_token_ids=stop_token_ids)
         answer = strip_thinking(raw)
 
         stats = mgr.get_stats()
@@ -106,11 +113,10 @@ def main():
     n_ctx = int(os.environ.get("EVOKE_N_CTX", "131072"))
     engine = LlamaCppEngine(MODEL, n_ctx=n_ctx, n_gpu_layers=-1, verbose=False)
     template = detect_template(model_name)
-    is_thinking = "qwen3" in model_name.lower()
 
     print(f"Model: {model_name}")
     print(f"Template: {type(template).__name__}")
-    print(f"Thinking: {is_thinking}")
+    print(f"Thinking: {template.think_close is not None}")
     print()
 
     configs = {
@@ -134,7 +140,7 @@ def main():
 
     for label, config in configs.items():
         print(f"=== {label} ===")
-        run_multi_turn(engine, template, config, is_thinking)
+        run_multi_turn(engine, template, config)
         print()
 
     engine.close()
