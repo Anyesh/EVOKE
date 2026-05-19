@@ -107,6 +107,17 @@ class TestAddContext:
 
         assert manager.get_stats().active_tokens <= 512
 
+    def test_first_added_context_block_is_sink(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=10000, block_size=64, sink_count=4)
+        manager = EvokeManager(engine, config)
+
+        manager.add_context(_make_long_text(192), key="file:first.py")
+
+        blocks = sorted(manager._positions.active_blocks, key=lambda b: b.block_id)
+        assert blocks[0].is_sink
+        assert not blocks[1].is_sink
+
 
 class TestEviction:
     def test_eviction_reclaims_budget(self):

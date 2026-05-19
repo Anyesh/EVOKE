@@ -71,6 +71,7 @@ class EvokeManager:
                 logical_end=bstart + len(chunk),
                 token_ids=chunk,
                 source=BlockSource.DOCUMENT,
+                is_sink=bstart < self._config.sink_count,
                 key=f"{key}#{i // block_size}",
                 representative_embedding=self._last_token_embedding(bstart, len(chunk)),
             )
