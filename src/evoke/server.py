@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.session import Session
 from evoke.templates import ParsedResponse, format_qwen_chat, parse_qwen_response
@@ -116,9 +117,13 @@ def _chunk_payload(
     }
 
 
-def create_app(engine: LlamaCppEngine, model_name: str) -> FastAPI:
+def create_app(
+    engine: LlamaCppEngine,
+    model_name: str,
+    config: EvokeConfig | None = None,
+) -> FastAPI:
     app = FastAPI(title="EVOKE", version="0.1.0")
-    session = Session(engine)
+    session = Session(engine, config=config)
     lock = asyncio.Lock()
 
     @app.get("/v1/models")
@@ -137,10 +142,18 @@ def create_app(engine: LlamaCppEngine, model_name: str) -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
+        stats = session.manager.get_stats()
         return {
             "status": "ok",
             "cached_tokens": session.cached_token_count,
             "n_ctx": engine.n_ctx,
+            "active_tokens": stats.active_tokens,
+            "active_blocks": stats.active_blocks,
+            "budget": stats.budget,
+            "budget_utilization": round(stats.budget_utilization, 3),
+            "total_evictions": stats.total_evictions,
+            "total_recoveries": stats.total_recoveries,
+            "kv_block_primitives": engine.supports_kv_block,
         }
 
     @app.post("/admin/reset")

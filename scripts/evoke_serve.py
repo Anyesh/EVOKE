@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import uvicorn
 
+from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.server import create_app
 
@@ -36,12 +37,26 @@ def main() -> int:
     n_ctx = int(os.environ.get("EVOKE_N_CTX", "32768"))
     model_name = os.environ.get("EVOKE_MODEL_NAME") or Path(model_path).stem
 
+    budget_env = os.environ.get("EVOKE_BUDGET")
+    recovery_mode = os.environ.get("EVOKE_RECOVERY_MODE", "kv_restore")
+    config: EvokeConfig | None = None
+    if budget_env:
+        budget = int(budget_env)
+        config = EvokeConfig(
+            max_active_tokens=budget,
+            block_size=128,
+            high_watermark=0.92,
+            low_watermark=0.70,
+            recovery_mode=recovery_mode,
+        )
+        print(f"  budget override: {budget} tokens, recovery={recovery_mode}")
+
     print(f"loading model: {model_path}")
     print(f"  n_ctx={n_ctx}  model_name={model_name}")
     engine = LlamaCppEngine(model_path, n_ctx=n_ctx, n_gpu_layers=-1, verbose=False)
     print(f"  ready (n_embd={engine.n_embd}, kv_block={engine.supports_kv_block})")
 
-    app = create_app(engine, model_name)
+    app = create_app(engine, model_name, config=config)
     print(f"serving on http://{host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info")
     return 0

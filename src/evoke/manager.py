@@ -56,9 +56,14 @@ class EvokeManager:
         self._enforce_budget()
 
     def add_context(self, text: str, key: str) -> None:
+        tokens = self._engine.tokenize(text)
+        self.add_context_tokens(tokens, key)
+
+    def add_context_tokens(self, tokens: list[int], key: str) -> None:
+        if not tokens:
+            return
         self._current_turn_start_id = self._next_block_id
         start = self._engine.next_write_pos
-        tokens = self._engine.tokenize(text)
         self._engine.process_tokens(tokens)
 
         block_size = self._config.block_size
