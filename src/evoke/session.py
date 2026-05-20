@@ -210,7 +210,16 @@ class Session:
             return None
         return avg / norm
 
-    def sync_prefix(self, prompt_tokens: list[int]) -> SyncStats:
+    def sync_prefix(
+        self,
+        prompt_tokens: list[int],
+        *,
+        priority: float = 1.0,
+        pinned: bool = False,
+        task_boundary: bool = False,
+    ) -> SyncStats:
+        if task_boundary:
+            self._manager.signal_task_boundary()
         # Rebuild from the manager so prior-turn evictions and recoveries are
         # reflected. _cached_tokens is extended during generate() and trimmed
         # by canonicalize, but engine-internal evictions fired by
@@ -239,7 +248,12 @@ class Session:
 
         tail = prompt_tokens[divergence:]
         if tail:
-            self._manager.add_context_tokens(tail, key=f"turn{self._turn_id}")
+            self._manager.add_context_tokens(
+                tail,
+                key=f"turn{self._turn_id}",
+                priority=priority,
+                pinned=pinned,
+            )
             self._turn_id += 1
             self._cached_tokens.extend(tail)
 

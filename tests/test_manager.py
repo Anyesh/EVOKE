@@ -473,3 +473,65 @@ class TestKVRestore:
         manager = EvokeManager(engine, config)
         manager.load_document(_make_long_text(1024))
         assert manager.recover("doc#1") is False
+
+
+class TestHarnessPriority:
+    def test_pinned_block_never_evicted_under_pressure(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=256,
+            block_size=64,
+            high_watermark=0.95,
+            low_watermark=0.50,
+            pin_generated=False,
+        )
+        manager = EvokeManager(engine, config)
+        # Pinned block first, then enough content to push past budget.
+        manager.add_context(_make_long_text(128), "pinned_file", pinned=True)
+        manager.add_context(_make_long_text(512), "filler")
+        keys = [b.key for b in manager._positions.active_blocks]
+        assert any(k.startswith("pinned_file") for k in keys), (
+            "pinned blocks must survive eviction pressure"
+        )
+
+    def test_priority_threads_through_add_context(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=1024, block_size=64)
+        manager = EvokeManager(engine, config)
+        manager.add_context("hello", "h", priority=2.5, pinned=False)
+        blocks = manager._positions.active_blocks
+        assert blocks
+        assert blocks[0].priority == 2.5
+        assert blocks[0].pinned is False
+
+    def test_priority_threads_through_load_document(self):
+        engine = MockEngine()
+        config = EvokeConfig(max_active_tokens=1024, block_size=64)
+        manager = EvokeManager(engine, config)
+        manager.load_document(_make_long_text(128), priority=3.0, pinned=True)
+        blocks = manager._positions.active_blocks
+        assert blocks
+        assert all(b.priority == 3.0 for b in blocks)
+        assert all(b.pinned for b in blocks)
+
+    def test_pinned_excluded_from_evictable_candidates(self):
+        engine = MockEngine()
+        config = EvokeConfig(
+            max_active_tokens=256,
+            block_size=64,
+            high_watermark=0.5,
+            low_watermark=0.2,
+            pin_generated=False,
+        )
+        manager = EvokeManager(engine, config)
+        manager.add_context(_make_long_text(128), "a", pinned=True)
+        manager.add_context(_make_long_text(128), "b", pinned=False)
+        scores = manager._scorer.score_blocks(
+            manager._positions.active_blocks,
+            manager._positions.next_logical_pos,
+            manager._positions.next_logical_pos,
+        )
+        evictable = manager._evictable_blocks(manager._positions.active_blocks, scores)
+        assert all(not b.pinned for b in evictable), (
+            "pinned blocks must never appear as eviction candidates"
+        )

@@ -93,42 +93,72 @@ class TestRelevanceScorer:
         assert all(0 <= s <= 1.0 for s in scores.values())
 
 
-class TestRollingContextEmbedding:
-    def test_block_matches_older_context_via_history(self):
+class TestTaskFocusEmbedding:
+    def test_first_message_sets_focus(self):
+        config = EvokeConfig(
+            sink_count=4, block_size=128, w_recency=0.0, w_coherence=1.0
+        )
+        scorer = RelevanceScorer(config)
+        scorer.update_recent_context(np.array([1.0, 0.0, 0.0, 0.0]))
+
+        coherent = _make_block(1, 100, 200, embedding=np.array([0.95, 0.05, 0.0, 0.0]))
+        incoherent = _make_block(2, 100, 200, embedding=np.array([0.0, 0.0, 0.0, 1.0]))
+        assert scorer.score(coherent, 500, 1000) > 0.8
+        assert scorer.score(incoherent, 500, 1000) < 0.6
+
+    def test_focus_snaps_on_topic_shift(self):
         config = EvokeConfig(
             sink_count=4,
             block_size=128,
             w_recency=0.0,
             w_coherence=1.0,
-            context_history_size=5,
+            task_boundary_threshold=0.3,
         )
         scorer = RelevanceScorer(config)
-
+        # Topic 1 fills the focus, blocks coherent with topic 1 score high.
         scorer.update_recent_context(np.array([1.0, 0.0, 0.0, 0.0]))
-        scorer.update_recent_context(np.array([0.0, 1.0, 0.0, 0.0]))
-        scorer.update_recent_context(np.array([0.0, 0.0, 1.0, 0.0]))
+        scorer.update_recent_context(np.array([0.95, 0.05, 0.0, 0.0]))
+        topic1_block = _make_block(
+            1, 100, 200, embedding=np.array([0.95, 0.05, 0.0, 0.0])
+        )
+        assert scorer.score(topic1_block, 500, 1000) > 0.85
 
-        block_a = _make_block(1, 100, 200, embedding=np.array([0.95, 0.05, 0.0, 0.0]))
-        score = scorer.score(block_a, current_pos=500, context_length=1000)
-        assert score > 0.9
+        # Topic 2 message arrives — orthogonal embedding triggers implicit
+        # boundary detection. Focus snaps; topic-1 blocks lose coherence.
+        scorer.update_recent_context(np.array([0.0, 0.0, 0.0, 1.0]))
+        topic1_after_shift = scorer.score(topic1_block, 500, 1000)
+        assert topic1_after_shift < 0.6, (
+            "topic-1 blocks should lose coherence after task boundary"
+        )
 
-    def test_history_bounded_by_config(self):
+    def test_explicit_signal_forces_boundary(self):
         config = EvokeConfig(
             sink_count=4,
             block_size=128,
             w_recency=0.0,
             w_coherence=1.0,
-            context_history_size=2,
+            # threshold low enough that the test's similar embeddings would
+            # NORMALLY blend (not snap) — only the explicit signal forces it.
+            task_boundary_threshold=-1.0,
         )
         scorer = RelevanceScorer(config)
-
         scorer.update_recent_context(np.array([1.0, 0.0, 0.0, 0.0]))
-        scorer.update_recent_context(np.array([0.0, 1.0, 0.0, 0.0]))
-        scorer.update_recent_context(np.array([0.0, 0.0, 1.0, 0.0]))
+        scorer.update_recent_context(np.array([0.95, 0.05, 0.0, 0.0]))
 
-        block_old = _make_block(1, 100, 200, embedding=np.array([0.95, 0.05, 0.0, 0.0]))
-        score = scorer.score(block_old, current_pos=500, context_length=1000)
-        assert score < 0.7
+        # Without explicit signal, a similar-ish embedding EMA-blends and
+        # topic-1 blocks remain coherent.
+        scorer.update_recent_context(np.array([0.5, 0.5, 0.0, 0.0]))
+        topic1_block = _make_block(
+            1, 100, 200, embedding=np.array([0.95, 0.05, 0.0, 0.0])
+        )
+        coherent_score = scorer.score(topic1_block, 500, 1000)
+
+        # WITH explicit signal, focus snaps to a new message even when
+        # similar. topic1_block's coherence drops.
+        scorer.signal_task_boundary()
+        scorer.update_recent_context(np.array([0.0, 0.0, 1.0, 0.0]))
+        after_signal = scorer.score(topic1_block, 500, 1000)
+        assert after_signal < coherent_score
 
 
 class TestSourceAwareScoring:
@@ -195,3 +225,132 @@ class TestSourceAwareScoring:
         score_doc = scorer.score(doc_block, current_pos=5000, context_length=5000)
         score_user = scorer.score(user_block, current_pos=5000, context_length=5000)
         assert score_user > score_doc
+
+
+class TestPriorityScaling:
+    def test_priority_above_one_boosts_score(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=1.0,
+            w_coherence=0.0,
+            conversation_score_floor=0.0,
+            assistant_score_floor=0.0,
+        )
+        scorer = RelevanceScorer(config)
+        normal = _make_block(1, 100, 200)
+        high = _make_block(2, 100, 200)
+        high.priority = 2.0
+        s_normal = scorer.score(normal, current_pos=5000, context_length=5000)
+        s_high = scorer.score(high, current_pos=5000, context_length=5000)
+        assert s_high > s_normal
+        # Priority capped at 1.0 — even priority=2 cannot exceed sink ceiling.
+        assert s_high <= 1.0
+
+    def test_priority_below_one_lowers_score(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=1.0,
+            w_coherence=0.0,
+            conversation_score_floor=0.0,
+        )
+        scorer = RelevanceScorer(config)
+        normal = _make_block(1, 100, 200)
+        low = _make_block(2, 100, 200)
+        low.priority = 0.5
+        s_normal = scorer.score(normal, current_pos=5000, context_length=5000)
+        s_low = scorer.score(low, current_pos=5000, context_length=5000)
+        assert s_low < s_normal
+
+    def test_priority_does_not_override_sink(self):
+        config = EvokeConfig(sink_count=4, block_size=128)
+        scorer = RelevanceScorer(config)
+        sink = _make_block(1, 0, 128, is_sink=True)
+        sink.priority = 0.1
+        # Sink protection wins regardless of priority.
+        assert scorer.score(sink, current_pos=5000, context_length=5000) == 1.0
+
+
+class TestAttentionScorerSlot:
+    def test_no_attention_scorer_falls_back_to_heuristic(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.4,
+            w_coherence=0.6,
+            w_attention=0.5,
+        )
+        scorer = RelevanceScorer(config)  # no attention_scorer
+        block = _make_block(1, 100, 200)
+        # Should compute without error and produce a score in [0,1].
+        s = scorer.score(block, current_pos=1000, context_length=1000)
+        assert 0.0 <= s <= 1.0
+
+    def test_attention_scorer_shifts_score(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.2,
+            w_coherence=0.2,
+            w_attention=0.6,
+            conversation_score_floor=0.0,
+        )
+
+        class HighAttention:
+            def score(self, block):
+                return 1.0
+
+        class LowAttention:
+            def score(self, block):
+                return 0.0
+
+        block = _make_block(1, 100, 200)
+        block_old = _make_block(2, 0, 100)
+
+        hi = RelevanceScorer(config, attention_scorer=HighAttention())
+        lo = RelevanceScorer(config, attention_scorer=LowAttention())
+        s_hi = hi.score(block_old, current_pos=5000, context_length=5000)
+        s_lo = lo.score(block_old, current_pos=5000, context_length=5000)
+        # Same old block: high-attention scorer should rank it higher than
+        # low-attention scorer.
+        assert s_hi > s_lo
+
+    def test_attention_score_none_treated_as_no_signal(self):
+        config = EvokeConfig(
+            sink_count=4, block_size=128, w_attention=0.5, w_recency=0.5
+        )
+
+        class NoSignal:
+            def score(self, block):
+                return None
+
+        scorer = RelevanceScorer(config, attention_scorer=NoSignal())
+        block = _make_block(1, 100, 200)
+        # Should not error; falls back to recency+coherence-only branch.
+        s = scorer.score(block, current_pos=1000, context_length=1000)
+        assert 0.0 <= s <= 1.0
+
+    def test_set_attention_scorer_swaps_at_runtime(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_attention=0.8,
+            w_recency=0.1,
+            w_coherence=0.1,
+            conversation_score_floor=0.0,
+        )
+
+        class FixedAttention:
+            def __init__(self, v):
+                self.v = v
+
+            def score(self, block):
+                return self.v
+
+        scorer = RelevanceScorer(config)
+        block = _make_block(1, 0, 100)
+        s_initial = scorer.score(block, current_pos=5000, context_length=5000)
+        scorer.set_attention_scorer(FixedAttention(0.95))
+        s_with_attn = scorer.score(block, current_pos=5000, context_length=5000)
+        assert s_with_attn > s_initial

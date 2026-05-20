@@ -41,6 +41,19 @@ class ChatCompletionRequest(BaseModel):
     top_p: float | None = None
     stop: list[str] | str | None = None
     stream: bool = False
+    # EVOKE extensions for harness-aware scoring. These are not part of the
+    # OpenAI spec; a harness like opencode or Claude Code can set them to
+    # signal which turns are central to the current task and which are
+    # ephemeral. Default 1.0 / False = no harness signal, scorer falls back
+    # to attention + recency only.
+    evoke_priority: float = Field(default=1.0)
+    evoke_pinned: bool = Field(default=False)
+    # When true, the scorer treats this request as the start of a new task:
+    # the task-focus embedding snaps to the new user message, and blocks
+    # coherent with the prior task lose their coherence score. Use this when
+    # the harness explicitly transitions between unrelated tasks in the same
+    # session (e.g. "investigate auth bug" -> "implement feature X").
+    evoke_task_boundary: bool = Field(default=False)
 
 
 def _normalize_stops(stop: list[str] | str | None) -> list[str]:
@@ -204,12 +217,20 @@ def create_app(
                     completion_id,
                     created,
                     model_name,
+                    req.evoke_priority,
+                    req.evoke_pinned,
+                    req.evoke_task_boundary,
                 ),
                 media_type="text/event-stream",
             )
 
         async with lock:
-            session.sync_prefix(prompt_tokens)
+            session.sync_prefix(
+                prompt_tokens,
+                priority=req.evoke_priority,
+                pinned=req.evoke_pinned,
+                task_boundary=req.evoke_task_boundary,
+            )
             result = session.generate(max_tokens=max_new, stop_strings=stops)
 
         parsed = parse_qwen_response(result.text)
@@ -246,6 +267,9 @@ async def _stream_completion(
     completion_id: str,
     created: int,
     model_name: str,
+    evoke_priority: float = 1.0,
+    evoke_pinned: bool = False,
+    evoke_task_boundary: bool = False,
 ):
     yield _sse(
         _chunk_payload(completion_id, created, model_name, {"role": "assistant"})
@@ -258,7 +282,12 @@ async def _stream_completion(
     finish_reason: str | None = None
 
     async with lock:
-        session.sync_prefix(prompt_tokens)
+        session.sync_prefix(
+            prompt_tokens,
+            priority=evoke_priority,
+            pinned=evoke_pinned,
+            task_boundary=evoke_task_boundary,
+        )
         for chunk in session.stream_generate(max_tokens=max_new, stop_strings=stops):
             full_text = chunk.full_text
             if chunk.finish_reason is not None:

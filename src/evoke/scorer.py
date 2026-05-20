@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from typing import Protocol
 
 import numpy as np
 
@@ -17,39 +18,123 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (norm_a * norm_b))
 
 
+class AttentionScorerProtocol(Protocol):
+    # Pluggable attention-signal source. Returns a per-block score in [0, 1]
+    # derived from the model's actual attention weights aggregated over a
+    # sliding window of recent decode steps. None means "no signal yet" (the
+    # block has not been attended to since capture started) and is treated as
+    # neutral; the scorer falls back to recency + coherence for those blocks.
+    # Implemented in evoke/attention_scorer.py once #30 (C primitive) lands.
+    def score(self, block: ActiveBlock) -> float | None: ...
+
+
 class RelevanceScorer:
-    def __init__(self, config: EvokeConfig):
+    def __init__(
+        self,
+        config: EvokeConfig,
+        attention_scorer: AttentionScorerProtocol | None = None,
+    ):
         self._config = config
+        self._attention_scorer = attention_scorer
+        # Task-boundary-aware coherence: instead of averaging the last N
+        # message embeddings (which lags on topic shifts and conflates two
+        # tasks running in the same session), maintain a single "task focus"
+        # embedding. New messages either update the focus via EMA or snap
+        # it to themselves on detected/signaled task boundaries.
+        self._task_focus: np.ndarray | None = None
+        self._recent_embedding: np.ndarray | None = None
+        self._force_boundary = False
+        # Kept for ABI compatibility with code that introspects scorer state
+        # for debugging; not used in the score path anymore.
         self._context_history: deque[np.ndarray] = deque(
             maxlen=config.context_history_size
         )
-        self._recent_embedding: np.ndarray | None = None
+
+    def signal_task_boundary(self) -> None:
+        # Harness-driven explicit reset. The next update_recent_context call
+        # will snap the task focus to the incoming embedding rather than
+        # EMA-blending it. Used by Session.sync_prefix when the request has
+        # evoke_task_boundary=true (or when an [evoke:task_boundary] system
+        # message is detected).
+        self._force_boundary = True
 
     def update_recent_context(self, embedding: np.ndarray) -> None:
         self._recent_embedding = embedding
         self._context_history.append(embedding)
+        if self._task_focus is None or self._force_boundary:
+            self._task_focus = embedding.copy()
+            self._force_boundary = False
+            return
+        sim = cosine_similarity(embedding, self._task_focus)
+        if sim < self._config.task_boundary_threshold:
+            # Implicit boundary detected: the new message is semantically
+            # unrelated to the running focus. Snap to the new focus so prior
+            # blocks (coherent with the old task) lose their coherence score
+            # and become eviction candidates within one or two scoring passes.
+            self._task_focus = embedding.copy()
+            return
+        alpha = self._config.task_focus_ema_alpha
+        self._task_focus = alpha * self._task_focus + (1.0 - alpha) * embedding
+
+    def set_attention_scorer(
+        self, attention_scorer: AttentionScorerProtocol | None
+    ) -> None:
+        self._attention_scorer = attention_scorer
 
     def score(self, block: ActiveBlock, current_pos: int, context_length: int) -> float:
-        recency = self._score_recency(block, current_pos, context_length)
-        sink = self._score_sink(block)
-        coherence = self._score_coherence(block)
-
         cfg = self._config
-        if sink >= 1.0:
+        if self._score_sink(block) >= 1.0:
             return 1.0
 
-        total_weight = cfg.w_recency + cfg.w_coherence
-        if total_weight == 0:
-            raw = recency
-        else:
-            raw = (cfg.w_recency * recency + cfg.w_coherence * coherence) / total_weight
+        recency = self._score_recency(block, current_pos, context_length)
+        coherence = self._score_coherence(block)
+        attn = self._score_attention(block)
 
+        # Multi-signal combination. When attention is available (cfg.w_attention
+        # > 0 and the AttentionScorer returned a value for this block), it's
+        # the dominant signal — the model's actual record of what it attended
+        # to in recent decode steps. Recency and coherence are stability priors
+        # that prevent thrashing on a single high-attention spike. When
+        # attention is unavailable, fall back to the recency+coherence weighted
+        # combination (preserves pre-rework behavior at default config).
+        if attn is not None and cfg.w_attention > 0:
+            total = cfg.w_attention + cfg.w_recency + cfg.w_coherence
+            if total == 0:
+                raw = recency
+            else:
+                raw = (
+                    cfg.w_attention * attn
+                    + cfg.w_recency * recency
+                    + cfg.w_coherence * coherence
+                ) / total
+        else:
+            total = cfg.w_recency + cfg.w_coherence
+            if total == 0:
+                raw = recency
+            else:
+                raw = (cfg.w_recency * recency + cfg.w_coherence * coherence) / total
+
+        # Source-type floors: USER and ASSISTANT turns are conversation
+        # backbone; even when their coherence drops they shouldn't be evicted
+        # before lower-floor DOCUMENT blocks.
         if block.source == BlockSource.USER:
             raw = max(raw, cfg.conversation_score_floor)
         elif block.source == BlockSource.ASSISTANT:
             raw = max(raw, cfg.assistant_score_floor)
 
-        return raw
+        # Harness priority is a final multiplier — a hint from the caller that
+        # this block matters more (priority > 1.0) or less (priority < 1.0)
+        # than the model+heuristic signals alone would suggest. Capped at 1.0
+        # so even very high priority cannot out-rank sinks. Pinned blocks are
+        # excluded from eviction candidates upstream (in
+        # EvokeManager._evictable_blocks), so priority is independent of pin.
+        scaled = raw * block.priority
+        return min(scaled, 1.0)
+
+    def _score_attention(self, block: ActiveBlock) -> float | None:
+        if self._attention_scorer is None:
+            return None
+        return self._attention_scorer.score(block)
 
     def score_blocks(
         self, blocks: list[ActiveBlock], current_pos: int, context_length: int
@@ -68,10 +153,7 @@ class RelevanceScorer:
         return 1.0 if block.is_sink else 0.0
 
     def _score_coherence(self, block: ActiveBlock) -> float:
-        if not self._context_history or block.representative_embedding is None:
+        if self._task_focus is None or block.representative_embedding is None:
             return 0.5
-        best_sim = max(
-            cosine_similarity(block.representative_embedding, ctx_emb)
-            for ctx_emb in self._context_history
-        )
-        return (best_sim + 1.0) / 2.0
+        sim = cosine_similarity(block.representative_embedding, self._task_focus)
+        return (sim + 1.0) / 2.0

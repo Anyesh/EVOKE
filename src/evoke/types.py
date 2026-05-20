@@ -23,6 +23,14 @@ class ActiveBlock:
     source: BlockSource = BlockSource.DOCUMENT
     is_sink: bool = False
     key: str = ""
+    # Harness-supplied hints. A harness (Claude Code, opencode, etc.) often
+    # knows things the scorer can't infer from text alone: which file reads
+    # are central to the current task, which tool output is ephemeral, which
+    # blocks must never be evicted. priority multiplies the relevance score
+    # at evict time; pinned removes the block from eviction candidates
+    # entirely (alongside is_sink and current-turn-pin).
+    priority: float = 1.0
+    pinned: bool = False
 
     @property
     def size(self) -> int:

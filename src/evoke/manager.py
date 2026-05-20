@@ -29,7 +29,13 @@ class EvokeManager:
         self._next_block_id += 1
         return bid
 
-    def load_document(self, text: str) -> None:
+    def load_document(
+        self,
+        text: str,
+        *,
+        priority: float = 1.0,
+        pinned: bool = False,
+    ) -> None:
         tokens = self._engine.tokenize(text)
         blocks: list[ActiveBlock] = []
         block_size = self._config.block_size
@@ -45,6 +51,8 @@ class EvokeManager:
                 source=BlockSource.DOCUMENT,
                 is_sink=i < self._config.sink_count,
                 key=f"doc#{bid}",
+                priority=priority,
+                pinned=pinned,
             )
             blocks.append(block)
 
@@ -55,11 +63,25 @@ class EvokeManager:
         self._current_turn_start_id = self._next_block_id
         self._enforce_budget()
 
-    def add_context(self, text: str, key: str) -> None:
+    def add_context(
+        self,
+        text: str,
+        key: str,
+        *,
+        priority: float = 1.0,
+        pinned: bool = False,
+    ) -> None:
         tokens = self._engine.tokenize(text)
-        self.add_context_tokens(tokens, key)
+        self.add_context_tokens(tokens, key, priority=priority, pinned=pinned)
 
-    def add_context_tokens(self, tokens: list[int], key: str) -> None:
+    def add_context_tokens(
+        self,
+        tokens: list[int],
+        key: str,
+        *,
+        priority: float = 1.0,
+        pinned: bool = False,
+    ) -> None:
         if not tokens:
             return
         self._current_turn_start_id = self._next_block_id
@@ -79,6 +101,8 @@ class EvokeManager:
                 is_sink=bstart < self._config.sink_count,
                 key=f"{key}#{i // block_size}",
                 representative_embedding=self._last_token_embedding(bstart, len(chunk)),
+                priority=priority,
+                pinned=pinned,
             )
             self._positions.append_block(block, bstart)
 
@@ -204,6 +228,14 @@ class EvokeManager:
     def get_breadcrumbs(self) -> list[Breadcrumb]:
         return self._recovery.list_evicted()
 
+    def signal_task_boundary(self) -> None:
+        # Forwarded by the server when a request sets evoke_task_boundary=true
+        # or includes an [evoke:task_boundary] system message. The next
+        # update_recent_context call will snap the task focus to the incoming
+        # user message instead of blending; prior-topic blocks lose their
+        # coherence score within one scoring pass and become evictable.
+        self._scorer.signal_task_boundary()
+
     def get_token_view(self) -> list[int]:
         # Tokens currently in the engine cache, in physical position order.
         # The manager keeps its blocks aligned with engine state through every
@@ -313,7 +345,9 @@ class EvokeManager:
     ) -> list[ActiveBlock]:
         evictable = []
         for block in blocks:
-            if block.is_sink or scores.get(block.block_id, 0.0) >= 1.0:
+            if block.is_sink or block.pinned:
+                continue
+            if scores.get(block.block_id, 0.0) >= 1.0:
                 continue
             if (
                 self._config.pin_generated
