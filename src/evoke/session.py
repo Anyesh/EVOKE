@@ -18,6 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterator
 
+import numpy as np
+
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
@@ -53,6 +55,7 @@ class Session:
         *,
         config: EvokeConfig | None = None,
         detokenize_every: int = 4,
+        recovery_k: int = 4,
     ) -> None:
         self._engine = engine
         self._config = config or self._default_config(engine.n_ctx)
@@ -60,6 +63,7 @@ class Session:
         self._cached_tokens: list[int] = []
         self._turn_id = 0
         self._detok_every = detokenize_every
+        self._recovery_k = recovery_k
 
     @staticmethod
     def _default_config(n_ctx: int) -> EvokeConfig:
@@ -98,16 +102,59 @@ class Session:
                 return i
         return limit
 
-    def _recover_evicted(self) -> int:
-        # Simple v1 recovery policy: bring back every evicted block before the
-        # next decode so the model sees the full conversation history. The
-        # eviction pass at the end of add_context_tokens may evict again under
-        # budget pressure; the dance is what lets the session outgrow n_ctx.
+    def _smart_recover(self, k: int = 4) -> int:
+        # Score evicted blocks by embedding similarity to the last ~n_query
+        # tokens just decoded (the freshest signal we have about what the
+        # next answer needs) and recover only the top-K. This is the v3
+        # policy: bounded per-turn recovery cost, eviction actually frees
+        # memory, and the model only pays to re-attend to what is relevant
+        # to the current query.
+        crumbs = list(self._manager.get_breadcrumbs())
+        if not crumbs:
+            return 0
+
+        query_emb = self._compute_query_embedding()
+        if query_emb is None:
+            # Fall back to v2 behavior if we cannot score (no embeddings yet
+            # because the tail was empty, or the engine returned zeros).
+            recovered = 0
+            for crumb in crumbs:
+                if self._manager.recover(crumb.key):
+                    recovered += 1
+            return recovered
+
+        scored: list[tuple[float, str]] = []
+        for crumb in crumbs:
+            block_emb = self._manager._recovery.peek_embedding(crumb.key)
+            if block_emb is None:
+                scored.append((0.0, crumb.key))
+            else:
+                scored.append((float(np.dot(query_emb, block_emb)), crumb.key))
+        scored.sort(key=lambda x: x[0], reverse=True)
+
         recovered = 0
-        for crumb in list(self._manager.get_breadcrumbs()):
-            if self._manager.recover(crumb.key):
+        for _, key in scored[:k]:
+            if self._manager.recover(key):
                 recovered += 1
         return recovered
+
+    def _compute_query_embedding(self, n_last: int = 32) -> np.ndarray | None:
+        pos = self._engine.next_write_pos
+        if pos == 0:
+            return None
+        start = max(0, pos - n_last)
+        positions = list(range(start, pos))
+        embeddings = self._engine.get_embeddings(positions)
+        if embeddings is None or len(embeddings) == 0:
+            return None
+        nonzero_mask = (embeddings != 0).any(axis=1)
+        if not nonzero_mask.any():
+            return None
+        avg = embeddings[nonzero_mask].mean(axis=0)
+        norm = float(np.linalg.norm(avg))
+        if norm == 0.0:
+            return None
+        return avg / norm
 
     def sync_prefix(self, prompt_tokens: list[int]) -> SyncStats:
         divergence = self._common_prefix_len(prompt_tokens)
@@ -115,13 +162,16 @@ class Session:
             self.reset()
             divergence = 0
 
-        recovered = self._recover_evicted()
-
         tail = prompt_tokens[divergence:]
         if tail:
             self._manager.add_context_tokens(tail, key=f"turn{self._turn_id}")
             self._turn_id += 1
             self._cached_tokens.extend(tail)
+
+        # Smart recovery runs AFTER the new tail is decoded so we have fresh
+        # per-token embeddings for the latest user message; we score evicted
+        # blocks against that and bring back the top-K most coherent ones.
+        recovered = self._smart_recover(k=self._recovery_k)
 
         stats = self._manager.get_stats()
         return SyncStats(
