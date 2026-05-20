@@ -1,0 +1,12 @@
+keepalive bench | model=Qwen2.5-7B-Instruct-Q4_K_M
+budget  strategy          probe  evict  recov  active  answer
+-------------------------------------------------------------
+512     evoke_kv_restore  fail   24     0      408     'To determine the maximum retry limit from `config.py`, I wou'
+512     evoke_attention   PASS   21     0      403     'The maximum retry limit is set to 17 attempts according to t'
+-------------------------------------------------------------
+1024    evoke_kv_restore  fail   14     0      928     'To determine the maximum retry limit from the retry policy i'
+1024    evoke_attention   PASS   11     0      923     'The maximum retry limit is set to 17 attempts according to t'
+-------------------------------------------------------------
+2048    evoke_kv_restore  PASS   0      0      1627    'The maximum retry limit is set to 17 attempts according to t'
+2048    evoke_attention   PASS   0      0      1627    'The maximum retry limit is set to 17 attempts according to t'
+-------------------------------------------------------------
