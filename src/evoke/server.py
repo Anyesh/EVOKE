@@ -182,12 +182,18 @@ def create_app(
 
         msgs = [m.model_dump(exclude_none=True) for m in req.messages]
         if req.tools:
-            # The model's GGUF chat template renders tools too, but the C API
-            # we bind through (llama_chat_apply_template) does not take a
-            # tools array. Fall back to our handwritten Qwen template for
-            # tool-using requests; this is a known fidelity gap that resets
-            # the session on each tool-using turn (see paper §8).
-            prompt = format_qwen_chat(msgs, tools=req.tools, add_generation_prompt=True)
+            # Render via Python jinja2 against the GGUF's own chat template,
+            # which understands tools. Falls back to our handwritten
+            # format_qwen_chat only if the model has no embedded template or
+            # the render fails outright.
+            try:
+                prompt = engine.apply_chat_template_with_tools(
+                    msgs, tools=req.tools, add_generation_prompt=True
+                )
+            except RuntimeError:
+                prompt = format_qwen_chat(
+                    msgs, tools=req.tools, add_generation_prompt=True
+                )
         else:
             try:
                 prompt = engine.apply_chat_template(msgs, add_generation_prompt=True)

@@ -5,8 +5,18 @@ import os
 from pathlib import Path
 
 import numpy as np
+from jinja2 import Environment, StrictUndefined
+from jinja2.exceptions import TemplateError
 
 from evoke._engine_lib import llama_cpp
+
+
+def _jinja_raise(message: str) -> None:
+    # raise_exception is a Hermes/Qwen template convention used inside the
+    # Jinja template to abort on malformed inputs. Minja (llama.cpp's C++
+    # Jinja parser) exposes it; we mirror the semantics here so Python-side
+    # rendering of the same templates respects the same contract.
+    raise RuntimeError(f"chat template raise_exception: {message}")
 
 
 @llama_cpp.llama_log_callback
@@ -151,6 +161,53 @@ class LlamaCppEngine:
         llama_cpp.llama_sampler_chain_add(
             self._sampler, llama_cpp.llama_sampler_init_greedy()
         )
+
+    def get_chat_template_string(self) -> str | None:
+        # Return the raw Jinja chat template string embedded in the GGUF, or
+        # None if the model has no template metadata. Used by
+        # apply_chat_template_with_tools so we can route tool-using requests
+        # through Python jinja2 (the C llama_chat_apply_template doesn't
+        # accept a tools array).
+        tmpl_ptr = llama_cpp.llama_model_chat_template(self._model_ptr, None)
+        if not tmpl_ptr:
+            return None
+        if isinstance(tmpl_ptr, bytes):
+            return tmpl_ptr.decode("utf-8", errors="replace")
+        return ctypes.string_at(tmpl_ptr).decode("utf-8", errors="replace")
+
+    def apply_chat_template_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None,
+        add_generation_prompt: bool = True,
+    ) -> str:
+        # Render the GGUF chat template via Python jinja2 so we can pass
+        # the tools array (which the C API can't). Falls back to the
+        # tools-less C path when tools is None/empty so we keep the
+        # byte-identical path that's already verified against opencode's
+        # templating. Raises RuntimeError on render failure; the caller
+        # should fall back to format_qwen_chat in that case.
+        if not tools:
+            return self.apply_chat_template(messages, add_generation_prompt)
+        template_str = self.get_chat_template_string()
+        if template_str is None:
+            raise RuntimeError("model has no chat template embedded in GGUF")
+        env = Environment(
+            trim_blocks=True,
+            lstrip_blocks=True,
+            undefined=StrictUndefined,
+            extensions=["jinja2.ext.do", "jinja2.ext.loopcontrols"],
+        )
+        env.globals["raise_exception"] = _jinja_raise
+        try:
+            template = env.from_string(template_str)
+            return template.render(
+                messages=messages,
+                tools=tools,
+                add_generation_prompt=add_generation_prompt,
+            )
+        except TemplateError as exc:
+            raise RuntimeError(f"jinja template render failed: {exc}") from exc
 
     def apply_chat_template(
         self,
