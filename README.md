@@ -7,7 +7,7 @@ Long-running LLM agent sessions outgrow the physical KV cache budget within a fe
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
 
-*A 14-turn session with a 1024-token budget. A fact is planted at turn 1 ("favorite number = 4242"), 12 unrelated knowledge questions fill the session, and at turn 14 the fact is probed. The session survives **89 evictions and 71 recoveries**, and the model recalls "4242".*
+*A 14-turn session with a 1024-token budget. A fact is planted at turn 1 ("favorite number = 4242"), 12 unrelated knowledge questions fill the session, and at turn 14 the fact is probed. The session survives **89 evictions and 71 recoveries**, and the model recalls "4242". The GIF is from the v2 recover-all policy; the current default (smart top-K recovery) cuts recoveries to ~24 on the same conversation while still passing the probe — see paper §7.3 for the head-to-head with truncate and no_eviction baselines.*
 
 ### Qwen 3.5 9B (hybrid Mamba/Attention + mrope, thinking-mode)
 ![Eviction demo on Qwen 3.5](assets/eviction-demo-qwen35.gif)
@@ -89,8 +89,10 @@ cd ~/your-project && opencode
 
 ## Status
 
-Research prototype targeting both a working system and a paper draft (`paper/draft.md`). The mechanism is verified end-to-end across three model architectures. Known gaps tracked in the paper's "Discussion and Limitations" section: smart-recovery policy (v3), chat-template fidelity for opencode tool-use turns, iSWA dual-cache support for Gemma, and SSM-state checkpointing for purely-Mamba layers.
+Research prototype targeting both a working system and a paper draft (`paper/draft.md`). The mechanism is verified end-to-end across three model architectures and the head-to-head + agentic eval numbers are in §7.3-§7.4 of the draft. Known gaps tracked in the paper's "Discussion and Limitations" section: chat-template fidelity for tool-using turns (the C `llama_chat_apply_template` does not accept a tools array), iSWA dual-cache support for Gemma 3/4, SSM-state checkpointing for purely-Mamba layers, multi-session server.
 
 ## License
 
-Forked llama.cpp work follows upstream's MIT license. EVOKE policy layer is the same.
+The **EVOKE policy layer** in this repository (`src/evoke/`, `scripts/`, `paper/`, `examples/`, `assets/`) is licensed under the **Apache License 2.0** (see `LICENSE`). This includes the patent grant — contributors are barred from initiating patent litigation over the contributed code.
+
+The **forked llama.cpp work** (the C primitives added in `<llama-cpp-fork>`) is a derivative work of [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) and remains under upstream's **MIT license**.

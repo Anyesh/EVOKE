@@ -16,7 +16,12 @@ models/
 
 # Local artifacts
 .scope.md
+.scope-turn-count
 CLAUDE.md
+.fastembed_cache/
+.ruff_cache/
+.mypy_cache/
+evoke_drift.log
 
 # Docs
 docs/
