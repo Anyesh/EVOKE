@@ -39,17 +39,50 @@ def main() -> int:
 
     budget_env = os.environ.get("EVOKE_BUDGET")
     recovery_mode = os.environ.get("EVOKE_RECOVERY_MODE", "kv_restore")
+    policy = os.environ.get("EVOKE_POLICY", "evoke").lower()
     config: EvokeConfig | None = None
-    if budget_env:
-        budget = int(budget_env)
+
+    if policy == "truncate":
+        # StreamingLLM-style: drop the oldest non-sink block under budget
+        # pressure, no recovery. Pure recency, no coherence weighting, with
+        # a small sink-token window.
+        budget = int(budget_env) if budget_env else 1024
         config = EvokeConfig(
             max_active_tokens=budget,
             block_size=128,
             high_watermark=0.92,
             low_watermark=0.70,
-            recovery_mode=recovery_mode,
+            w_recency=1.0,
+            w_coherence=0.0,
+            sink_count=4,
+            recovery_mode="discard",
         )
-        print(f"  budget override: {budget} tokens, recovery={recovery_mode}")
+        print(f"  policy=truncate budget={budget} recovery=discard")
+    elif policy == "no_eviction":
+        # Lift the budget to n_ctx so the watermark never trips. Models how
+        # a vanilla OpenAI-compatible server behaves under cache pressure.
+        budget = int(budget_env) if budget_env else n_ctx
+        config = EvokeConfig(
+            max_active_tokens=budget,
+            block_size=128,
+            high_watermark=0.999,
+            low_watermark=0.99,
+            recovery_mode="discard",
+        )
+        print(f"  policy=no_eviction budget={budget}")
+    elif policy == "evoke":
+        if budget_env:
+            budget = int(budget_env)
+            config = EvokeConfig(
+                max_active_tokens=budget,
+                block_size=128,
+                high_watermark=0.92,
+                low_watermark=0.70,
+                recovery_mode=recovery_mode,
+            )
+            print(f"  policy=evoke budget={budget} recovery={recovery_mode}")
+    else:
+        raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")
 
     print(f"loading model: {model_path}")
     print(f"  n_ctx={n_ctx}  model_name={model_name}")

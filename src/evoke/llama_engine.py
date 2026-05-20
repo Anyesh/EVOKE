@@ -124,6 +124,45 @@ class LlamaCppEngine:
             self._sampler, llama_cpp.llama_sampler_init_greedy()
         )
 
+    def apply_chat_template(
+        self,
+        messages: list[dict],
+        add_generation_prompt: bool = True,
+    ) -> str:
+        # Use the model's own chat template (read from GGUF metadata) so the
+        # prompt we feed in matches byte-for-byte what an OpenAI client would
+        # template back when echoing the conversation history. Without this,
+        # any whitespace drift between our handwritten format_qwen_chat and
+        # what the client sends triggers a session reset every turn.
+        tmpl_ptr = llama_cpp.llama_model_chat_template(self._model_ptr, None)
+        if not tmpl_ptr:
+            raise RuntimeError("model has no chat template embedded in GGUF")
+        n = len(messages)
+        if n == 0:
+            return ""
+        msg_arr = (llama_cpp.llama_chat_message * n)()
+        # Hold bytes alive while ctypes points into them.
+        bufs: list[bytes] = []
+        for i, m in enumerate(messages):
+            role_b = (m.get("role") or "").encode("utf-8")
+            content_b = (m.get("content") or "").encode("utf-8")
+            bufs.extend([role_b, content_b])
+            msg_arr[i].role = role_b
+            msg_arr[i].content = content_b
+        needed = llama_cpp.llama_chat_apply_template(
+            tmpl_ptr, msg_arr, n, add_generation_prompt, None, 0
+        )
+        if needed < 0:
+            raise RuntimeError(f"llama_chat_apply_template failed: {needed}")
+        cap = needed + 1
+        buf = ctypes.create_string_buffer(cap)
+        written = llama_cpp.llama_chat_apply_template(
+            tmpl_ptr, msg_arr, n, add_generation_prompt, buf, cap
+        )
+        if written < 0:
+            raise RuntimeError(f"llama_chat_apply_template write failed: {written}")
+        return buf.raw[:written].decode("utf-8", errors="replace")
+
     def tokenize(self, text: str) -> list[int]:
         text_bytes = text.encode("utf-8")
         max_tokens = len(text_bytes) + 16

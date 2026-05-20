@@ -168,7 +168,19 @@ def create_app(
             raise HTTPException(status_code=400, detail="messages must not be empty")
 
         msgs = [m.model_dump(exclude_none=True) for m in req.messages]
-        prompt = format_qwen_chat(msgs, tools=req.tools, add_generation_prompt=True)
+        if req.tools:
+            # The model's GGUF chat template renders tools too, but the C API
+            # we bind through (llama_chat_apply_template) does not take a
+            # tools array. Fall back to our handwritten Qwen template for
+            # tool-using requests; this is a known fidelity gap that resets
+            # the session on each tool-using turn (see paper §8).
+            prompt = format_qwen_chat(msgs, tools=req.tools, add_generation_prompt=True)
+        else:
+            try:
+                prompt = engine.apply_chat_template(msgs, add_generation_prompt=True)
+            except RuntimeError:
+                # Model has no embedded chat template; fall back to ours.
+                prompt = format_qwen_chat(msgs, tools=None, add_generation_prompt=True)
         prompt_tokens = engine.tokenize(prompt)
         prompt_n = len(prompt_tokens)
 
