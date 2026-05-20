@@ -1,83 +1,90 @@
 # EVOKE
 
-**Selective KV Cache Eviction and Recovery for Long-Context LLM Inference**
+**OS-like memory management for the LLM KV cache.**
 
-LLMs have a memory problem. Load a 200K-token document into context and every token stays in the KV cache for the entire session, even when only 5% of it matters to the current conversation. The cache is append-only: there's no way to free irrelevant context and get it back later when you need it.
+Long-running LLM agent sessions outgrow the physical KV cache budget within a few turns. EVOKE evicts low-relevance blocks under budget pressure and **recovers them recompute-free** via a custom save/restore primitive in a forked llama.cpp — 20–32× faster than re-prefilling the same tokens.
 
-EVOKE treats the KV cache as a managed memory system. It scores context blocks by relevance, evicts the least useful ones to an archive, and retrieves them when the conversation circles back. Retrieved blocks are re-encoded into the KV cache at correct RoPE positions via a full rebuild, so the model gets genuine attention over recovered context, not a text-level RAG approximation.
+![Eviction demo](assets/eviction-demo.gif)
 
-## How it works
+*A 14-turn session with a 1024-token budget. A fact is planted at turn 1 ("favorite number = 4242"), 12 unrelated knowledge questions fill the session, and at turn 14 the fact is probed. The session survives 89 evictions and 71 recoveries, and the model still recalls "4242".*
 
-```
-Document/Conversation
-        |
-   [ Tokenize + Block ]
-        |
-   [ KV Cache (Active) ]  <--- budget enforced here
-        |         |
-   [ Score ]   [ Evict ] ---> [ Archive (embeddings + tokens) ]
-        |                              |
-   [ Generate ]              [ Retrieve on query match ]
-        |                              |
-   [ Answer ]  <--- [ Rebuild KV with recovered blocks ]
-```
+## What it actually is
 
-1. **Block**: Text is split into fixed-size token blocks (default 32 tokens).
-2. **Score**: Each block gets a relevance score based on recency, position (sink tokens), and embedding similarity to recent context.
-3. **Evict**: When active tokens exceed the budget, lowest-scored blocks are archived. The KV cache is rebuilt from remaining blocks.
-4. **Archive**: Evicted blocks retain their token IDs, original positions, and representative embeddings.
-5. **Retrieve**: When a user message matches archived blocks (via lexical overlap + embedding similarity), those blocks are promoted back.
-6. **Rebuild**: Promoted blocks are inserted into the active set in original order, and the entire KV cache is re-encoded from scratch. This gives correct RoPE positions and fresh K/V tensors.
+- Two new C++ primitives in a forked llama.cpp: `llama_kv_block_save` and `llama_kv_block_load`. They serialise a position range's K/V tensors to a host buffer and splice them back with per-cell RoPE re-anchoring — no `llama_decode` call.
+- A Python policy layer (`evoke/manager.py`, `evoke/scorer.py`) that drives eviction under a watermark policy and routes recovery through three pluggable backends: discard, breadcrumb, or kv_restore (the recompute-free splice).
+- An OpenAI-compatible chat-completions server (`evoke/server.py`) that exposes EVOKE as a stateful endpoint. The persistent KV cache survives across requests; only the new tail of each prompt is decoded.
+- Cross-architecture coverage: pure attention with standard RoPE (Qwen 2.5, Llama 3), hybrid Mamba/Attention (Qwen 3.5), MoE attention with mrope and thinking mode (Qwen 3.6 35B-A3B).
 
-## Early results
+## Latency table
 
-Multi-turn conversation with Qwen 2.5 7B (Q4_K_M), 6 turns, information planted in early turns, recalled in the final turn:
+Measured on Qwen 2.5 7B, RTX 4070 Ti SUPER, Flash Attention enabled. `kv_block_load` is the EVOKE recovery path; `re-prefill` is the cost of re-encoding the same tokens via `llama_decode`.
 
-| Budget | Active tokens | Archived blocks | Promotions | Recall |
-|--------|--------------|-----------------|------------|--------|
-| 512    | 399          | 50              | 21         | AURORA found |
-| 1024   | 770          | 38              | 20         | AURORA found |
+| Block (tokens) | save (ms) | load (ms) | re-prefill (ms) | kv_restore speedup |
+|---:|---:|---:|---:|---:|
+|   20 |  1.10 | 0.48 |  11.90 | 25× |
+|   40 |  1.61 | 0.70 |  13.78 | 20× |
+|  160 |  4.69 | 1.50 |  32.60 | 22× |
+|  640 | 16.37 | 4.34 | 118.36 | 27× |
+| 1280 | 31.90 | 7.25 | 232.18 | 32× |
 
-The model operates within a fixed token budget while still recalling "AURORA-SEVEN" details that were evicted turns ago. With a 512-token budget managing a conversation that would normally consume ~2000+ tokens, EVOKE keeps memory usage at 25% while preserving recall.
+The gap widens linearly with block size: re-prefill is `O(tokens × model_FLOPs)`, load is `O(tokens × bytes)`.
 
-## Key design decisions
-
-**Rebuild on every eviction and promotion.** Newer llama.cpp requires consecutive KV positions. Removing blocks from the middle creates gaps that crash inference. We rebuild the full KV cache after every structural change. This is more expensive per operation but always correct.
-
-**No KV tensor save/restore.** We investigated `llama_state_seq_set_data` for per-block KV state caching. It's destructive: internally calls `seq_keep` + `seq_rm`, wiping the entire cache. Per-block state save is not viable through the current llama.cpp API. Re-encoding is the correct path.
-
-**Thinking-model aware generation.** Thinking models (Qwen 3.x, DeepSeek R1) generate `<think>` blocks that can consume thousands of tokens before answering. EVOKE's generation pipeline supports separate budgets for thinking and answer phases, driven by the chat template layer.
-
-**Pure Python.** The bottleneck is `llama_decode`, not Python overhead. The management logic (scoring, eviction decisions, position tracking) is negligible compared to transformer forward passes.
-
-## Project structure
+## Repository layout
 
 ```
 src/evoke/
-  manager.py       Core orchestration: load, generate, evict, promote
-  config.py        EvokeConfig dataclass
-  engine.py        InferenceEngine protocol
-  llama_engine.py  llama.cpp implementation via llama-cpp-python
-  position.py      Tracks logical positions of active blocks
-  scorer.py        Relevance scoring (recency + sink + coherence)
-  archive.py       Archived block storage and retrieval
-  chat_template.py Chat template detection and thinking tag handling
-  types.py         ActiveBlock, ArchiveBlock, CacheStats, EvokeEvent
-  benchmark.py     Competitive benchmark harness
+  manager.py        Eviction/recovery orchestration, block tracking
+  session.py        Persistent server session with prefix matching
+  server.py         FastAPI /v1/chat/completions endpoint
+  templates.py      Qwen chat template + tool-call parsing
+  llama_engine.py   ctypes binding for the fork's primitives
+  scorer.py         Relevance scoring (recency + sink + coherence)
+  recovery.py       Pluggable backends (discard / breadcrumb / kv_restore)
+  position.py       Active-block position tracking
+  config.py         EvokeConfig
+
+scripts/
+  evoke_serve.py        Start the OpenAI-compatible server
+  eviction_demo.py      Replicate the demo GIF (14 turns, 89 evictions)
+  verify_kv_restore.py  Planted-passkey end-to-end primitive test
+  profile_recover.py    Latency table generator
+  agent_bench.py        Probe-correctness x budget x strategy
+
+paper/draft.md     Paper draft
+examples/          Sample opencode.json provider config
+assets/            Demo GIF
 ```
 
 ## Quick start
 
-```bash
-uv sync
-uv run pytest tests/ -x -q
+You need a CUDA box with the EVOKE-forked llama.cpp built (see `paper/draft.md` §B). Then:
 
-# Run multi-turn benchmark
-EVOKE_MODEL_PATH=/path/to/model.gguf uv run python scripts/multi_turn_bench.py
+```bash
+# Install the Python package + server extras
+uv sync --extra server
+
+# Start the OpenAI-compatible server (pick a model)
+LLAMA_CPP_LIB=/path/to/EVOKE_llama.cpp/build/bin/llama.dll \
+EVOKE_MODEL_PATH=/path/to/Qwen2.5-7B-Instruct-Q4_K_M.gguf \
+EVOKE_HOST=0.0.0.0 \
+EVOKE_BUDGET=1024 \
+EVOKE_MODEL_NAME=qwen25 \
+uv run python scripts/evoke_serve.py
+
+# Reproduce the demo GIF (eviction + recovery + fact recall)
+EVOKE_SERVER='http://YOUR_HOST:8000' EVOKE_MODEL_NAME='qwen25' \
+  uv run python scripts/eviction_demo.py
+
+# Or point opencode at the server
+cp examples/opencode.json ~/your-project/
+# edit baseURL and model name, then:
+cd ~/your-project && opencode
 ```
 
 ## Status
 
-Research prototype. Targets both a working system and a paper: *"EVOKE: Selective KV Cache Eviction and Recovery for Long-Context LLM Inference."*
+Research prototype targeting both a working system and a paper draft (`paper/draft.md`). The mechanism is verified end-to-end across three model architectures. Known gaps tracked in the paper's "Discussion and Limitations" section: smart-recovery policy (v3), chat-template fidelity for opencode tool-use turns, iSWA dual-cache support for Gemma, and SSM-state checkpointing for purely-Mamba layers.
 
-Competitive benchmarks against baselines (truncation, StreamingLLM, full context) are next.
+## License
+
+Forked llama.cpp work follows upstream's MIT license. EVOKE policy layer is the same.
