@@ -3,7 +3,7 @@
 ## Run: Qwen 2.5 7B (2026-05-20, head-to-head + agentic eval — drift fix landed)
 
 **Model**: Qwen2.5-7B-Instruct-Q4_K_M
-**Hardware**: RTX 4070 Ti SUPER, 16GB VRAM (gpu-host)
+**Hardware**: RTX 4070 Ti SUPER, 16GB VRAM
 **n_ctx**: 16384, budget 1024 (where applicable)
 
 ### Head-to-head baselines (`scripts/baseline_bench.py`, 14-turn planted-fact session)
@@ -55,7 +55,7 @@ After the fix, the eviction counter monotonically accumulates across turns for `
 ## Run: Qwen 2.5 7B (2026-05-19, v1)
 
 **Model**: Qwen2.5-7B-Instruct-Q4_K_M
-**Hardware**: RTX 4070 Ti SUPER, 16GB VRAM (gpu-host)
+**Hardware**: RTX 4070 Ti SUPER, 16GB VRAM
 **Context**: n_ctx=131072, n_embd=3584
 **Template**: ChatMLTemplate (non-thinking)
 
