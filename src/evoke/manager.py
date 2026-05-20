@@ -102,8 +102,15 @@ class EvokeManager:
             )
 
         gen_start = self._engine.next_write_pos
+        n_ctx = self._engine.n_ctx
         output_tokens: list[int] = []
         for _ in range(max_tokens):
+            # Stop before llama_decode runs out of cache slots. The user may
+            # pass max_tokens larger than the remaining n_ctx (and some models
+            # don't emit eos naturally on the prompts we use); without this
+            # guard the next generate_next would crash with "no KV slot".
+            if self._engine.next_write_pos + 1 >= n_ctx:
+                break
             token = self._engine.generate_next()
             output_tokens.append(token)
             self._step += 1
