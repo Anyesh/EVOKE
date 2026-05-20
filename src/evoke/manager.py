@@ -204,6 +204,42 @@ class EvokeManager:
     def get_breadcrumbs(self) -> list[Breadcrumb]:
         return self._recovery.list_evicted()
 
+    def get_token_view(self) -> list[int]:
+        # Tokens currently in the engine cache, in physical position order.
+        # The manager keeps its blocks aligned with engine state through every
+        # eviction (engine.evict_ranges) and recovery (engine.kv_block_load),
+        # so concatenating the active blocks' token_ids in block_id order is
+        # the authoritative view of what the engine actually has cached. Used
+        # by Session.sync_prefix so prefix-match compares the new prompt
+        # against the real engine state rather than a stale extends-only list.
+        tokens: list[int] = []
+        for block in self._positions.active_blocks:
+            tokens.extend(block.token_ids)
+        return tokens
+
+    def trim_blocks_at(self, position: int) -> None:
+        # Truncate manager blocks so no content remains at or after
+        # `position`. Used when Session.sync_prefix detects mid-cache
+        # divergence (typical for truncate-policy sessions where old history
+        # has been evicted and the next request resupplies it): the engine is
+        # tail-evicted, and we mirror that on the manager side so block
+        # boundaries continue to match physical positions.
+        new_blocks: list[ActiveBlock] = []
+        for block in self._positions.active_blocks:
+            if block.logical_end <= position:
+                new_blocks.append(block)
+            elif block.logical_start >= position:
+                continue
+            else:
+                keep = position - block.logical_start
+                block.token_ids = block.token_ids[:keep]
+                block.logical_end = position
+                # Representative embedding was the last-token embedding of
+                # the block as decoded; after truncation it is stale.
+                block.representative_embedding = None
+                new_blocks.append(block)
+        self._positions._active_blocks = new_blocks
+
     def get_relevance_scores(self) -> dict[int, float]:
         blocks = self._positions.active_blocks
         pos = self._positions.next_logical_pos

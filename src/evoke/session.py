@@ -15,6 +15,8 @@ lets agent sessions grow logically past the physical KV budget.
 
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass
 from typing import Iterator
 
@@ -23,6 +25,7 @@ import numpy as np
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
+from evoke.templates import parse_qwen_response
 
 
 @dataclass
@@ -102,6 +105,57 @@ class Session:
                 return i
         return limit
 
+    def _log_drift(self, prompt_tokens: list[int], divergence: int) -> None:
+        # Diagnostic for round-trip mismatches between cached generation tokens
+        # and the Jinja-rendered re-tokenization of the same content. Writes to
+        # EVOKE_DEBUG_DRIFT_FILE if set (so a remote driver can scp the file
+        # back), else stderr. Writing from Python avoids PowerShell pipeline
+        # redirection issues across the SSH boundary.
+        cached = self._cached_tokens
+        ctx = 30
+
+        def tok_repr(t: int) -> str:
+            try:
+                text = self._engine.detokenize([t])
+            except Exception:
+                text = "<detok-err>"
+            return f"{t}:{text!r}"
+
+        pre_lo = max(0, divergence - ctx)
+        pre_cached = cached[pre_lo:divergence]
+        post_cached = cached[divergence : divergence + ctx]
+        post_prompt = prompt_tokens[divergence : divergence + ctx]
+        try:
+            pre_text = self._engine.detokenize(list(pre_cached))
+            cached_after = self._engine.detokenize(list(post_cached))
+            prompt_after = self._engine.detokenize(list(post_prompt))
+        except Exception:
+            pre_text = cached_after = prompt_after = "<detok-err>"
+
+        block = (
+            "\n=== EVOKE drift diagnostic ===\n"
+            f"  cached_len={len(cached)}  prompt_len={len(prompt_tokens)}  "
+            f"divergence_idx={divergence}\n"
+            f"  context_before  (len={len(pre_cached)}): {pre_text!r}\n"
+            f"  cached_at_div   : {tok_repr(cached[divergence]) if divergence < len(cached) else '<end-of-cache>'}\n"
+            f"  prompt_at_div   : {tok_repr(prompt_tokens[divergence]) if divergence < len(prompt_tokens) else '<end-of-prompt>'}\n"
+            f"  cached_after    : {cached_after!r}\n"
+            f"  prompt_after    : {prompt_after!r}\n"
+            f"  cached_after_ids: {list(post_cached)}\n"
+            f"  prompt_after_ids: {list(post_prompt)}\n"
+            "=== /drift diagnostic ===\n"
+        )
+        path = os.environ.get("EVOKE_DEBUG_DRIFT_FILE")
+        if path:
+            try:
+                with open(path, "a", encoding="utf-8") as fh:
+                    fh.write(block)
+                return
+            except OSError:
+                pass
+        sys.stderr.write(block)
+        sys.stderr.flush()
+
     def _smart_recover(self, k: int = 4) -> int:
         # Score evicted blocks by embedding similarity to the last ~n_query
         # tokens just decoded (the freshest signal we have about what the
@@ -157,10 +211,31 @@ class Session:
         return avg / norm
 
     def sync_prefix(self, prompt_tokens: list[int]) -> SyncStats:
+        # Rebuild from the manager so prior-turn evictions and recoveries are
+        # reflected. _cached_tokens is extended during generate() and trimmed
+        # by canonicalize, but engine-internal evictions fired by
+        # _enforce_budget aren't visible to Session; without this resync, the
+        # prefix-match runs against a stale token list and "succeeds" at
+        # positions where the engine actually has different content.
+        self._cached_tokens = self._manager.get_token_view()
         divergence = self._common_prefix_len(prompt_tokens)
         if divergence < len(self._cached_tokens):
-            self.reset()
-            divergence = 0
+            if os.environ.get("EVOKE_DEBUG_DRIFT"):
+                self._log_drift(prompt_tokens, divergence)
+            # Tail-evict the diverged portion of the cache instead of resetting
+            # the whole session. This keeps the matching prefix (often the
+            # system prompt + early turns), preserves eviction stats across
+            # turns, and lets truncate-policy sessions continue smoothly even
+            # when manager eviction has dropped middle history that the next
+            # request resupplies. Falls back to full reset only when the
+            # engine refuses tail-eviction (hybrid Mamba+Attention memory).
+            cached_len = len(self._cached_tokens)
+            if self._engine.evict_ranges([(divergence, cached_len)]):
+                self._manager.trim_blocks_at(divergence)
+                self._cached_tokens = self._cached_tokens[:divergence]
+            else:
+                self.reset()
+                divergence = 0
 
         tail = prompt_tokens[divergence:]
         if tail:
@@ -229,8 +304,52 @@ class Session:
         if kept:
             # gen_start may have shifted if thinking was evicted; recompute.
             answer_start = self._engine.next_write_pos - len(kept)
-            self._manager._track_generated_block(kept, answer_start)
+            kept = self._canonicalize_assistant(kept, answer_start)
+            if kept:
+                answer_start = self._engine.next_write_pos - len(kept)
+                self._manager._track_generated_block(kept, answer_start)
         self._manager._enforce_budget()
+
+    def _canonicalize_assistant(
+        self, answer_tokens: list[int], answer_start: int
+    ) -> list[int]:
+        # Make the cached assistant emit match what the next request's
+        # Jinja-then-tokenize will produce. The model can emit non-canonical
+        # BPE (e.g. token('**') + token(':\n') for text the canonical tokenizer
+        # would have encoded as token('**:') + token('\n')), and
+        # parse_qwen_response strips trailing whitespace from the content
+        # returned to the client. Both make the cached prefix diverge from the
+        # next request's prompt mid-history and force a session reset that
+        # zeroes the eviction counters we are trying to measure. We re-decode
+        # the canonical tokenization of the visible content at the same logical
+        # position so the cached state matches the round-trip exactly.
+        if not answer_tokens:
+            return answer_tokens
+        raw = self._engine.detokenize(answer_tokens)
+        parsed = parse_qwen_response(raw)
+        if parsed.tool_calls:
+            # Tool-using responses go through format_qwen_chat (the C API
+            # llama_chat_apply_template doesn't accept tools); their
+            # round-trip is governed by that template, not by retokenization.
+            return answer_tokens
+        eos = self._engine.eos_token
+        emitted_eos = answer_tokens[-1] == eos
+        canonical = self._engine.tokenize(parsed.content)
+        if emitted_eos:
+            canonical = canonical + [eos]
+        if canonical == list(answer_tokens):
+            return answer_tokens
+        answer_end = answer_start + len(answer_tokens)
+        if not self._engine.evict_ranges([(answer_start, answer_end)]):
+            # Hybrid (Mamba+Attention) memory rejects mid-cache splice on the
+            # recurrent half. Leave the model's emit in place; drift may still
+            # occur for these models but is documented as a known gap.
+            return answer_tokens
+        self._cached_tokens = self._cached_tokens[:answer_start]
+        if canonical:
+            self._engine.process_tokens(canonical)
+            self._cached_tokens.extend(canonical)
+        return canonical
 
     def generate(
         self,

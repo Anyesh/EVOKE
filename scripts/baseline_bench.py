@@ -36,6 +36,8 @@ MODEL = os.environ.get(
 BUDGET = os.environ.get("EVOKE_BUDGET", "1024")
 N_CTX = os.environ.get("EVOKE_N_CTX", "16384")
 MODEL_NAME = os.environ.get("EVOKE_MODEL_NAME", "qwen25")
+DRIFT_DEBUG = bool(os.environ.get("EVOKE_DEBUG_DRIFT"))
+DRIFT_LOG = "C:\\Users\\User\\projects\\unlearn\\evoke_drift.log"
 
 PASSKEY = "4242"
 FACT = (
@@ -121,12 +123,23 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     # watermark still trips. Letting EVOKE_BUDGET fall back to n_ctx makes
     # eviction genuinely never fire for that baseline.
     budget_line = "" if policy == "no_eviction" else f"$env:EVOKE_BUDGET='{BUDGET}'; "
+    # In drift-debug mode the server writes drift blocks directly to a known
+    # file path (via EVOKE_DEBUG_DRIFT_FILE inside Python); we avoid PowerShell
+    # `*>>` redirection because it doesn't reliably capture stderr through the
+    # `ssh ... powershell -Command` boundary.
+    drift_line = (
+        f"$env:EVOKE_DEBUG_DRIFT='1'; $env:EVOKE_DEBUG_DRIFT_FILE='{DRIFT_LOG}'; "
+        if DRIFT_DEBUG
+        else ""
+    )
+    if DRIFT_DEBUG:
+        _ssh(f"if (Test-Path '{DRIFT_LOG}') {{ Remove-Item -Force '{DRIFT_LOG}' }}")
     launch = (
         f"cd C:\\Users\\User\\projects\\unlearn; "
         f"$env:LLAMA_CPP_LIB='{LIB}'; "
         f"$env:EVOKE_MODEL_PATH='{MODEL}'; "
         f"$env:EVOKE_HOST='0.0.0.0'; $env:EVOKE_PORT='8000'; "
-        f"$env:EVOKE_N_CTX='{N_CTX}'; {budget_line}"
+        f"$env:EVOKE_N_CTX='{N_CTX}'; {budget_line}{drift_line}"
         f"$env:EVOKE_POLICY='{policy}'; "
         f"$env:EVOKE_MODEL_NAME='{MODEL_NAME}'; "
         f"uv run python scripts/evoke_serve.py"
@@ -134,18 +147,25 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     print(f"  launch: {launch}")
     expected_budget = int(N_CTX) if policy == "no_eviction" else int(BUDGET)
     proc = _ssh_bg(launch)
-    deadline = time.time() + 180
+    deadline = time.time() + 240
+    last_budget: int | None = None
+    poll_count = 0
     while time.time() < deadline:
+        poll_count += 1
         try:
             with urllib.request.urlopen(f"{BASE}/health", timeout=3) as resp:
                 h = json.loads(resp.read())
-            # If we are still hitting the previous server, its budget will not
-            # match what we just asked for. Keep waiting until the new server
-            # answers OR until the deadline.
-            if h.get("budget") == expected_budget:
+            seen = h.get("budget")
+            if seen != last_budget:
+                print(f"  poll #{poll_count}: /health budget={seen}")
+                last_budget = seen
+            if seen == expected_budget:
                 return proc
-        except (urllib.error.URLError, ConnectionResetError):
-            pass
+        except (urllib.error.URLError, ConnectionResetError) as err:
+            if poll_count == 1 or poll_count % 10 == 0:
+                print(
+                    f"  poll #{poll_count}: /health not up yet ({type(err).__name__})"
+                )
         time.sleep(2)
     raise RuntimeError(
         f"server did not come up with expected budget={expected_budget} "
@@ -175,6 +195,47 @@ def health() -> dict:
 def reset() -> None:
     req = urllib.request.Request(f"{BASE}/admin/reset", method="POST")
     urllib.request.urlopen(req, timeout=10).read()
+
+
+def fetch_drift_log(policy: str) -> None:
+    if not DRIFT_DEBUG:
+        return
+    # Pull the gpu-host-side server log over SSH (NOT _ssh_bg, since we need
+    # the bytes here in the parent), then surface any drift diagnostic blocks.
+    res = subprocess.run(
+        [
+            "ssh",
+            SSH_HOST,
+            "powershell",
+            "-Command",
+            f"if (Test-Path '{DRIFT_LOG}') {{ Get-Content '{DRIFT_LOG}' -Raw }}",
+        ],
+        capture_output=True,
+        timeout=60,
+    )
+    log = res.stdout.decode("utf-8", errors="replace") if res.stdout else ""
+    if "EVOKE drift diagnostic" not in log:
+        print(f"  drift: no diagnostics captured for policy={policy}")
+        return
+    print(f"\n--- DRIFT DIAGNOSTICS captured for policy={policy} ---")
+    # Slice each diagnostic block out so the print is targeted.
+    marker = "=== EVOKE drift diagnostic ==="
+    end_marker = "=== /drift diagnostic ==="
+    cursor = 0
+    block_no = 0
+    while True:
+        start = log.find(marker, cursor)
+        if start == -1:
+            break
+        end = log.find(end_marker, start)
+        if end == -1:
+            end = len(log)
+        else:
+            end += len(end_marker)
+        block_no += 1
+        print(f"[drift block #{block_no}]")
+        print(log[start:end])
+        cursor = end
 
 
 def run_policy(policy: str) -> Result:
@@ -225,6 +286,7 @@ def run_policy(policy: str) -> Result:
         answer = r["choices"][0]["message"].get("content") or ""
         h = health()
         elapsed = time.perf_counter() - t0
+        fetch_drift_log(policy)
         return Result(
             policy=policy,
             probe_ok=PASSKEY in answer,
@@ -235,6 +297,7 @@ def run_policy(policy: str) -> Result:
             elapsed=elapsed,
         )
     except urllib.error.HTTPError as e:
+        fetch_drift_log(policy)
         return Result(
             policy=policy,
             probe_ok=False,
@@ -248,7 +311,12 @@ def run_policy(policy: str) -> Result:
 
 
 def main() -> int:
-    policies = ["no_eviction", "truncate", "evoke"]
+    policies_env = os.environ.get("EVOKE_BENCH_POLICIES")
+    policies = (
+        [p.strip() for p in policies_env.split(",") if p.strip()]
+        if policies_env
+        else ["no_eviction", "truncate", "evoke"]
+    )
     results: list[Result] = []
     for p in policies:
         try:
