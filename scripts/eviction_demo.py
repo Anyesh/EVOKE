@@ -72,10 +72,35 @@ def reset() -> None:
 
 
 def main() -> int:
+    _BOLD = "\033[1m"
+    _DIM = "\033[2m"
+    _YELLOW = "\033[33m"
+    _GREEN = "\033[32m"
+    _CYAN = "\033[36m"
+    _PASS_BG = "\033[42m\033[30m"
+    _RESET = "\033[0m"
+
+    def _fmt_counter(name: str, value: int, fired_color: str) -> str:
+        text = f"{name}={value:<3}"
+        if value == 0:
+            return f"{_DIM}{text}{_RESET}"
+        return f"{fired_color}{_BOLD}{text}{_RESET}"
+
+    def _row(label_color: str, label: str, h: dict[str, Any], suffix: str = "") -> str:
+        return (
+            f"  {label_color}{_BOLD}{label}{_RESET} "
+            f"{h['active_tokens']:>5}/{h['budget']:<5} "
+            f"({h['budget_utilization']:.2f})  "
+            f"{_fmt_counter('ev', h['total_evictions'], _YELLOW)}  "
+            f"{_fmt_counter('rec', h['total_recoveries'], _GREEN)}"
+            f"{suffix}"
+        )
+
     reset()
     h = health()
     print(
-        f"server: budget={h['budget']} n_ctx={h['n_ctx']} kv_block={h['kv_block_primitives']}"
+        f"{_DIM}server: budget={h['budget']} n_ctx={h['n_ctx']} "
+        f"kv_block={h['kv_block_primitives']}{_RESET}"
     )
 
     messages: list[dict[str, Any]] = [
@@ -87,11 +112,8 @@ def main() -> int:
     content = resp["choices"][0]["message"].get("content") or ""
     messages.append({"role": "assistant", "content": content})
     h = health()
-    print(
-        f"  fact turn: {h['active_tokens']:>5}/{h['budget']:<5} "
-        f"({h['budget_utilization']:.2f})  ev={h['total_evictions']:<3} "
-        f"rec={h['total_recoveries']:<3}  asst={content[:40]!r}"
-    )
+    prev_ev, prev_rec = h["total_evictions"], h["total_recoveries"]
+    print(_row(_YELLOW, "fact turn:", h, f"  asst={content[:40]!r}"))
 
     for i, q in enumerate(FILLERS):
         messages.append({"role": "user", "content": q})
@@ -99,28 +121,37 @@ def main() -> int:
         content = resp["choices"][0]["message"].get("content") or ""
         messages.append({"role": "assistant", "content": content})
         h = health()
-        print(
-            f"  filler {i:>2}:  {h['active_tokens']:>5}/{h['budget']:<5} "
-            f"({h['budget_utilization']:.2f})  ev={h['total_evictions']:<3} "
-            f"rec={h['total_recoveries']:<3}  asst={content[:40]!r}"
-        )
+        suffix = f"  asst={content[:40]!r}"
+        if h["total_evictions"] > prev_ev and prev_ev == 0:
+            suffix += f"  {_YELLOW}{_BOLD}<- eviction fires{_RESET}"
+        if h["total_recoveries"] > prev_rec and prev_rec == 0:
+            suffix += f"  {_GREEN}{_BOLD}<- kv_restore fires{_RESET}"
+        print(_row("", f"filler {i:>2}:", h, suffix))
+        prev_ev, prev_rec = h["total_evictions"], h["total_recoveries"]
 
     messages.append({"role": "user", "content": PROBE})
     resp = post(messages, max_tokens=128)
     answer = resp["choices"][0]["message"].get("content") or ""
     h = health()
     total = time.perf_counter() - t0
-    print(
-        f"  PROBE:     {h['active_tokens']:>5}/{h['budget']:<5} "
-        f"({h['budget_utilization']:.2f})  ev={h['total_evictions']:<3} "
-        f"rec={h['total_recoveries']:<3}"
-    )
-    print(f"\n  question: {PROBE!r}")
-    print(f"  answer:   {answer!r}")
+    print(_row(_CYAN, "PROBE:    ", h))
+    print()
+    print(f"  question: {PROBE!r}")
+    if PASSKEY in answer:
+        print(f"  answer:   {_GREEN}{_BOLD}{answer!r}{_RESET}")
+    else:
+        print(f"  answer:   {answer!r}")
     print(f"  elapsed:  {total:.1f}s")
-    print(
-        f"\n  {'PASS' if PASSKEY in answer else 'FAIL'}: passkey {'survived' if PASSKEY in answer else 'lost'} the session"
-    )
+    print()
+    if PASSKEY in answer:
+        print(
+            f"  {_PASS_BG}{_BOLD} PASS {_RESET} "
+            f"{_GREEN}{_BOLD}passkey survived through "
+            f"{h['total_evictions']} evictions, "
+            f"{h['total_recoveries']} recoveries{_RESET}"
+        )
+    else:
+        print(f"  \033[41m\033[37m\033[1m FAIL {_RESET} passkey lost the session")
     return 0 if PASSKEY in answer else 1
 
 
