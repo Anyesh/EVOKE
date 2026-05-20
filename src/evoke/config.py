@@ -72,3 +72,10 @@ class EvokeConfig:
     # multi-session servers. For Qwen 2.5 7B at ~56 KiB/token, 4 GiB holds
     # roughly 70K tokens of evicted history; tune to your VRAM + workload.
     kv_restore_ram_budget_bytes: int | None = None
+    # When set, blocks that would otherwise be LRU-dropped from RAM are
+    # instead spilled to this directory on disk. Recovery reads them back
+    # (slower than RAM by the NVMe latency penalty — typically ~0.5-2 ms
+    # extra) but the block stays recoverable. None disables the spill tier;
+    # the LRU fallback drops bytes entirely (current behavior). A typical
+    # value is "/dev/shm/evoke_spill" or "C:\\tmp\\evoke_spill".
+    kv_restore_spill_path: str | None = None

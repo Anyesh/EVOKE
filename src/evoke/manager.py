@@ -26,6 +26,7 @@ class EvokeManager:
             self._config.recovery_mode,
             engine,
             kv_restore_ram_budget_bytes=self._config.kv_restore_ram_budget_bytes,
+            kv_restore_spill_path=self._config.kv_restore_spill_path,
         )
         self._positions = PositionManager()
         self._events: list[EvokeEvent] = []

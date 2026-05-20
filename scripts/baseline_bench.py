@@ -149,6 +149,9 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     ram_budget = os.environ.get("EVOKE_KV_RESTORE_RAM_BUDGET_BYTES")
     if ram_budget and policy == "evoke":
         extra_env += f"$env:EVOKE_KV_RESTORE_RAM_BUDGET_BYTES='{ram_budget}'; "
+    spill_path = os.environ.get("EVOKE_KV_RESTORE_SPILL_PATH")
+    if spill_path and policy == "evoke":
+        extra_env += f"$env:EVOKE_KV_RESTORE_SPILL_PATH='{spill_path}'; "
     n_rs_seq = os.environ.get("EVOKE_N_RS_SEQ")
     if n_rs_seq:
         extra_env += f"$env:EVOKE_N_RS_SEQ='{n_rs_seq}'; "

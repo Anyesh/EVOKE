@@ -169,3 +169,79 @@ class TestKVRestoreRamBudget:
         )
         assert isinstance(backend, KVRestoreBackend)
         assert backend._budget == 999
+
+
+class TestKVRestoreDiskSpill:
+    def _engine_with_payload_size(self, payload_bytes: int):
+        engine = MockEngine()
+        engine.process_tokens(list(range(1000)))
+        engine.kv_block_save = lambda p0, p1: b"\xab" * payload_bytes
+        return engine
+
+    def test_spill_to_disk_keeps_blocks_recoverable(self, tmp_path):
+        engine = self._engine_with_payload_size(1000)
+        backend = KVRestoreBackend(
+            engine,
+            ram_budget_bytes=2500,
+            spill_path=str(tmp_path / "spill"),
+        )
+        # 4 blocks * 1000 = 4000 > 2500. The oldest 2 spill to disk.
+        for i in range(4):
+            backend.on_evict([_block(i, f"k#{i}")], step=i)
+        assert backend.total_bytes <= 2500
+        assert backend.spill_evictions >= 2
+        assert backend.n_spilled >= 2
+        # All 4 should still be recoverable.
+        for i in range(4):
+            saved = backend.take(f"k#{i}")
+            assert saved is not None, f"k#{i} should be recoverable"
+            assert saved.token_ids[0] == 0  # MockEngine block fixture
+
+    def test_spill_round_trip_preserves_bytes(self, tmp_path):
+        payload = b"\xde\xad\xbe\xef" * 250  # 1000 bytes deterministic
+        engine = MockEngine()
+        engine.process_tokens(list(range(1000)))
+        engine.kv_block_save = lambda p0, p1: payload
+        backend = KVRestoreBackend(
+            engine,
+            ram_budget_bytes=500,  # forces spill on first save
+            spill_path=str(tmp_path / "spill"),
+        )
+        # First block sits in RAM (single-entry-protected). Second push
+        # forces the first to spill.
+        backend.on_evict([_block(0, "old"), _block(1, "new")], step=0)
+        # Old was evicted to disk. take() must reconstruct the original
+        # bytes byte-for-byte.
+        recovered = backend.take("old")
+        assert recovered is not None
+        assert recovered.kv_bytes == payload
+
+    def test_take_removes_spill_file(self, tmp_path):
+        spill_dir = tmp_path / "spill"
+        engine = MockEngine()
+        engine.process_tokens(list(range(1000)))
+        engine.kv_block_save = lambda p0, p1: b"x" * 1000
+        backend = KVRestoreBackend(
+            engine, ram_budget_bytes=500, spill_path=str(spill_dir)
+        )
+        backend.on_evict([_block(0, "a"), _block(1, "b")], step=0)
+        # One spilled file should exist.
+        files_before = list(spill_dir.glob("evoke-spill-*.bin"))
+        assert len(files_before) >= 1
+        # Recovering it cleans up the file.
+        backend.take("a")
+        files_after = list(spill_dir.glob("evoke-spill-*.bin"))
+        assert len(files_after) < len(files_before)
+
+    def test_no_spill_path_falls_back_to_drop(self, tmp_path):
+        # Without a spill_path the LRU still drops. Existing test in
+        # TestKVRestoreRamBudget covers the LRU path; this case just
+        # verifies that spill_evictions stays 0 when no path is configured.
+        engine = MockEngine()
+        engine.process_tokens(list(range(1000)))
+        engine.kv_block_save = lambda p0, p1: b"x" * 1000
+        backend = KVRestoreBackend(engine, ram_budget_bytes=2500, spill_path=None)
+        for i in range(4):
+            backend.on_evict([_block(i, f"k#{i}")], step=i)
+        assert backend.spill_evictions == 0
+        assert backend.lru_evictions >= 2

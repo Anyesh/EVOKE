@@ -46,6 +46,7 @@ def main() -> int:
     attention_capture_layer = int(os.environ.get("EVOKE_ATTN_LAYER", "20"))
     ram_budget_env = os.environ.get("EVOKE_KV_RESTORE_RAM_BUDGET_BYTES")
     kv_restore_ram_budget_bytes = int(ram_budget_env) if ram_budget_env else None
+    kv_restore_spill_path = os.environ.get("EVOKE_KV_RESTORE_SPILL_PATH") or None
     suppress_thinking_strip = bool(os.environ.get("EVOKE_SUPPRESS_THINKING_STRIP"))
     config: EvokeConfig | None = None
 
@@ -91,12 +92,14 @@ def main() -> int:
                 w_attention=w_attention,
                 attention_capture_layer=attention_capture_layer,
                 kv_restore_ram_budget_bytes=kv_restore_ram_budget_bytes,
+                kv_restore_spill_path=kv_restore_spill_path,
                 suppress_thinking_strip=suppress_thinking_strip,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
                 f" w_attention={w_attention} attn_layer={attention_capture_layer}"
                 f" kv_ram_budget={kv_restore_ram_budget_bytes}"
+                f" kv_spill={kv_restore_spill_path}"
             )
     else:
         raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")

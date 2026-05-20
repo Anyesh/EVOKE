@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import os
+import uuid
 from collections import OrderedDict
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 import numpy as np
@@ -76,7 +79,12 @@ class BreadcrumbBackend:
 
 
 class KVRestoreBackend:
-    def __init__(self, engine: object, ram_budget_bytes: int | None = None) -> None:
+    def __init__(
+        self,
+        engine: object,
+        ram_budget_bytes: int | None = None,
+        spill_path: str | None = None,
+    ) -> None:
         self._engine = engine
         # OrderedDict preserves insertion order, which we use as LRU order:
         # popitem(last=False) drops the oldest entry. We move-to-end on
@@ -89,6 +97,16 @@ class KVRestoreBackend:
         self._total_bytes = 0
         self._budget = ram_budget_bytes
         self._lru_evictions = 0
+        # Disk spill tier: when an LRU-victim would otherwise drop its K/V
+        # bytes, we instead write them to <spill_path>/<unique>.bin and
+        # remember the filename. take() can read them back at NVMe speed.
+        # spill_path=None disables the tier (preserves old "drop on LRU"
+        # behavior).
+        self._spill_path: Path | None = Path(spill_path) if spill_path else None
+        if self._spill_path is not None:
+            self._spill_path.mkdir(parents=True, exist_ok=True)
+        self._spilled: dict[str, tuple[Path, SavedBlock]] = {}
+        self._spill_evictions = 0
 
     def on_evict(self, blocks: list[ActiveBlock], step: int) -> None:
         for block in blocks:
@@ -120,33 +138,80 @@ class KVRestoreBackend:
             self._enforce_ram_budget()
 
     def _enforce_ram_budget(self) -> None:
-        # Drop oldest saved K/V bytes until under budget, keeping at least one
-        # entry alive (so a single oversized block doesn't get LRU'd out the
-        # moment it lands). The breadcrumb + embedding survive demotion so
-        # the scorer's peek_embedding still works and a caller asking
-        # list_evicted still sees the block; only the K/V bytes are dropped.
-        # After demotion, take(key) returns None — the caller falls through
-        # to its breadcrumb / discard path naturally.
+        # When over budget, demote the oldest saved block: either spill its
+        # K/V bytes to the disk tier (still recoverable via take(), just
+        # slower) or — if no spill is configured — drop the bytes entirely
+        # (the breadcrumb + embedding survive in either case). Keep at
+        # least one entry in RAM so a single oversized block doesn't get
+        # demoted the moment it lands.
         if self._budget is None:
             return
         while self._total_bytes > self._budget and len(self._saved) > 1:
-            _key, victim = self._saved.popitem(last=False)
+            key, victim = self._saved.popitem(last=False)
             self._total_bytes -= len(victim.kv_bytes)
-            self._lru_evictions += 1
+            if self._spill_path is not None:
+                self._spill_to_disk(key, victim)
+                self._spill_evictions += 1
+            else:
+                self._lru_evictions += 1
+
+    def _spill_to_disk(self, key: str, block: SavedBlock) -> None:
+        # Write the K/V bytes out under a unique filename. The SavedBlock
+        # tuple (minus kv_bytes — those moved to disk) is held in memory
+        # so take() can reconstruct the full block by re-reading the file.
+        # Using a uuid hex prefix means concurrent backends pointed at the
+        # same spill dir won't collide even without locking the directory.
+        assert self._spill_path is not None
+        fname = self._spill_path / f"evoke-spill-{uuid.uuid4().hex}.bin"
+        with open(fname, "wb") as f:
+            f.write(block.kv_bytes)
+        meta = SavedBlock(
+            key=block.key,
+            kv_bytes=b"",  # bytes are on disk; placeholder here.
+            token_ids=block.token_ids,
+            source=block.source,
+            representative_embedding=block.representative_embedding,
+            saved_at_step=block.saved_at_step,
+        )
+        self._spilled[key] = (fname, meta)
 
     def list_evicted(self) -> list[Breadcrumb]:
-        # Includes both still-saved blocks AND LRU-demoted ones. The
-        # smart-recovery path checks peek_embedding for scoring; if a key
-        # comes back with embedding but take() returns None, the caller
-        # treats it as a breadcrumb-only entry.
+        # Includes still-RAM blocks AND demoted (spilled or dropped) ones.
+        # The smart-recovery path checks peek_embedding for scoring; if a
+        # key comes back with embedding but take() returns None, the
+        # caller treats it as a breadcrumb-only entry.
         return list(self._breadcrumbs.values())
 
     def take(self, key: str) -> SavedBlock | None:
+        # RAM first.
         saved = self._saved.pop(key, None)
-        if saved is None:
+        if saved is not None:
+            self._total_bytes -= len(saved.kv_bytes)
+            return saved
+        # Disk tier: read the bytes back, delete the file, hand back the
+        # reconstructed block. The breadcrumb stays (caller may probe it
+        # again).
+        spilled = self._spilled.pop(key, None)
+        if spilled is None:
             return None
-        self._total_bytes -= len(saved.kv_bytes)
-        return saved
+        fname, meta = spilled
+        try:
+            with open(fname, "rb") as f:
+                kv_bytes = f.read()
+        except OSError:
+            return None
+        try:
+            fname.unlink()
+        except OSError:
+            pass
+        return SavedBlock(
+            key=meta.key,
+            kv_bytes=kv_bytes,
+            token_ids=meta.token_ids,
+            source=meta.source,
+            representative_embedding=meta.representative_embedding,
+            saved_at_step=meta.saved_at_step,
+        )
 
     def peek_embedding(self, key: str) -> np.ndarray | None:
         return self._embeddings.get(key)
@@ -159,12 +224,21 @@ class KVRestoreBackend:
     def lru_evictions(self) -> int:
         return self._lru_evictions
 
+    @property
+    def spill_evictions(self) -> int:
+        return self._spill_evictions
+
+    @property
+    def n_spilled(self) -> int:
+        return len(self._spilled)
+
 
 def make_recovery_backend(
     mode: str,
     engine: object | None = None,
     *,
     kv_restore_ram_budget_bytes: int | None = None,
+    kv_restore_spill_path: str | None = None,
 ) -> RecoveryBackend:
     if mode == "discard":
         return DiscardBackend()
@@ -173,5 +247,9 @@ def make_recovery_backend(
     if mode == "kv_restore":
         if engine is None:
             raise ValueError("kv_restore recovery mode requires an engine")
-        return KVRestoreBackend(engine, ram_budget_bytes=kv_restore_ram_budget_bytes)
+        return KVRestoreBackend(
+            engine,
+            ram_budget_bytes=kv_restore_ram_budget_bytes,
+            spill_path=kv_restore_spill_path,
+        )
     raise ValueError(f"unknown recovery_mode: {mode!r}")
