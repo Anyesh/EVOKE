@@ -43,6 +43,21 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
             ctypes.c_size_t,
             ctypes.c_int32,
         ]
+        lib.llama_kv_block_seq_rm.restype = ctypes.c_bool
+        lib.llama_kv_block_seq_rm.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int32,
+            ctypes.c_int32,
+            ctypes.c_int32,
+        ]
+        lib.llama_kv_block_seq_add.restype = None
+        lib.llama_kv_block_seq_add.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int32,
+            ctypes.c_int32,
+            ctypes.c_int32,
+            ctypes.c_int32,
+        ]
         return lib
     except (OSError, AttributeError):
         return None
@@ -184,13 +199,24 @@ class LlamaCppEngine:
     def get_kv_cache_token_count(self) -> int:
         return self._token_count
 
-    def evict_ranges(self, ranges: list[tuple[int, int]]) -> None:
+    def evict_ranges(self, ranges: list[tuple[int, int]]) -> bool:
+        # Returns True if the eviction was applied. Hybrid (Mamba+Attention)
+        # memories reject partial tail rollback in llama_memory_seq_rm (the
+        # recurrent half cannot slice its state) and return false WITHOUT
+        # mutating the attention cache; in that case we leave _next_write_pos
+        # untouched so the engine and our token bookkeeping stay in sync.
+        # An attention-only seq_rm is available as llama_kv_block_seq_rm but
+        # using it would desync the recurrent position state from the attention
+        # one and break decode on subsequent turns, so we accept that tail
+        # eviction is a no-op on hybrid models.
         if not ranges:
-            return
+            return True
         ranges = sorted(ranges)
         n = self._next_write_pos
         for pos_start, pos_end in ranges:
-            llama_cpp.llama_memory_seq_rm(self._memory, 0, pos_start, pos_end)
+            ok = llama_cpp.llama_memory_seq_rm(self._memory, 0, pos_start, pos_end)
+            if not ok:
+                return False
         removed = 0
         cursor = 0
         for pos_start, pos_end in ranges:
@@ -215,6 +241,7 @@ class LlamaCppEngine:
             shift = sum(e - s for s, e in ranges if e <= pos)
             new_emb[pos - shift] = emb
         self._emb_cache = new_emb
+        return True
 
     @property
     def supports_kv_block(self) -> bool:

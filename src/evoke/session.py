@@ -147,20 +147,31 @@ class Session:
         try:
             close_idx = output_tokens.index(close_id)
         except ValueError:
-            # no </think> seen; check if <think> was opened
             open_tokens = self._engine.tokenize("<think>")
             if open_tokens and open_tokens[-1] in output_tokens:
-                # opened but never closed: evict everything, treat as no output
-                self._engine.evict_ranges([(gen_start, gen_start + len(output_tokens))])
-                self._cached_tokens = self._cached_tokens[:gen_start]
-                return []
+                # opened but never closed: try to evict everything. On hybrid
+                # memory the eviction may be rejected (recurrent can't slice);
+                # in that case the physical cache keeps the trace and we leave
+                # cached_tokens intact so they stay aligned with the engine.
+                # The next request's prefix-match will diverge against the
+                # post-stripped assistant message and reset cleanly.
+                if self._engine.evict_ranges(
+                    [(gen_start, gen_start + len(output_tokens))]
+                ):
+                    self._cached_tokens = self._cached_tokens[:gen_start]
+                    return []
+                return output_tokens
             return output_tokens
 
         answer_tokens = output_tokens[close_idx + 1 :]
         think_end_abs = gen_start + close_idx + 1
         if think_end_abs > gen_start:
-            self._engine.evict_ranges([(gen_start, think_end_abs)])
-            self._cached_tokens = self._cached_tokens[:gen_start] + list(answer_tokens)
+            if self._engine.evict_ranges([(gen_start, think_end_abs)]):
+                self._cached_tokens = self._cached_tokens[:gen_start] + list(
+                    answer_tokens
+                )
+            else:
+                return output_tokens
         return answer_tokens
 
     def _track_and_enforce(self, output_tokens: list[int], gen_start: int) -> None:
