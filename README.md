@@ -7,12 +7,12 @@ Long-running LLM agent sessions outgrow the physical KV cache budget within a fe
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
 
-*A 14-turn session with a 1024-token budget. A fact is planted at turn 1 ("favorite number = 4242"), 12 unrelated knowledge questions fill the session, and at turn 14 the fact is probed. The session survives **89 evictions and 71 recoveries**, and the model recalls "4242". The GIF is from the v2 recover-all policy; the current default (smart top-K recovery) cuts recoveries to ~24 on the same conversation while still passing the probe — see paper §7.3 for the head-to-head with truncate and no_eviction baselines.*
+*A 14-turn session with a 1024-token budget. A fact is planted at turn 1 ("favorite number = 4242"), 12 unrelated knowledge questions fill the session, and at turn 14 the fact is probed. The session survives **40 evictions and 13 recoveries**, and the model recalls "4242".*
 
 ### Qwen 3.5 9B (hybrid Mamba/Attention + mrope, thinking-mode)
 ![Eviction demo on Qwen 3.5](assets/eviction-demo-qwen35.gif)
 
-*Same demo, hybrid architecture. The model emits a `<think>...</think>` trace each turn (visible in the truncated `asst='<think>\n...'`). Hybrid memory rejects partial tail rollback of the recurrent half, so the thinking-strip degrades to a session reset on the turn where the chat template diverges (filler 9, where active_tokens momentarily reads 2924/1024 and counters return to 0). Eviction resumes, the fact survives the dance, and the model still recalls "4242" inside the next `<think>` trace. **61 evictions, 38 recoveries**.*
+*Same demo, hybrid architecture. The model emits a `<think>...</think>` trace each turn (visible in the truncated `asst='<think>\n...'`). With `EVOKE_SUPPRESS_THINKING_STRIP=1` the server keeps the thinking trace in the returned content so the cached state stays aligned with what the client echoes back — no session resets. **26 evictions, 4 recoveries**, fact recalled.*
 
 ## What it actually is
 
