@@ -21,30 +21,37 @@ class FakeEngine:
 
     def __init__(self) -> None:
         self._attn_capture_buf: np.ndarray | None = None
-        self._dims = (0, 0, 0)
+        # (n_layers, n_query, n_heads, n_kv) — 4-tuple after multi-layer.
+        self._dims = (0, 0, 0, 0)
         self._written = 0
 
     def attn_capture_set_layer(self, layer: int) -> None:
         self._layer = layer
 
+    def attn_capture_set_layers(self, layers: list[int]) -> None:
+        self._layers = list(layers)
+
     def attn_capture_set_buffer(self, buf) -> None:
         self._attn_capture_buf = buf
 
-    def attn_capture_get_dims(self) -> tuple[int, int, int]:
+    def attn_capture_get_dims(self) -> tuple[int, int, int, int]:
         return self._dims
 
     def attn_capture_get_written(self) -> int:
         return self._written
 
     def stub_capture(self, weights: np.ndarray) -> None:
-        # weights shape: (n_heads, n_query, n_kv); the AttentionScorer
-        # provides the buffer; we copy into it. ggml-side captures as
-        # [n_kv, n_query, n_heads] in row-major; matching that here.
-        n_heads, n_query, n_kv = weights.shape
+        # weights shape: (n_layers, n_heads, n_query, n_kv); the
+        # AttentionScorer provides the buffer; we copy into it. Tests
+        # written against the single-layer (3D) shape are auto-promoted
+        # to n_layers=1 here.
+        if weights.ndim == 3:
+            weights = weights[np.newaxis]
+        n_layers, n_heads, n_query, n_kv = weights.shape
         flat = weights.ravel().astype(np.float32)
         assert self._attn_capture_buf is not None
         self._attn_capture_buf[: flat.size] = flat
-        self._dims = (n_query, n_heads, n_kv)
+        self._dims = (n_layers, n_query, n_heads, n_kv)
         self._written = flat.size
 
 

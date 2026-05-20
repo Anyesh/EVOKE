@@ -53,19 +53,22 @@ def main() -> int:
 
     engine.process_tokens(tokens)
 
-    n_query, n_heads, n_kv = engine.attn_capture_get_dims()
+    n_layers, n_query, n_heads, n_kv = engine.attn_capture_get_dims()
     written = engine.attn_capture_get_written()
-    print(f"capture dims: n_query={n_query}  n_heads={n_heads}  n_kv={n_kv}")
+    print(
+        f"capture dims: n_layers={n_layers}  n_query={n_query}  "
+        f"n_heads={n_heads}  n_kv={n_kv}"
+    )
     print(f"floats written: {written}")
 
-    if n_query == 0 or n_heads == 0 or n_kv == 0:
+    if n_layers == 0 or n_query == 0 or n_heads == 0 or n_kv == 0:
         print("FAIL: capture dims are zero — the side-compute path didn't run")
         return 1
     if written == 0:
         print("FAIL: nothing written to buffer (capture tensor not recorded)")
         return 1
 
-    arr = buf[:written].reshape(n_heads, n_query, n_kv)
+    arr = buf[:written].reshape(n_layers, n_heads, n_query, n_kv)[0]
     # ggml stores [n_kv, n_query_tokens, n_heads] in row-major (ne[0]=n_kv
     # is the fastest dim); after reshape with (n_heads, n_query, n_kv) we
     # get logical [head][query][kv]. Verify softmax invariants AND causal

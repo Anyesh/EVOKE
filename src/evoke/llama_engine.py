@@ -68,9 +68,15 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
             ctypes.c_int32,
             ctypes.c_int32,
         ]
-        # EVOKE attention-weight capture primitives (#30).
+        # EVOKE attention-weight capture primitives (#30, multi-layer #39).
         lib.llama_attn_capture_set_layer.restype = None
         lib.llama_attn_capture_set_layer.argtypes = [ctypes.c_void_p, ctypes.c_int32]
+        lib.llama_attn_capture_set_layers.restype = None
+        lib.llama_attn_capture_set_layers.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_int32),
+            ctypes.c_int32,
+        ]
         lib.llama_attn_capture_set_buffer.restype = None
         lib.llama_attn_capture_set_buffer.argtypes = [
             ctypes.c_void_p,
@@ -80,6 +86,7 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
         lib.llama_attn_capture_get_dims.restype = None
         lib.llama_attn_capture_get_dims.argtypes = [
             ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_int32),
             ctypes.POINTER(ctypes.c_int32),
             ctypes.POINTER(ctypes.c_int32),
             ctypes.POINTER(ctypes.c_int32),
@@ -416,6 +423,20 @@ class LlamaCppEngine:
             )
         _kv_block_lib.llama_attn_capture_set_layer(self._ctx, ctypes.c_int32(layer))
 
+    def attn_capture_set_layers(self, layers: list[int]) -> None:
+        # Configure capture across multiple layers. Pass an empty list to
+        # disable. The host buffer receives [n_layers, n_query, n_heads,
+        # n_kv] f32 in the order given. Up to 16 layers; deeper layers
+        # carry stronger semantic signal for the relevance scorer.
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "Attention capture requires the EVOKE llama.cpp build; "
+                "set LLAMA_CPP_LIB"
+            )
+        n = len(layers)
+        arr = (ctypes.c_int32 * n)(*layers) if n > 0 else (ctypes.c_int32 * 0)()
+        _kv_block_lib.llama_attn_capture_set_layers(self._ctx, arr, ctypes.c_int32(n))
+
     def attn_capture_set_buffer(self, buf: np.ndarray | None) -> None:
         # Provide a float32 numpy buffer for the C side to write attention
         # weights into after each decode. The buffer must remain alive while
@@ -438,16 +459,24 @@ class LlamaCppEngine:
             self._ctx, buf.ctypes.data_as(ctypes.c_void_p), buf.size
         )
 
-    def attn_capture_get_dims(self) -> tuple[int, int, int]:
+    def attn_capture_get_dims(self) -> tuple[int, int, int, int]:
+        # Returns (n_layers, n_query_tokens, n_heads, n_kv) — the f32 buffer
+        # written by the last decode has shape [n_layers, n_query, n_heads,
+        # n_kv]. Single-layer capture (legacy set_layer) reports n_layers=1.
         if _kv_block_lib is None:
-            return (0, 0, 0)
+            return (0, 0, 0, 0)
+        n_l = ctypes.c_int32(0)
         n_q = ctypes.c_int32(0)
         n_h = ctypes.c_int32(0)
         n_kv = ctypes.c_int32(0)
         _kv_block_lib.llama_attn_capture_get_dims(
-            self._ctx, ctypes.byref(n_q), ctypes.byref(n_h), ctypes.byref(n_kv)
+            self._ctx,
+            ctypes.byref(n_l),
+            ctypes.byref(n_q),
+            ctypes.byref(n_h),
+            ctypes.byref(n_kv),
         )
-        return (int(n_q.value), int(n_h.value), int(n_kv.value))
+        return (int(n_l.value), int(n_q.value), int(n_h.value), int(n_kv.value))
 
     def attn_capture_get_written(self) -> int:
         if _kv_block_lib is None:
