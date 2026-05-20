@@ -112,11 +112,6 @@ class Session:
     def sync_prefix(self, prompt_tokens: list[int]) -> SyncStats:
         divergence = self._common_prefix_len(prompt_tokens)
         if divergence < len(self._cached_tokens):
-            print(
-                f"[session] divergence at {divergence} of {len(self._cached_tokens)} "
-                f"cached, request has {len(prompt_tokens)} tokens; resetting",
-                flush=True,
-            )
             self.reset()
             divergence = 0
 
