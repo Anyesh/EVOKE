@@ -304,6 +304,15 @@ class Session:
         # with what the client will send back, evict the thinking range from
         # the physical cache and from cached_tokens. Returns the tokens that
         # remain (the answer; or [] if generation never closed </think>).
+        #
+        # When config.suppress_thinking_strip is True (typical for hybrid
+        # Mamba+Attention models that cannot do mid-cache eviction), we leave
+        # the thinking trace in both the cache AND the returned content. The
+        # client echoes it back verbatim on the next request, the cached
+        # prefix stays aligned, and no session reset is needed. See
+        # parse_qwen_response's strip_thinking parameter for the response side.
+        if self._config.suppress_thinking_strip:
+            return output_tokens
         if not output_tokens:
             return output_tokens
         close_tokens = self._engine.tokenize("</think>")

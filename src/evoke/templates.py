@@ -106,16 +106,20 @@ def format_qwen_chat(
     return rendered
 
 
-def parse_qwen_response(raw: str) -> ParsedResponse:
+def parse_qwen_response(raw: str, *, strip_thinking: bool = True) -> ParsedResponse:
     """Split a Qwen assistant turn into plain content and structured tool calls.
 
-    Strips a <think>...</think> reasoning trace if present (kept out of the
-    returned content; opencode does not need to see internal reasoning).
+    By default strips a <think>...</think> reasoning trace (opencode does not
+    need to see internal reasoning). Pass strip_thinking=False when running
+    against hybrid memory models that can't evict mid-cache: the cached state
+    must include the thinking trace, and so must the response, otherwise the
+    next request's templated prompt diverges and triggers a session reset.
     """
     cleaned = raw
-    think_end = cleaned.find("</think>")
-    if think_end != -1:
-        cleaned = cleaned[think_end + len("</think>") :].lstrip()
+    if strip_thinking:
+        think_end = cleaned.find("</think>")
+        if think_end != -1:
+            cleaned = cleaned[think_end + len("</think>") :].lstrip()
     for token in ("<|im_end|>", "<|endoftext|>"):
         idx = cleaned.find(token)
         if idx != -1:

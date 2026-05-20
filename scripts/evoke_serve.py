@@ -46,6 +46,7 @@ def main() -> int:
     attention_capture_layer = int(os.environ.get("EVOKE_ATTN_LAYER", "20"))
     ram_budget_env = os.environ.get("EVOKE_KV_RESTORE_RAM_BUDGET_BYTES")
     kv_restore_ram_budget_bytes = int(ram_budget_env) if ram_budget_env else None
+    suppress_thinking_strip = bool(os.environ.get("EVOKE_SUPPRESS_THINKING_STRIP"))
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -62,6 +63,7 @@ def main() -> int:
             w_coherence=0.0,
             sink_count=4,
             recovery_mode="discard",
+            suppress_thinking_strip=suppress_thinking_strip,
         )
         print(f"  policy=truncate budget={budget} recovery=discard")
     elif policy == "no_eviction":
@@ -74,6 +76,7 @@ def main() -> int:
             high_watermark=0.999,
             low_watermark=0.99,
             recovery_mode="discard",
+            suppress_thinking_strip=suppress_thinking_strip,
         )
         print(f"  policy=no_eviction budget={budget}")
     elif policy == "evoke":
@@ -88,6 +91,7 @@ def main() -> int:
                 w_attention=w_attention,
                 attention_capture_layer=attention_capture_layer,
                 kv_restore_ram_budget_bytes=kv_restore_ram_budget_bytes,
+                suppress_thinking_strip=suppress_thinking_strip,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
@@ -97,9 +101,12 @@ def main() -> int:
     else:
         raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")
 
+    n_rs_seq = int(os.environ.get("EVOKE_N_RS_SEQ", "0"))
     print(f"loading model: {model_path}")
-    print(f"  n_ctx={n_ctx}  model_name={model_name}")
-    engine = LlamaCppEngine(model_path, n_ctx=n_ctx, n_gpu_layers=-1, verbose=False)
+    print(f"  n_ctx={n_ctx}  model_name={model_name}  n_rs_seq={n_rs_seq}")
+    engine = LlamaCppEngine(
+        model_path, n_ctx=n_ctx, n_gpu_layers=-1, verbose=False, n_rs_seq=n_rs_seq
+    )
     print(f"  ready (n_embd={engine.n_embd}, kv_block={engine.supports_kv_block})")
 
     app = create_app(engine, model_name, config=config)

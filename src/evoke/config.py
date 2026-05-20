@@ -53,6 +53,18 @@ class EvokeConfig:
     task_focus_ema_alpha: float = 0.7
 
     recovery_mode: str = "discard"
+    # On hybrid (Mamba + Attention) memory models, mid-cache eviction of the
+    # <think>...</think> range is impossible (the recurrent half rejects
+    # partial-rollback ranges strictly before the head). With strip enabled
+    # the cached state diverges from what the client echoes back (which has
+    # the thinking stripped) and the session resets on every assistant turn.
+    # When this flag is True the server returns the full assistant content
+    # including the thinking trace; the client echoes it back verbatim;
+    # cached stays aligned naturally; no session reset. Trade-off: clients
+    # see the thinking text in the response and must strip it on their side
+    # if they want to hide it from the user. Default False preserves the
+    # pure-attention behavior (strip + evict + risk-of-reset).
+    suppress_thinking_strip: bool = False
     # Host-RAM budget for the kv_restore backend. When set, the saved-block
     # pool is bounded; oldest saved blocks lose their K/V bytes (kept as
     # breadcrumbs only) when adding a new save would exceed the budget. None

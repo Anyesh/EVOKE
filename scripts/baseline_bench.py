@@ -149,6 +149,12 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     ram_budget = os.environ.get("EVOKE_KV_RESTORE_RAM_BUDGET_BYTES")
     if ram_budget and policy == "evoke":
         extra_env += f"$env:EVOKE_KV_RESTORE_RAM_BUDGET_BYTES='{ram_budget}'; "
+    n_rs_seq = os.environ.get("EVOKE_N_RS_SEQ")
+    if n_rs_seq:
+        extra_env += f"$env:EVOKE_N_RS_SEQ='{n_rs_seq}'; "
+    suppress_thinking_strip = os.environ.get("EVOKE_SUPPRESS_THINKING_STRIP")
+    if suppress_thinking_strip:
+        extra_env += f"$env:EVOKE_SUPPRESS_THINKING_STRIP='{suppress_thinking_strip}'; "
     launch = (
         f"cd {REMOTE_DIR}; "
         f"$env:LLAMA_CPP_LIB='{LIB}'; "

@@ -93,7 +93,15 @@ class LlamaCppEngine:
         n_gpu_layers: int = -1,
         n_batch: int = 512,
         verbose: bool = False,
+        n_rs_seq: int = 0,
     ):
+        # n_rs_seq: number of per-token snapshots the recurrent half keeps for
+        # partial rollback. 0 disables (upstream default — recurrent seq_rm
+        # only succeeds for whole-sequence wipe). Set > 0 on hybrid
+        # (Mamba+Attention) models to enable mid-sequence eviction; cost is
+        # roughly (1 + n_rs_seq) x the recurrent state memory per layer. For
+        # Qwen 3.5 9B's hybrid layers, n_rs_seq=4096 supports up to 4k-token
+        # thinking-trace eviction at ~couple of GB extra host RAM.
         self._n_batch = n_batch
 
         if not verbose:
@@ -114,6 +122,7 @@ class LlamaCppEngine:
         ctx_params.n_batch = n_batch
         ctx_params.n_ubatch = min(n_batch, 512)
         ctx_params.n_seq_max = 1
+        ctx_params.n_rs_seq = n_rs_seq
         ctx_params.embeddings = True
         ctx_params.pooling_type = llama_cpp.LLAMA_POOLING_TYPE_NONE
         # FA must be on: it makes V row-aligned (v_trans=false), so kv_block_save

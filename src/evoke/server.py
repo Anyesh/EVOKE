@@ -233,7 +233,10 @@ def create_app(
             )
             result = session.generate(max_tokens=max_new, stop_strings=stops)
 
-        parsed = parse_qwen_response(result.text)
+        parsed = parse_qwen_response(
+            result.text,
+            strip_thinking=not session._config.suppress_thinking_strip,
+        )
         return _completion_payload(
             completion_id,
             created,
@@ -296,15 +299,24 @@ async def _stream_completion(
             if tool_locked:
                 continue
 
-            if in_think:
-                close_idx = full_text.find("</think>", emit_end)
-                if close_idx == -1:
-                    continue
-                in_think = False
-                emit_end = close_idx + len("</think>")
+            # On hybrid memory models with suppress_thinking_strip set, the
+            # client must echo the full assistant content (including the
+            # thinking trace) back to keep the cached state aligned. Skip
+            # the in_think gating so <think>...</think> streams through
+            # verbatim alongside the answer.
+            if not session._config.suppress_thinking_strip:
+                if in_think:
+                    close_idx = full_text.find("</think>", emit_end)
+                    if close_idx == -1:
+                        continue
+                    in_think = False
+                    emit_end = close_idx + len("</think>")
+
+                think_idx = full_text.find("<think>", emit_end)
+            else:
+                think_idx = -1
 
             tc_idx = full_text.find("<tool_call>", emit_end)
-            think_idx = full_text.find("<think>", emit_end)
 
             if tc_idx != -1 and (think_idx == -1 or tc_idx < think_idx):
                 pre = full_text[emit_end:tc_idx]
@@ -340,7 +352,9 @@ async def _stream_completion(
                     )
                 )
 
-    parsed = parse_qwen_response(full_text)
+    parsed = parse_qwen_response(
+        full_text, strip_thinking=not session._config.suppress_thinking_strip
+    )
     if not tool_locked and not in_think:
         tail = full_text[emit_end:]
         for tok in ("<|im_end|>", "<|endoftext|>"):
