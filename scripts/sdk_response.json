@@ -1,9 +1,0 @@
-{
-  "installPath": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community",
-  "quiet": true,
-  "norestart": true,
-  "includeRecommended": true,
-  "add": [
-    "Microsoft.VisualStudio.Workload.NativeDesktop"
-  ]
-}

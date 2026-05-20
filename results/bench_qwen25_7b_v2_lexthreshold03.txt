@@ -404,4 +404,4 @@ truncate           2048 recall    0.449     100%   0.0    47   0.21
     expected: 'Dr. Elena Vasquez'
     answer:   'The lead researcher on the deep-sea bioluminescence project is Dr. Elena Vasquez.'
 
-Results saved to C:\Users\User\projects\unlearn\results\benchmark.json
+Results saved to results/benchmark.json

@@ -4,10 +4,11 @@ Drives the same 14-turn planted-fact session against the server under three
 policy configurations and prints a comparison table. Restarts the remote
 server between runs via SSH so each policy starts fresh.
 
-Required env: EVOKE_SSH_HOST (e.g. gpu-host@HOST), EVOKE_LIB_PATH
-(LLAMA_CPP_LIB on gpu-host), EVOKE_MODEL_PATH (GGUF on gpu-host).
-Optional: EVOKE_SERVER (default http://HOST:8000),
-EVOKE_BUDGET (default 1024), EVOKE_N_CTX (default 16384).
+Required env: EVOKE_SSH_HOST (e.g. user@gpu-host), EVOKE_LIB_PATH (path
+to llama.dll on the remote GPU host), EVOKE_MODEL_PATH (path to the GGUF
+on the remote GPU host), EVOKE_SERVER (http://host:port the bench drives).
+Optional: EVOKE_BUDGET (default 1024), EVOKE_N_CTX (default 16384),
+EVOKE_REMOTE_DIR (default C:\\projects\\unlearn).
 """
 
 from __future__ import annotations
@@ -24,20 +25,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-BASE = os.environ.get("EVOKE_SERVER", "http://HOST:8000")
-SSH_HOST = os.environ.get("EVOKE_SSH_HOST", "gpu-host@HOST")
-LIB = os.environ.get(
-    "EVOKE_LIB_PATH", "C:\\Users\\User\\llama.cpp\\build\\bin\\llama.dll"
-)
-MODEL = os.environ.get(
-    "EVOKE_MODEL_PATH",
-    "C:\\Applications\\llama-cpp\\models\\gguf\\Qwen2.5-7B-Instruct-Q4_K_M.gguf",
-)
+
+def _missing(name: str) -> str:
+    raise SystemExit(f"set {name} (see module docstring)")
+
+
+BASE = os.environ.get("EVOKE_SERVER") or _missing("EVOKE_SERVER")
+SSH_HOST = os.environ.get("EVOKE_SSH_HOST") or _missing("EVOKE_SSH_HOST")
+LIB = os.environ.get("EVOKE_LIB_PATH") or _missing("EVOKE_LIB_PATH")
+MODEL = os.environ.get("EVOKE_MODEL_PATH") or _missing("EVOKE_MODEL_PATH")
 BUDGET = os.environ.get("EVOKE_BUDGET", "1024")
 N_CTX = os.environ.get("EVOKE_N_CTX", "16384")
 MODEL_NAME = os.environ.get("EVOKE_MODEL_NAME", "qwen25")
+REMOTE_DIR = os.environ.get("EVOKE_REMOTE_DIR", "C:\\projects\\unlearn")
 DRIFT_DEBUG = bool(os.environ.get("EVOKE_DEBUG_DRIFT"))
-DRIFT_LOG = "C:\\Users\\User\\projects\\unlearn\\evoke_drift.log"
+DRIFT_LOG = REMOTE_DIR + "\\evoke_drift.log"
 
 PASSKEY = "4242"
 FACT = (
@@ -135,7 +137,7 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     if DRIFT_DEBUG:
         _ssh(f"if (Test-Path '{DRIFT_LOG}') {{ Remove-Item -Force '{DRIFT_LOG}' }}")
     launch = (
-        f"cd C:\\Users\\User\\projects\\unlearn; "
+        f"cd {REMOTE_DIR}; "
         f"$env:LLAMA_CPP_LIB='{LIB}'; "
         f"$env:EVOKE_MODEL_PATH='{MODEL}'; "
         f"$env:EVOKE_HOST='0.0.0.0'; $env:EVOKE_PORT='8000'; "
@@ -200,7 +202,7 @@ def reset() -> None:
 def fetch_drift_log(policy: str) -> None:
     if not DRIFT_DEBUG:
         return
-    # Pull the gpu-host-side server log over SSH (NOT _ssh_bg, since we need
+    # Pull the remote-side server log over SSH (NOT _ssh_bg, since we need
     # the bytes here in the parent), then surface any drift diagnostic blocks.
     res = subprocess.run(
         [

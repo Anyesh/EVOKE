@@ -23,5 +23,10 @@ CLAUDE.md
 .mypy_cache/
 evoke_drift.log
 
+# Personal local-only scripts (Windows build helpers, SDK config)
+scripts/*.ps1
+scripts/*.cmd
+scripts/sdk_response.json
+
 # Docs
 docs/

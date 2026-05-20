@@ -21,7 +21,9 @@ import urllib.request
 import urllib.error
 import json
 
-BASE = os.environ.get("EVOKE_SERVER", "http://HOST:8000")
+BASE = os.environ.get("EVOKE_SERVER") or sys.exit(
+    "set EVOKE_SERVER to the http://host:port of the EVOKE server"
+)
 MODEL = os.environ.get("EVOKE_MODEL_NAME", "qwen35")
 
 PASSKEY = "4242"

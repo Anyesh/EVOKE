@@ -10,7 +10,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-BASE = os.environ.get("EVOKE_SERVER", "http://HOST:8000")
+BASE = os.environ.get("EVOKE_SERVER") or sys.exit(
+    "set EVOKE_SERVER to the http://host:port of the EVOKE server"
+)
 MODEL_NAME = os.environ.get("EVOKE_MODEL_NAME", "qwen25")
 PASSKEY = "4242"
 FACT = (

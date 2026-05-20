@@ -1,7 +1,12 @@
 import ctypes
 import os
 
-BUILD_BIN = r"C:\Users\User\llama.cpp\build\bin"
+BUILD_BIN = os.environ.get("EVOKE_BUILD_BIN", "")
+if not BUILD_BIN:
+    raise SystemExit(
+        "set EVOKE_BUILD_BIN to the directory containing the fork's "
+        "ggml-*.dll / llama.dll (e.g. <repo>/build/bin)"
+    )
 
 print("build bin exists:", os.path.isdir(BUILD_BIN))
 print("CUDA_PATH:", os.environ.get("CUDA_PATH"))
