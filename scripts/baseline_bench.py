@@ -13,6 +13,7 @@ EVOKE_REMOTE_DIR (default C:\\projects\\unlearn).
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import subprocess
@@ -78,16 +79,22 @@ class Result:
     error: str | None = None
 
 
-def _ssh(command: str) -> None:
-    # SSH to Windows OpenSSH + powershell occasionally exits 255 on otherwise-
-    # successful commands when PowerShell emits to stderr (NativeCommandError),
-    # so we tolerate non-zero exit codes here and let the downstream health
-    # poll catch real failures.
-    subprocess.run(
-        ["ssh", SSH_HOST, "powershell", "-Command", command],
+def _ssh(command: str) -> str:
+    # Windows OpenSSH defaults to cmd.exe as the login shell; that means
+    # `powershell -Command "<...|...>"` gets re-parsed by cmd, which
+    # interprets PowerShell pipes (|) as cmd pipes and breaks the command
+    # mid-stream. Using -EncodedCommand with a base64 UTF-16LE payload
+    # ships the whole script as one opaque arg that cmd can't reinterpret.
+    # 255 exit codes still happen from PowerShell's NativeCommandError
+    # behaviour on stderr writes — tolerate them; downstream health poll
+    # catches real failures.
+    encoded = base64.b64encode(command.encode("utf-16le")).decode("ascii")
+    res = subprocess.run(
+        ["ssh", SSH_HOST, "powershell", "-NoProfile", "-EncodedCommand", encoded],
         check=False,
         capture_output=True,
     )
+    return res.stdout.decode("utf-8", errors="replace")
 
 
 def _ssh_bg(command: str) -> subprocess.Popen[bytes]:
@@ -98,29 +105,61 @@ def _ssh_bg(command: str) -> subprocess.Popen[bytes]:
     )
 
 
+def _port_is_free() -> bool:
+    # Probe the remote port directly via netcat-like behaviour. Returns
+    # True if no process is listening or accepting. Used after kill to
+    # confirm the OS has released the listener before we launch the
+    # replacement. /health-fail polling alone is unreliable because the
+    # old uvicorn can be unresponsive but still hold the port.
+    try:
+        with urllib.request.urlopen(f"{BASE}/health", timeout=1) as resp:
+            resp.read()
+        return False  # something answered = port still owned
+    except (urllib.error.URLError, ConnectionResetError, TimeoutError):
+        return True
+
+
 def restart_server(policy: str) -> subprocess.Popen[bytes]:
-    # Kill whatever owns port 8000 — Get-Process by name misses processes uv
-    # spawns under varying interpreter names. Get-NetTCPConnection finds the
-    # listener regardless of what binary it is.
-    _ssh(
+    # Two-stage kill: first taskkill /F /IM python.exe (most reliable on
+    # Windows — it walks the process tree and kills uv-spawned children
+    # the PowerShell Stop-Process path sometimes misses), then a second
+    # pass via Get-NetTCPConnection to catch anything still bound to the
+    # port (a pythonw or other variant the IM match doesn't hit).
+    # Wait a couple of seconds for the OS to actually release the listener
+    # — Windows TIME_WAIT on the listening socket itself is fast but the
+    # process-tree teardown can take a moment.
+    kill_out = _ssh(
+        # Stop-Process by name covers python.exe / pythonw.exe / uv.exe.
+        # Get-NetTCPConnection catches any other process still bound to
+        # port 8000 (rare, but cheap to do). The before/after count is
+        # printed so flaky runs leave an audit trail of how many processes
+        # the kill actually terminated.
+        "$before = @(Get-Process python -ErrorAction SilentlyContinue).Count;"
+        "Get-Process -Name python,pythonw,uv -ErrorAction SilentlyContinue "
+        "| Stop-Process -Force -ErrorAction SilentlyContinue;"
         "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue "
         "| Where-Object {$_.State -eq 'Listen'} "
         "| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force "
-        "-ErrorAction SilentlyContinue }; "
-        "Get-Process python,python3,pythonw -ErrorAction SilentlyContinue "
-        "| Stop-Process -Force"
+        "-ErrorAction SilentlyContinue };"
+        "Start-Sleep -Seconds 3;"
+        "$after = @(Get-Process python -ErrorAction SilentlyContinue).Count;"
+        'Write-Output ("kill: python before=" + $before + " after=" + $after)'
     )
-    # Wait for the OS to actually release port 8000 — otherwise the new
-    # uvicorn fails to bind and our requests keep hitting the dying server.
-    deadline = time.time() + 60
+    if kill_out.strip():
+        for line in kill_out.strip().splitlines():
+            print(f"  {line}")
+    # Wait for the port to be free. Up to 30s — taskkill is usually
+    # immediate, but if a CUDA driver shutdown holds the process briefly
+    # we wait it out.
+    deadline = time.time() + 30
     while time.time() < deadline:
-        try:
-            with urllib.request.urlopen(f"{BASE}/health", timeout=1) as resp:
-                resp.read()
-            time.sleep(2)
-        except (urllib.error.URLError, ConnectionResetError, TimeoutError):
+        if _port_is_free():
             break
-    time.sleep(3)
+        time.sleep(1)
+    # Belt + braces: even after the port reports free, give the OS one
+    # more second to fully release. Without this we sometimes see EADDRINUSE
+    # on the new uvicorn bind.
+    time.sleep(1)
     # no_eviction needs the budget to NOT pin to the tight value otherwise the
     # watermark still trips. Letting EVOKE_BUDGET fall back to n_ctx makes
     # eviction genuinely never fire for that baseline.
