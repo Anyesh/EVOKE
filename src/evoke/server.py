@@ -200,6 +200,17 @@ def create_app(engine: LlamaCppEngine, model_name: str) -> FastAPI:
     return app
 
 
+_MARKERS = ("<think>", "</think>", "<tool_call>", "</tool_call>", "<|im_end|>")
+_LOOKBACK = max(len(m) for m in _MARKERS)
+
+
+def _safe_emit_end(full_text: str) -> int:
+    # Hold back the last _LOOKBACK chars so a marker that is mid-formation
+    # ("<thin") never ships as content. The held tail is released either when
+    # the marker resolves or at end-of-generation.
+    return max(0, len(full_text) - _LOOKBACK)
+
+
 async def _stream_completion(
     session: Session,
     engine: LlamaCppEngine,
@@ -211,23 +222,82 @@ async def _stream_completion(
     created: int,
     model_name: str,
 ):
-    async with lock:
-        session.sync_prefix(prompt_tokens)
-        # generation runs synchronously inside the lock; this is fine for a
-        # single-session server and matches how llama.cpp wants to be driven.
-        result = session.generate(max_tokens=max_new, stop_strings=stops)
-
-    parsed = parse_qwen_response(result.text)
-
     yield _sse(
         _chunk_payload(completion_id, created, model_name, {"role": "assistant"})
     )
-    if parsed.content:
-        yield _sse(
-            _chunk_payload(
-                completion_id, created, model_name, {"content": parsed.content}
+
+    in_think = False
+    tool_locked = False
+    emit_end = 0
+    full_text = ""
+    finish_reason: str | None = None
+
+    async with lock:
+        session.sync_prefix(prompt_tokens)
+        for chunk in session.stream_generate(max_tokens=max_new, stop_strings=stops):
+            full_text = chunk.full_text
+            if chunk.finish_reason is not None:
+                finish_reason = chunk.finish_reason
+
+            if tool_locked:
+                continue
+
+            if in_think:
+                close_idx = full_text.find("</think>", emit_end)
+                if close_idx == -1:
+                    continue
+                in_think = False
+                emit_end = close_idx + len("</think>")
+
+            tc_idx = full_text.find("<tool_call>", emit_end)
+            think_idx = full_text.find("<think>", emit_end)
+
+            if tc_idx != -1 and (think_idx == -1 or tc_idx < think_idx):
+                pre = full_text[emit_end:tc_idx]
+                if pre.strip():
+                    yield _sse(
+                        _chunk_payload(
+                            completion_id, created, model_name, {"content": pre}
+                        )
+                    )
+                tool_locked = True
+                emit_end = tc_idx
+                continue
+
+            if think_idx != -1:
+                pre = full_text[emit_end:think_idx]
+                if pre.strip():
+                    yield _sse(
+                        _chunk_payload(
+                            completion_id, created, model_name, {"content": pre}
+                        )
+                    )
+                in_think = True
+                emit_end = think_idx
+                continue
+
+            safe_end = _safe_emit_end(full_text)
+            if safe_end > emit_end:
+                delta = full_text[emit_end:safe_end]
+                emit_end = safe_end
+                yield _sse(
+                    _chunk_payload(
+                        completion_id, created, model_name, {"content": delta}
+                    )
+                )
+
+    parsed = parse_qwen_response(full_text)
+    if not tool_locked and not in_think:
+        tail = full_text[emit_end:]
+        for tok in ("<|im_end|>", "<|endoftext|>"):
+            if tok in tail:
+                tail = tail.split(tok, 1)[0]
+                break
+        if tail:
+            yield _sse(
+                _chunk_payload(completion_id, created, model_name, {"content": tail})
             )
-        )
+
     if parsed.tool_calls:
         tool_deltas = [
             {
@@ -246,7 +316,10 @@ async def _stream_completion(
                 completion_id, created, model_name, {"tool_calls": tool_deltas}
             )
         )
-    final_reason = "tool_calls" if parsed.tool_calls else parsed.finish_reason
+
+    final_reason = (
+        "tool_calls" if parsed.tool_calls else (finish_reason or parsed.finish_reason)
+    )
     yield _sse(
         _chunk_payload(
             completion_id, created, model_name, {}, finish_reason=final_reason

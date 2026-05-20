@@ -13,6 +13,7 @@ opencode, Aider, or any OpenAI-compatible agent harness.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Iterator
 
 from evoke.llama_engine import LlamaCppEngine
 
@@ -22,6 +23,14 @@ class GenerationResult:
     text: str
     output_tokens: list[int]
     finish_reason: str
+
+
+@dataclass
+class GenerationChunk:
+    delta_text: str
+    finish_reason: str | None
+    full_text: str
+    output_tokens: list[int]
 
 
 class Session:
@@ -97,4 +106,72 @@ class Session:
         self._cached_tokens.extend(output_tokens)
         return GenerationResult(
             text=text, output_tokens=output_tokens, finish_reason=finish
+        )
+
+    def stream_generate(
+        self,
+        max_tokens: int,
+        stop_strings: list[str] | None = None,
+    ) -> Iterator[GenerationChunk]:
+        # Token-by-token streaming. Yields a chunk per generated token with the
+        # incremental delta text. Stop-string truncation is honored: the chunk
+        # that crosses the stop boundary yields only the pre-stop slice. After
+        # the loop the full output_tokens stay in the cache so the next request
+        # can prefix-match against them.
+        stops = stop_strings or []
+        eos = self._engine.eos_token
+        output_tokens: list[int] = []
+        emitted_len = 0
+
+        for step in range(max_tokens):
+            token = self._engine.generate_next()
+            output_tokens.append(token)
+
+            if token == eos:
+                full_text = self._engine.detokenize(output_tokens)
+                delta = full_text[emitted_len:]
+                self._cached_tokens.extend(output_tokens)
+                yield GenerationChunk(
+                    delta_text=delta,
+                    finish_reason="stop",
+                    full_text=full_text,
+                    output_tokens=output_tokens,
+                )
+                return
+
+            full_text = self._engine.detokenize(output_tokens)
+
+            hit_idx = -1
+            for stop in stops:
+                idx = full_text.find(stop, emitted_len)
+                if idx != -1 and (hit_idx == -1 or idx < hit_idx):
+                    hit_idx = idx
+            if hit_idx != -1:
+                truncated = full_text[:hit_idx]
+                delta = truncated[emitted_len:]
+                self._cached_tokens.extend(output_tokens)
+                yield GenerationChunk(
+                    delta_text=delta,
+                    finish_reason="stop",
+                    full_text=truncated,
+                    output_tokens=output_tokens,
+                )
+                return
+
+            delta = full_text[emitted_len:]
+            emitted_len = len(full_text)
+            yield GenerationChunk(
+                delta_text=delta,
+                finish_reason=None,
+                full_text=full_text,
+                output_tokens=output_tokens,
+            )
+
+        full_text = self._engine.detokenize(output_tokens)
+        self._cached_tokens.extend(output_tokens)
+        yield GenerationChunk(
+            delta_text=full_text[emitted_len:],
+            finish_reason="length",
+            full_text=full_text,
+            output_tokens=output_tokens,
         )
