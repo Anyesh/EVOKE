@@ -40,6 +40,10 @@ def main() -> int:
     budget_env = os.environ.get("EVOKE_BUDGET")
     recovery_mode = os.environ.get("EVOKE_RECOVERY_MODE", "kv_restore")
     policy = os.environ.get("EVOKE_POLICY", "evoke").lower()
+    # Multi-signal scorer knobs (read once here so policy blocks below can
+    # apply them). Defaults preserve pre-multi-signal behavior.
+    w_attention = float(os.environ.get("EVOKE_W_ATTENTION", "0.0"))
+    attention_capture_layer = int(os.environ.get("EVOKE_ATTN_LAYER", "20"))
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -79,8 +83,13 @@ def main() -> int:
                 high_watermark=0.92,
                 low_watermark=0.70,
                 recovery_mode=recovery_mode,
+                w_attention=w_attention,
+                attention_capture_layer=attention_capture_layer,
             )
-            print(f"  policy=evoke budget={budget} recovery={recovery_mode}")
+            print(
+                f"  policy=evoke budget={budget} recovery={recovery_mode}"
+                f" w_attention={w_attention} attn_layer={attention_capture_layer}"
+            )
     else:
         raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")
 

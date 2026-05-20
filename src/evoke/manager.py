@@ -11,10 +11,17 @@ from evoke.types import ActiveBlock, BlockSource, CacheStats, EvokeEvent
 
 
 class EvokeManager:
-    def __init__(self, engine: InferenceEngine, config: EvokeConfig | None = None):
+    def __init__(
+        self,
+        engine: InferenceEngine,
+        config: EvokeConfig | None = None,
+        *,
+        attention_scorer=None,
+    ):
         self._engine = engine
         self._config = config or EvokeConfig()
-        self._scorer = RelevanceScorer(self._config)
+        self._attention_scorer = attention_scorer
+        self._scorer = RelevanceScorer(self._config, attention_scorer=attention_scorer)
         self._recovery = make_recovery_backend(self._config.recovery_mode, engine)
         self._positions = PositionManager()
         self._events: list[EvokeEvent] = []
@@ -23,6 +30,14 @@ class EvokeManager:
         self._total_recoveries = 0
         self._next_block_id = 0
         self._current_turn_start_id = 0
+
+    def _absorb_attention(self) -> None:
+        # Hook called after every engine decode (process_tokens or
+        # generate_next) to pull the last-decode attention weights into the
+        # AttentionScorer's per-block sliding window. No-op when attention
+        # scorer is unconfigured.
+        if self._attention_scorer is not None:
+            self._attention_scorer.absorb_last_decode(self._positions.active_blocks)
 
     def _new_block_id(self) -> int:
         bid = self._next_block_id
@@ -59,6 +74,7 @@ class EvokeManager:
         self._engine.process_tokens(tokens)
         self._compute_block_embeddings(blocks)
         self._positions.register_blocks(blocks)
+        self._absorb_attention()
 
         self._current_turn_start_id = self._next_block_id
         self._enforce_budget()
@@ -105,6 +121,7 @@ class EvokeManager:
                 pinned=pinned,
             )
             self._positions.append_block(block, bstart)
+        self._absorb_attention()
 
         self._enforce_budget()
 
@@ -143,6 +160,7 @@ class EvokeManager:
 
         if output_tokens:
             self._track_generated_block(output_tokens, gen_start)
+            self._absorb_attention()
         self._enforce_budget()
         return self._engine.detokenize(output_tokens)
 
@@ -367,6 +385,13 @@ class EvokeManager:
         self._engine.evict_ranges(ranges)
         self._positions.remove_blocks(block_ids)
         self._positions.recompact()
+
+        # Drop attention windows for evicted blocks so the scorer's map
+        # doesn't grow unbounded over long-running sessions. Block IDs are
+        # never reused (monotonic counter) so this is safe.
+        if self._attention_scorer is not None:
+            for bid in block_ids:
+                self._attention_scorer.forget(bid)
 
         self._total_evictions += len(blocks)
         self._events.append(

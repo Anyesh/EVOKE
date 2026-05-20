@@ -15,10 +15,21 @@ class EvokeConfig:
     w_sink: float = 1.0
     w_coherence: float = 0.6
     # Weight on the attention-from-model signal in the multi-signal scorer.
-    # 0.0 disables the attention term entirely; when an AttentionScorer is
-    # wired in (post-#30/#31), bump this to ~0.5 so the model's actual
-    # attention dominates while recency and coherence remain stability priors.
+    # 0.0 disables the attention term entirely; setting > 0 makes Session
+    # construct an AttentionScorer that streams per-layer attention weights
+    # from the EVOKE-built llama.cpp into a per-block sliding window. The
+    # model's actual attention then dominates while recency and coherence
+    # remain stability priors.
     w_attention: float = 0.0
+    # Which transformer layer to tap for attention capture. Deep layers
+    # (close to but not at the output) encode the most semantically loaded
+    # attention patterns. Qwen 2.5 7B has 28 layers; ~20 (3/4 depth) is a
+    # reasonable default. Configurable so other models can be tuned.
+    attention_capture_layer: int = 20
+    # Sliding window: number of recent decode steps the attention scorer
+    # remembers per block. Decay applies exponentially across the window.
+    attention_window: int = 64
+    attention_decay: float = 0.95
 
     eviction_policy: str = "watermark"
     high_watermark: float = 0.95

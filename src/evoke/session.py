@@ -22,6 +22,7 @@ from typing import Iterator
 
 import numpy as np
 
+from evoke.attention_scorer import AttentionScorer
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
@@ -62,11 +63,37 @@ class Session:
     ) -> None:
         self._engine = engine
         self._config = config or self._default_config(engine.n_ctx)
-        self._manager = EvokeManager(engine, self._config)
+        self._attention_scorer = self._maybe_build_attention_scorer()
+        self._manager = EvokeManager(
+            engine, self._config, attention_scorer=self._attention_scorer
+        )
         self._cached_tokens: list[int] = []
         self._turn_id = 0
         self._detok_every = detokenize_every
         self._recovery_k = recovery_k
+
+    def _maybe_build_attention_scorer(self) -> AttentionScorer | None:
+        # Construct an AttentionScorer iff the multi-signal scorer wants
+        # attention (cfg.w_attention > 0) AND the engine exposes the capture
+        # primitives (EVOKE-built llama.cpp). When either condition is false,
+        # the scorer falls back to recency + coherence + harness priority —
+        # same behavior as before this rework.
+        if self._config.w_attention <= 0:
+            return None
+        if not getattr(self._engine, "supports_kv_block", False):
+            return None
+        try:
+            return AttentionScorer(
+                self._engine,
+                layer=self._config.attention_capture_layer,
+                n_window=self._config.attention_window,
+                decay=self._config.attention_decay,
+            )
+        except (OSError, RuntimeError, ValueError):
+            # If the binding fails (stale fork, ctypes mismatch, buffer
+            # alloc error), fall back. The session can still serve with
+            # recency+coherence scoring.
+            return None
 
     @staticmethod
     def _default_config(n_ctx: int) -> EvokeConfig:

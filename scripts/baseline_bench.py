@@ -136,12 +136,22 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     )
     if DRIFT_DEBUG:
         _ssh(f"if (Test-Path '{DRIFT_LOG}') {{ Remove-Item -Force '{DRIFT_LOG}' }}")
+    # Multi-signal scorer pass-through. If the local bench has EVOKE_W_ATTENTION
+    # set (and the policy is evoke), forward it so the remote server constructs
+    # the AttentionScorer. Default 0 preserves pre-multi-signal behavior.
+    extra_env = ""
+    w_attn = os.environ.get("EVOKE_W_ATTENTION")
+    if w_attn and policy == "evoke":
+        extra_env += f"$env:EVOKE_W_ATTENTION='{w_attn}'; "
+        attn_layer = os.environ.get("EVOKE_ATTN_LAYER")
+        if attn_layer:
+            extra_env += f"$env:EVOKE_ATTN_LAYER='{attn_layer}'; "
     launch = (
         f"cd {REMOTE_DIR}; "
         f"$env:LLAMA_CPP_LIB='{LIB}'; "
         f"$env:EVOKE_MODEL_PATH='{MODEL}'; "
         f"$env:EVOKE_HOST='0.0.0.0'; $env:EVOKE_PORT='8000'; "
-        f"$env:EVOKE_N_CTX='{N_CTX}'; {budget_line}{drift_line}"
+        f"$env:EVOKE_N_CTX='{N_CTX}'; {budget_line}{drift_line}{extra_env}"
         f"$env:EVOKE_POLICY='{policy}'; "
         f"$env:EVOKE_MODEL_NAME='{MODEL_NAME}'; "
         f"uv run python scripts/evoke_serve.py"

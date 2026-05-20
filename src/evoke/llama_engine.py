@@ -58,6 +58,24 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
             ctypes.c_int32,
             ctypes.c_int32,
         ]
+        # EVOKE attention-weight capture primitives (#30).
+        lib.llama_attn_capture_set_layer.restype = None
+        lib.llama_attn_capture_set_layer.argtypes = [ctypes.c_void_p, ctypes.c_int32]
+        lib.llama_attn_capture_set_buffer.restype = None
+        lib.llama_attn_capture_set_buffer.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+        ]
+        lib.llama_attn_capture_get_dims.restype = None
+        lib.llama_attn_capture_get_dims.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_int32),
+            ctypes.POINTER(ctypes.c_int32),
+            ctypes.POINTER(ctypes.c_int32),
+        ]
+        lib.llama_attn_capture_get_written.restype = ctypes.c_size_t
+        lib.llama_attn_capture_get_written.argtypes = [ctypes.c_void_p]
         return lib
     except (OSError, AttributeError):
         return None
@@ -118,6 +136,7 @@ class LlamaCppEngine:
         self._token_count = 0
         self._next_write_pos = 0
         self._emb_cache: dict[int, np.ndarray] = {}
+        self._attn_capture_buf: np.ndarray | None = None
         chain_params = llama_cpp.llama_sampler_chain_default_params()
         self._sampler = llama_cpp.llama_sampler_chain_init(chain_params)
         llama_cpp.llama_sampler_chain_add(
@@ -319,6 +338,55 @@ class LlamaCppEngine:
             self._next_write_pos = new_p0 + n_cells
             self._token_count += n_cells
         return ok
+
+    def attn_capture_set_layer(self, layer: int) -> None:
+        # Configure which layer's attention weights to capture on subsequent
+        # process_tokens/generate_next calls. Pass -1 to disable. Requires the
+        # EVOKE fork (LLAMA_CPP_LIB must point at it).
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "Attention capture requires the EVOKE llama.cpp build; "
+                "set LLAMA_CPP_LIB"
+            )
+        _kv_block_lib.llama_attn_capture_set_layer(self._ctx, ctypes.c_int32(layer))
+
+    def attn_capture_set_buffer(self, buf: np.ndarray | None) -> None:
+        # Provide a float32 numpy buffer for the C side to write attention
+        # weights into after each decode. The buffer must remain alive while
+        # capture is active (we hand C a raw pointer). Pass None to detach.
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "Attention capture requires the EVOKE llama.cpp build; "
+                "set LLAMA_CPP_LIB"
+            )
+        if buf is None:
+            _kv_block_lib.llama_attn_capture_set_buffer(self._ctx, None, 0)
+            self._attn_capture_buf = None
+            return
+        if buf.dtype != np.float32 or not buf.flags["C_CONTIGUOUS"]:
+            raise ValueError(
+                "attn_capture_set_buffer expects a contiguous float32 numpy array"
+            )
+        self._attn_capture_buf = buf  # keep alive for the C side
+        _kv_block_lib.llama_attn_capture_set_buffer(
+            self._ctx, buf.ctypes.data_as(ctypes.c_void_p), buf.size
+        )
+
+    def attn_capture_get_dims(self) -> tuple[int, int, int]:
+        if _kv_block_lib is None:
+            return (0, 0, 0)
+        n_q = ctypes.c_int32(0)
+        n_h = ctypes.c_int32(0)
+        n_kv = ctypes.c_int32(0)
+        _kv_block_lib.llama_attn_capture_get_dims(
+            self._ctx, ctypes.byref(n_q), ctypes.byref(n_h), ctypes.byref(n_kv)
+        )
+        return (int(n_q.value), int(n_h.value), int(n_kv.value))
+
+    def attn_capture_get_written(self) -> int:
+        if _kv_block_lib is None:
+            return 0
+        return int(_kv_block_lib.llama_attn_capture_get_written(self._ctx))
 
     def reset(self) -> None:
         llama_cpp.llama_memory_clear(self._memory, True)
