@@ -17,10 +17,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from fastapi import Header
+
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
-from evoke.session import Session
+from evoke.session import Session, SessionPool
 from evoke.templates import ParsedResponse, format_qwen_chat, parse_qwen_response
+
+DEFAULT_SESSION_ID = "default"
 
 
 class ChatMessage(BaseModel):
@@ -134,10 +138,19 @@ def create_app(
     engine: LlamaCppEngine,
     model_name: str,
     config: EvokeConfig | None = None,
+    *,
+    max_sessions: int = 8,
 ) -> FastAPI:
     app = FastAPI(title="EVOKE", version="0.1.0")
-    session = Session(engine, config=config)
+    pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+    # Single global lock: SessionPool swaps engine state on every
+    # cross-session transition; concurrent requests against the same
+    # engine context would race. Per-session concurrency would require
+    # n_seq_max > 1 routing in every primitive (paper §9, future work).
     lock = asyncio.Lock()
+
+    def _session_for(session_id: str | None) -> Session:
+        return pool.get(session_id or DEFAULT_SESSION_ID)
 
     @app.get("/v1/models")
     async def list_models() -> dict[str, Any]:
@@ -154,32 +167,69 @@ def create_app(
         }
 
     @app.get("/health")
-    async def health() -> dict[str, Any]:
-        stats = session.manager.get_stats()
+    async def health(
+        x_evoke_session: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        async with lock:
+            session = _session_for(x_evoke_session)
+            stats = session.manager.get_stats()
+            return {
+                "status": "ok",
+                "cached_tokens": session.cached_token_count,
+                "n_ctx": engine.n_ctx,
+                "active_tokens": stats.active_tokens,
+                "active_blocks": stats.active_blocks,
+                "budget": stats.budget,
+                "budget_utilization": round(stats.budget_utilization, 3),
+                "total_evictions": stats.total_evictions,
+                "total_recoveries": stats.total_recoveries,
+                "kv_block_primitives": engine.supports_kv_block,
+                "session_id": x_evoke_session or DEFAULT_SESSION_ID,
+                "n_sessions": pool.n_sessions,
+                "sessions_evicted": pool.evicted_count,
+            }
+
+    @app.get("/v1/sessions")
+    async def list_sessions() -> dict[str, Any]:
+        async with lock:
+            return {
+                "active": pool.active_session_id,
+                "sessions": pool.session_ids(),
+                "n_sessions": pool.n_sessions,
+                "max_sessions": max_sessions,
+                "evicted_count": pool.evicted_count,
+            }
+
+    @app.delete("/v1/sessions/{session_id}")
+    async def delete_session(session_id: str) -> dict[str, Any]:
+        async with lock:
+            dropped = pool.drop(session_id)
         return {
-            "status": "ok",
-            "cached_tokens": session.cached_token_count,
-            "n_ctx": engine.n_ctx,
-            "active_tokens": stats.active_tokens,
-            "active_blocks": stats.active_blocks,
-            "budget": stats.budget,
-            "budget_utilization": round(stats.budget_utilization, 3),
-            "total_evictions": stats.total_evictions,
-            "total_recoveries": stats.total_recoveries,
-            "kv_block_primitives": engine.supports_kv_block,
+            "status": "dropped" if dropped else "not_found",
+            "session_id": session_id,
         }
 
     @app.post("/admin/reset")
-    async def reset_session() -> dict[str, Any]:
+    async def reset_session(
+        x_evoke_session: str | None = Header(default=None),
+    ) -> dict[str, Any]:
         async with lock:
+            session = _session_for(x_evoke_session)
             session.reset()
-        return {"status": "reset"}
+        return {"status": "reset", "session_id": x_evoke_session or DEFAULT_SESSION_ID}
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(req: ChatCompletionRequest):
+    async def chat_completions(
+        req: ChatCompletionRequest,
+        x_evoke_session: str | None = Header(default=None),
+    ):
         if not req.messages:
             raise HTTPException(status_code=400, detail="messages must not be empty")
 
+        # Resolve session under the pool lock so a concurrent request to
+        # another session_id doesn't swap the engine state out from under
+        # us mid-request. The lock is held for the full prompt-tokenize +
+        # decode + generate cycle.
         msgs = [m.model_dump(exclude_none=True) for m in req.messages]
         if req.tools:
             # Render via Python jinja2 against the GGUF's own chat template,
@@ -214,7 +264,8 @@ def create_app(
         if req.stream:
             return StreamingResponse(
                 _stream_completion(
-                    session,
+                    pool,
+                    x_evoke_session or DEFAULT_SESSION_ID,
                     engine,
                     lock,
                     prompt_tokens,
@@ -231,6 +282,7 @@ def create_app(
             )
 
         async with lock:
+            session = _session_for(x_evoke_session)
             session.sync_prefix(
                 prompt_tokens,
                 priority=req.evoke_priority,
@@ -238,10 +290,11 @@ def create_app(
                 task_boundary=req.evoke_task_boundary,
             )
             result = session.generate(max_tokens=max_new, stop_strings=stops)
+            suppress = session._config.suppress_thinking_strip
 
         parsed = parse_qwen_response(
             result.text,
-            strip_thinking=not session._config.suppress_thinking_strip,
+            strip_thinking=not suppress,
         )
         return _completion_payload(
             completion_id,
@@ -267,7 +320,8 @@ def _safe_emit_end(full_text: str) -> int:
 
 
 async def _stream_completion(
-    session: Session,
+    pool: SessionPool,
+    session_id: str,
     engine: LlamaCppEngine,
     lock: asyncio.Lock,
     prompt_tokens: list[int],
@@ -291,6 +345,9 @@ async def _stream_completion(
     finish_reason: str | None = None
 
     async with lock:
+        # Resolve the session inside the lock so any other request that
+        # raced us through the pool gets to swap us in cleanly.
+        session = pool.get(session_id)
         session.sync_prefix(
             prompt_tokens,
             priority=evoke_priority,

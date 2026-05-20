@@ -454,6 +454,37 @@ class LlamaCppEngine:
             return 0
         return int(_kv_block_lib.llama_attn_capture_get_written(self._ctx))
 
+    def state_save(self) -> tuple[bytes, int, int, dict[int, np.ndarray]]:
+        # Snapshot the engine state for session swap: the llama internal
+        # state bytes (logits + KV cache contents via llama_state_get_data)
+        # plus our Python-side bookkeeping (write head, token count,
+        # embedding cache). The triple is opaque to callers — pass it back
+        # to state_restore to resume.
+        n = llama_cpp.llama_state_get_size(self._ctx)
+        buf = (ctypes.c_uint8 * n)()
+        written = llama_cpp.llama_state_get_data(self._ctx, buf, n)
+        return (
+            bytes(buf[:written]),
+            self._next_write_pos,
+            self._token_count,
+            dict(self._emb_cache),
+        )
+
+    def state_restore(
+        self,
+        state: tuple[bytes, int, int, dict[int, np.ndarray]],
+    ) -> None:
+        # Restore a snapshot produced by state_save. Clears any existing
+        # state first so we don't accidentally accumulate.
+        data, next_write_pos, token_count, emb_cache = state
+        llama_cpp.llama_memory_clear(self._memory, True)
+        if data:
+            buf = (ctypes.c_uint8 * len(data)).from_buffer_copy(data)
+            llama_cpp.llama_state_set_data(self._ctx, buf, len(data))
+        self._next_write_pos = next_write_pos
+        self._token_count = token_count
+        self._emb_cache = dict(emb_cache)
+
     def reset(self) -> None:
         llama_cpp.llama_memory_clear(self._memory, True)
         self._token_count = 0

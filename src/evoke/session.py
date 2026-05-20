@@ -36,6 +36,123 @@ class GenerationResult:
     finish_reason: str
 
 
+class SessionPool:
+    # Multi-session server pool. One llama_context is shared across all
+    # sessions; per-session KV state is swapped in and out via the
+    # engine's state_save / state_restore primitives. Only one session is
+    # "live" in the engine at a time, but each session preserves its
+    # Python-side state (cached tokens, manager blocks, scorer windows)
+    # and its serialized engine snapshot, so context switches are fast
+    # (one memcpy proportional to current cache size, no recompute).
+    #
+    # Sessions are keyed by an opaque client-supplied id (typically the
+    # X-EVOKE-Session header on a request). LRU eviction kicks in past
+    # max_sessions: the least recently used session is evicted entirely
+    # (Python state + serialized engine snapshot dropped). For long-lived
+    # multi-client servers, set max_sessions higher and accept the host
+    # RAM cost; for stateless gateway scenarios, leave it low.
+
+    def __init__(
+        self,
+        engine: LlamaCppEngine,
+        *,
+        config: EvokeConfig | None = None,
+        max_sessions: int = 8,
+    ) -> None:
+        self._engine = engine
+        self._config = config
+        self._max_sessions = max_sessions
+        self._sessions: dict[str, Session] = {}
+        self._snapshots: dict[
+            str, tuple[bytes, int, int, dict[int, np.ndarray]] | None
+        ] = {}
+        self._lru: list[str] = []  # most-recent-last
+        self._active: str | None = None
+        self._evicted_count = 0
+
+    @property
+    def active_session_id(self) -> str | None:
+        return self._active
+
+    @property
+    def n_sessions(self) -> int:
+        return len(self._sessions)
+
+    @property
+    def evicted_count(self) -> int:
+        return self._evicted_count
+
+    def session_ids(self) -> list[str]:
+        return list(self._sessions.keys())
+
+    def get(self, session_id: str) -> Session:
+        # Returns the Session for session_id, swapping it into the engine
+        # if it isn't already active. Creates a new Session if first-seen.
+        if session_id in self._sessions:
+            # Touch LRU
+            try:
+                self._lru.remove(session_id)
+            except ValueError:
+                pass
+            self._lru.append(session_id)
+            if self._active != session_id:
+                self._swap_in(session_id)
+            return self._sessions[session_id]
+        # First-seen session: snapshot the currently-active one (so it can
+        # be restored later), reset the engine, create a fresh Session.
+        if self._active is not None:
+            self._snapshots[self._active] = self._engine.state_save()
+        self._engine.reset()
+        new = Session(self._engine, config=self._config)
+        self._sessions[session_id] = new
+        self._snapshots[session_id] = None
+        self._active = session_id
+        self._lru.append(session_id)
+        self._maybe_evict_lru()
+        return new
+
+    def drop(self, session_id: str) -> bool:
+        # Forcefully evict a session by id. Returns True if it existed.
+        if session_id not in self._sessions:
+            return False
+        if self._active == session_id:
+            self._engine.reset()
+            self._active = None
+        self._sessions.pop(session_id, None)
+        self._snapshots.pop(session_id, None)
+        try:
+            self._lru.remove(session_id)
+        except ValueError:
+            pass
+        self._evicted_count += 1
+        return True
+
+    def _swap_in(self, session_id: str) -> None:
+        # Save current active to snapshot, restore target from snapshot.
+        if self._active is not None:
+            self._snapshots[self._active] = self._engine.state_save()
+        snap = self._snapshots.get(session_id)
+        if snap is None:
+            self._engine.reset()
+        else:
+            self._engine.state_restore(snap)
+        self._active = session_id
+
+    def _maybe_evict_lru(self) -> None:
+        while len(self._sessions) > self._max_sessions and self._lru:
+            victim = self._lru.pop(0)
+            if victim == self._active:
+                # Don't evict the live session; rotate it to the back and
+                # pick the next-oldest. Should be rare (max_sessions=1).
+                self._lru.append(victim)
+                if len(self._lru) == 1:
+                    return
+                victim = self._lru.pop(0)
+            self._sessions.pop(victim, None)
+            self._snapshots.pop(victim, None)
+            self._evicted_count += 1
+
+
 @dataclass
 class GenerationChunk:
     delta_text: str
