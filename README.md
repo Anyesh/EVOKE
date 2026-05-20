@@ -17,9 +17,21 @@ Long-running LLM agent sessions outgrow the physical KV cache budget within a fe
 ## What it actually is
 
 - Two new C++ primitives in a forked llama.cpp: `llama_kv_block_save` and `llama_kv_block_load`. They serialise a position range's K/V tensors to a host buffer and splice them back with per-cell RoPE re-anchoring — no `llama_decode` call.
-- A Python policy layer (`evoke/manager.py`, `evoke/scorer.py`) that drives eviction under a watermark policy and routes recovery through three pluggable backends: discard, breadcrumb, or kv_restore (the recompute-free splice).
+- A third C primitive `llama_attn_capture_*` that taps per-head softmax attention weights from one chosen layer into a host buffer once per decode. Used by the relevance scorer to learn what the model is actually attending to.
+- A Python policy layer (`evoke/manager.py`, `evoke/scorer.py`, `evoke/attention_scorer.py`) that drives eviction under a watermark policy via a multi-signal scorer (model attention + harness priority + task-focus coherence + recency) and routes recovery through three pluggable backends: discard, breadcrumb, or kv_restore (the recompute-free splice).
 - An OpenAI-compatible chat-completions server (`evoke/server.py`) that exposes EVOKE as a stateful endpoint. The persistent KV cache survives across requests; only the new tail of each prompt is decoded.
 - Cross-architecture coverage: pure attention with standard RoPE (Qwen 2.5, Llama 3), hybrid Mamba/Attention (Qwen 3.5), MoE attention with mrope and thinking mode (Qwen 3.6 35B-A3B).
+
+## How does the system know what's relevant?
+
+Four signals, combined into a per-block score in [0, 1]. Lowest scores get evicted first when the cache exceeds budget.
+
+- **The model's own attention.** A second softmax for one chosen transformer layer runs alongside the main attention path, writing per-head softmax weights to a host buffer once per decode. The scorer maintains a sliding window of recent attention mass per block (last 64 decode steps, EWMA decay 0.95). Blocks the model is actually attending to score high — this is the strongest single signal, the truest answer to "what's relevant right now."
+- **Harness-supplied priority tags.** A coding harness like opencode or Claude Code can set `evoke_priority` (a float multiplier on the block's final score) and `evoke_pinned` (boolean, excludes from eviction entirely) on each chat request. Useful when the harness knows things the model can't see: a file read is the central artifact of the current task; a tool scratch output is one-shot. Defaults to `1.0 / false` so harnesses that ignore these fields get the model-and-heuristic behavior.
+- **Task-focus coherence.** The scorer tracks a single "task focus" embedding (not a rolling average) that updates via EMA on new user messages but **snaps** to the new message when a topic shift is detected (cosine drop below 0.3) or signaled by the harness via `evoke_task_boundary=true`. Blocks from a prior task lose their coherence score in one pass instead of decaying over five turns.
+- **Recency** + **sink protection** + **source-type floors**. Stability priors: prevent thrashing on a single attention spike; protect StreamingLLM-style sink tokens; give USER and ASSISTANT turns a floor so conversation backbone isn't evicted before document content.
+
+Final score: `min(priority * (w_attn·attn + w_rec·recency + w_coh·coherence), 1.0)` with source-floor and pinned protection. See paper §4 for weights and the §7.5 scorer-ablation table for measured impact — attention-driven scoring is the difference between "evict the fact block and recover later" and "recognize the fact block as still-relevant and never evict it."
 
 ## Latency table
 

@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from evoke.attention_scorer import AttentionScorer
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
@@ -85,6 +86,12 @@ STRATEGIES: dict[str, dict] = {
     "evoke_discard": dict(recovery_mode="discard"),
     "evoke_breadcrumb": dict(recovery_mode="breadcrumb"),
     "evoke_kv_restore": dict(recovery_mode="kv_restore"),
+    # Attention-driven scorer: replaces the recency+coherence heuristic with
+    # the model's actual attention weights as the dominant signal. Requires
+    # the EVOKE fork (LLAMA_CPP_LIB). See paper §3.3 / §4.
+    "evoke_attention": dict(
+        recovery_mode="kv_restore", w_attention=0.5, w_recency=0.2, w_coherence=0.3
+    ),
 }
 
 
@@ -110,7 +117,15 @@ def run_strategy(
         low_watermark=0.75,
         **overrides,
     )
-    mgr = EvokeManager(engine, config)
+    attn_scorer: AttentionScorer | None = None
+    if config.w_attention > 0 and engine.supports_kv_block:
+        attn_scorer = AttentionScorer(
+            engine,
+            layer=config.attention_capture_layer,
+            n_window=config.attention_window,
+            decay=config.attention_decay,
+        )
+    mgr = EvokeManager(engine, config, attention_scorer=attn_scorer)
 
     session = build_session()
     fact_text = next(item.text for item in session if item.key == FACT_KEY)
