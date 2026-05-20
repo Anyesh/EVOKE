@@ -4,9 +4,15 @@
 
 Long-running LLM agent sessions outgrow the physical KV cache budget within a few turns. EVOKE evicts low-relevance blocks under budget pressure and **recovers them recompute-free** via a custom save/restore primitive in a forked llama.cpp — 20–32× faster than re-prefilling the same tokens.
 
-![Eviction demo](assets/eviction-demo.gif)
+### Qwen 2.5 7B (pure attention)
+![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
 
-*A 14-turn session with a 1024-token budget. A fact is planted at turn 1 ("favorite number = 4242"), 12 unrelated knowledge questions fill the session, and at turn 14 the fact is probed. The session survives 89 evictions and 71 recoveries, and the model still recalls "4242".*
+*A 14-turn session with a 1024-token budget. A fact is planted at turn 1 ("favorite number = 4242"), 12 unrelated knowledge questions fill the session, and at turn 14 the fact is probed. The session survives **89 evictions and 71 recoveries**, and the model recalls "4242".*
+
+### Qwen 3.5 9B (hybrid Mamba/Attention + mrope, thinking-mode)
+![Eviction demo on Qwen 3.5](assets/eviction-demo-qwen35.gif)
+
+*Same demo, hybrid architecture. The model emits a `<think>...</think>` trace each turn (visible in the truncated `asst='<think>\n...'`). Hybrid memory rejects partial tail rollback of the recurrent half, so the thinking-strip degrades to a session reset on the turn where the chat template diverges (filler 9, where active_tokens momentarily reads 2924/1024 and counters return to 0). Eviction resumes, the fact survives the dance, and the model still recalls "4242" inside the next `<think>` trace. **61 evictions, 38 recoveries**.*
 
 ## What it actually is
 
