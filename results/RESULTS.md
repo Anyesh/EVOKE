@@ -1,5 +1,57 @@
 # EVOKE Competitive Benchmark Results
 
+## Run: Qwen 2.5 7B (2026-05-20, head-to-head + agentic eval — drift fix landed)
+
+**Model**: Qwen2.5-7B-Instruct-Q4_K_M
+**Hardware**: RTX 4070 Ti SUPER, 16GB VRAM (gpu-host)
+**n_ctx**: 16384, budget 1024 (where applicable)
+
+### Head-to-head baselines (`scripts/baseline_bench.py`, 14-turn planted-fact session)
+
+| policy        | budget | active end | evictions | recoveries | probe | elapsed |
+|---------------|------:|-----------:|----------:|-----------:|-------|--------:|
+| no_eviction   | 16384 |       2476 |         0 |          0 | PASS  |   18.7s |
+| truncate      |  1024 |        683 |        40 |          0 | PASS  |   19.8s |
+| evoke         |  1024 |        747 |        40 |         24 | PASS  | **12.9s** |
+
+Both truncate and evoke contain the active footprint inside the budget. evoke runs the same conversation 35% faster than truncate with the same eviction count — recoveries via `kv_block_load` (~3 ms) replace truncate's per-turn re-decode of missing history (~150-250 ms).
+
+### Agentic eval (`scripts/agent_bench.py`, planted-config-file probe after 10 unrelated file reads)
+
+| budget | strategy          | probe | evict | recov | rec_ms |
+|-------:|-------------------|-------|------:|------:|-------:|
+|    512 | recency           | fail  | 35    | 0     | 0.00   |
+|    512 | streaming_llm     | fail  | 35    | 0     | 0.00   |
+|    512 | evoke_discard     | fail  | 35    | 0     | 0.00   |
+|    512 | evoke_breadcrumb  | PASS  | 35    | 0     | 17.26  |
+|    512 | evoke_kv_restore  | PASS  | 35    | 1     | **3.13** |
+|   1024 | recency           | fail  | 29    | 0     | 0.00   |
+|   1024 | streaming_llm     | fail  | 28    | 0     | 0.00   |
+|   1024 | evoke_discard     | fail  | 28    | 0     | 0.00   |
+|   1024 | evoke_breadcrumb  | PASS  | 28    | 0     | 15.22  |
+|   1024 | evoke_kv_restore  | PASS  | 28    | 1     | **2.96** |
+|   2048 | recency           | fail  | 9     | 0     | 0.00   |
+|   2048 | streaming_llm     | fail  | 10    | 0     | 0.00   |
+|   2048 | evoke_discard     | fail  | 10    | 0     | 0.00   |
+|   2048 | evoke_breadcrumb  | PASS  | 10    | 0     | 15.80  |
+|   2048 | evoke_kv_restore  | PASS  | 10    | 1     | **3.66** |
+
+Recovery is the differentiator: every strategy without recovery fails at every budget. `kv_restore` is ~5x faster than `breadcrumb` while answering equivalently.
+
+Raw output: `results/agent_bench_qwen25_7b.txt`.
+
+### Drift fix details
+
+Two underlying bugs were fixed before these numbers became trustworthy.
+
+1. **Non-canonical BPE in the assistant emit**: the model can generate `**` + `:\n` (tokens 334, 510) for text whose canonical retokenization is `**:` + `\n` (tokens 95518, 198). Subsequent requests' Jinja-templated prompt retokenizes to the canonical form, so prefix-match diverged mid-history and forced session resets that zeroed eviction stats. Fix: `Session._canonicalize_assistant` re-tokenizes the visible content after each generation, evicts the model's emit, and re-decodes the canonical tokens at the same position. The K/V cache stays consistent with the model's actual computation history; only the token-id labels in `_cached_tokens` change.
+
+2. **Stale Session token view after manager eviction**: when `EvokeManager._enforce_budget` evicts blocks from the engine, the engine cache shifts (positions of remaining blocks compact down). `Session._cached_tokens` did not reflect this and continued to claim it had content the engine had dropped. Fix: `Session.sync_prefix` re-derives the cached view from `EvokeManager.get_token_view()` (concatenation of active block token-ids in physical position order). When divergence is still detected (typical for `truncate` policy: prior eviction dropped middle history that the next request resupplies), the session tail-evicts the diverged portion instead of fully resetting, preserving the matching prefix and the eviction counter.
+
+After the fix, the eviction counter monotonically accumulates across turns for `truncate` (40 evictions over 14 turns at budget 1024, instead of resetting to 0 mid-session), which is what makes the head-to-head numbers comparable across policies.
+
+---
+
 ## Run: Qwen 2.5 7B (2026-05-19, v1)
 
 **Model**: Qwen2.5-7B-Instruct-Q4_K_M
