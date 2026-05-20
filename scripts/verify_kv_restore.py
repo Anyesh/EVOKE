@@ -73,8 +73,9 @@ def main() -> int:
     mgr.process_user_message(
         "\n\nQuestion: what is the secret passkey mentioned earlier?\nAnswer:"
     )
-    answer = mgr.generate(24)
-    print(f"answer: {answer!r}")
+    answer = mgr.generate(8192)
+    safe = answer.encode("ascii", "replace").decode("ascii")
+    print(f"answer: {safe!r}")
 
     if PASSKEY in answer:
         print("PASS: model recalled the passkey from the restored KV block")
