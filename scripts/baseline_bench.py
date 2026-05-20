@@ -146,6 +146,9 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
         attn_layer = os.environ.get("EVOKE_ATTN_LAYER")
         if attn_layer:
             extra_env += f"$env:EVOKE_ATTN_LAYER='{attn_layer}'; "
+    ram_budget = os.environ.get("EVOKE_KV_RESTORE_RAM_BUDGET_BYTES")
+    if ram_budget and policy == "evoke":
+        extra_env += f"$env:EVOKE_KV_RESTORE_RAM_BUDGET_BYTES='{ram_budget}'; "
     launch = (
         f"cd {REMOTE_DIR}; "
         f"$env:LLAMA_CPP_LIB='{LIB}'; "

@@ -44,6 +44,8 @@ def main() -> int:
     # apply them). Defaults preserve pre-multi-signal behavior.
     w_attention = float(os.environ.get("EVOKE_W_ATTENTION", "0.0"))
     attention_capture_layer = int(os.environ.get("EVOKE_ATTN_LAYER", "20"))
+    ram_budget_env = os.environ.get("EVOKE_KV_RESTORE_RAM_BUDGET_BYTES")
+    kv_restore_ram_budget_bytes = int(ram_budget_env) if ram_budget_env else None
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -85,10 +87,12 @@ def main() -> int:
                 recovery_mode=recovery_mode,
                 w_attention=w_attention,
                 attention_capture_layer=attention_capture_layer,
+                kv_restore_ram_budget_bytes=kv_restore_ram_budget_bytes,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
                 f" w_attention={w_attention} attn_layer={attention_capture_layer}"
+                f" kv_ram_budget={kv_restore_ram_budget_bytes}"
             )
     else:
         raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")

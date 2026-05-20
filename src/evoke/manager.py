@@ -22,7 +22,11 @@ class EvokeManager:
         self._config = config or EvokeConfig()
         self._attention_scorer = attention_scorer
         self._scorer = RelevanceScorer(self._config, attention_scorer=attention_scorer)
-        self._recovery = make_recovery_backend(self._config.recovery_mode, engine)
+        self._recovery = make_recovery_backend(
+            self._config.recovery_mode,
+            engine,
+            kv_restore_ram_budget_bytes=self._config.kv_restore_ram_budget_bytes,
+        )
         self._positions = PositionManager()
         self._events: list[EvokeEvent] = []
         self._step = 0

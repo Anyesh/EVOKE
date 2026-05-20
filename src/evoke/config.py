@@ -53,3 +53,10 @@ class EvokeConfig:
     task_focus_ema_alpha: float = 0.7
 
     recovery_mode: str = "discard"
+    # Host-RAM budget for the kv_restore backend. When set, the saved-block
+    # pool is bounded; oldest saved blocks lose their K/V bytes (kept as
+    # breadcrumbs only) when adding a new save would exceed the budget. None
+    # means unbounded — fine for short-lived sessions, a leak for long-running
+    # multi-session servers. For Qwen 2.5 7B at ~56 KiB/token, 4 GiB holds
+    # roughly 70K tokens of evicted history; tune to your VRAM + workload.
+    kv_restore_ram_budget_bytes: int | None = None
