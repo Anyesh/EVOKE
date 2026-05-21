@@ -372,8 +372,17 @@ class EvokeManager:
                 continue
             if scores.get(block.block_id, 0.0) >= 1.0:
                 continue
+            # pin_generated protects the model's just-decoded output (an
+            # ASSISTANT block) from being immediately evicted by the same
+            # _enforce_budget call that fires right after _track_generated_block.
+            # It must NOT pin prompt-decoded blocks (source=DOCUMENT, added
+            # via add_context_tokens) — doing so was the bug that made eviction
+            # silently fail on every opencode-style turn whose tail happened
+            # to be larger than the budget: all newly-added prompt blocks were
+            # marked current-turn-pinned and the policy found zero candidates.
             if (
                 self._config.pin_generated
+                and block.source == BlockSource.ASSISTANT
                 and block.block_id >= self._current_turn_start_id
             ):
                 continue

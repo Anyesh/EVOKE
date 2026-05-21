@@ -13,9 +13,10 @@ import time
 import uuid
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field, model_validator
 
 from fastapi import Header
 
@@ -29,10 +30,41 @@ DEFAULT_SESSION_ID = "default"
 
 class ChatMessage(BaseModel):
     role: str
-    content: str | None = None
+    # Modern OpenAI-compatible clients (opencode, the openai Python SDK on
+    # multimodal/tool turns, Aider in some modes) send content as either a
+    # plain string or as a list of content parts: [{"type": "text", "text":
+    # "..."}], possibly with image_url parts. The flatten_content validator
+    # below collapses the list-of-text-parts form into a single string so
+    # downstream code (templating, tokenizing) works uniformly.
+    content: str | list[Any] | None = None
     tool_calls: list[dict[str, Any]] | None = None
     tool_call_id: str | None = None
     name: str | None = None
+    # Optional reasoning trace some clients (opencode, OpenHands) include on
+    # assistant messages. We accept and ignore it; the cached state holds the
+    # full assistant emit including the <think> trace already, when
+    # suppress_thinking_strip is set on the session.
+    reasoning: str | None = None
+    reasoning_content: str | None = None
+
+    @model_validator(mode="after")
+    def flatten_content(self) -> "ChatMessage":
+        # Collapse a list-of-content-parts into a single string. Multimodal
+        # image parts are stubbed as "[image]" since the backend is text-only.
+        if isinstance(self.content, list):
+            parts: list[str] = []
+            for part in self.content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text" and isinstance(part.get("text"), str):
+                        parts.append(part["text"])
+                    elif part.get("type") in {"image_url", "image"}:
+                        parts.append("[image]")
+                    elif "text" in part and isinstance(part["text"], str):
+                        parts.append(part["text"])
+                elif isinstance(part, str):
+                    parts.append(part)
+            self.content = "".join(parts) if parts else ""
+        return self
 
 
 class ChatCompletionRequest(BaseModel):
@@ -142,6 +174,29 @@ def create_app(
     max_sessions: int = 8,
 ) -> FastAPI:
     app = FastAPI(title="EVOKE", version="0.1.0")
+
+    @app.exception_handler(RequestValidationError)
+    async def _log_422(request: Request, exc: RequestValidationError):
+        # Log the validation errors AND a truncated view of the body so we
+        # can see exactly what an OpenAI-compatible client (opencode, etc.)
+        # is sending that the schema rejected. Useful during integration
+        # work; the body excerpt is bounded to keep logs sane.
+        try:
+            body_bytes = await request.body()
+            body_excerpt = body_bytes[:2000].decode("utf-8", errors="replace")
+        except Exception:  # noqa: BLE001
+            body_excerpt = "<unreadable>"
+        print(
+            f"[422] {request.method} {request.url.path} from {request.client.host if request.client else '?'}\n"
+            f"  errors: {exc.errors()}\n"
+            f"  body[:2000]: {body_excerpt}",
+            flush=True,
+        )
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.errors(), "body_excerpt": body_excerpt[:500]},
+        )
+
     pool = SessionPool(engine, config=config, max_sessions=max_sessions)
     # Single global lock: SessionPool swaps engine state on every
     # cross-session transition; concurrent requests against the same
