@@ -39,3 +39,6 @@ paper/*.synctex.gz
 paper/*.toc
 paper/*.fls
 paper/*.fdb_latexmk
+paper/*.md
+paper/neurips_*
+paper/*.tex
