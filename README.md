@@ -77,14 +77,14 @@ scripts/
   profile_recover.py    Latency table generator
   agent_bench.py        Probe-correctness x budget x strategy
 
-paper/draft.md     Paper draft
+paper/paper.pdf    Paper (with §B build instructions for the fork)
 examples/          Sample opencode.json provider config
-assets/            Demo GIF
+assets/            Demo GIFs
 ```
 
 ## Quick start
 
-You need a CUDA box with the EVOKE-forked llama.cpp built (see `paper/draft.md` §B). Then:
+You need a CUDA box with the EVOKE-forked llama.cpp ([Anyesh/llama.cpp](https://github.com/Anyesh/llama.cpp)) built (see `paper/paper.pdf` §B). Then:
 
 ```bash
 # Install the Python package + server extras
@@ -110,10 +110,10 @@ cd ~/your-project && opencode
 
 ## Status
 
-Research prototype targeting both a working system and a paper draft (`paper/draft.md`). The mechanism is verified end-to-end across three model families (Qwen 2.5 7B, Qwen 3.5 9B, Qwen 3.6 35B-A3B) and the head-to-head, agentic, and scorer-ablation eval numbers are in §7.3 through §7.6 of the draft. Recently closed in the codebase: tools-aware Jinja chat template via Python jinja2 (so tool-using turns no longer trigger session resets), multi-session pool with state-swap on a custom `X-EVOKE-Session` header, iSWA dual-cache support in the fork primitives, multi-layer attention capture (up to 16 layers per decode). Remaining gaps tracked in the paper's §8 Discussion and Limitations: Python-side end-to-end verification of iSWA on a Gemma GGUF, a no-shift eviction mode that lets hybrid-memory models drop the thinking range from attention without compacting the recurrent half, single-model-family latency benchmarks (numbers are Qwen 2.5 7B only outside §6 and §7.2), and a non-binary answer-quality metric for the agentic probes.
+Research prototype targeting both a working system and a paper (`paper/paper.pdf`). The mechanism is verified end-to-end across three model families (Qwen 2.5 7B, Qwen 3.5 9B, Qwen 3.6 35B-A3B) and the head-to-head, agentic, and scorer-ablation eval numbers are in §7.3 through §7.6 of the paper. Recently closed in the codebase: tools-aware Jinja chat template via Python jinja2 (so tool-using turns no longer trigger session resets), multi-session pool with state-swap on a custom `X-EVOKE-Session` header, iSWA dual-cache support in the fork primitives, multi-layer attention capture (up to 16 layers per decode). Remaining gaps tracked in the paper's §8 Discussion and Limitations: Python-side end-to-end verification of iSWA on a Gemma GGUF, a no-shift eviction mode that lets hybrid-memory models drop the thinking range from attention without compacting the recurrent half, single-model-family latency benchmarks (numbers are Qwen 2.5 7B only outside §6 and §7.2), and a non-binary answer-quality metric for the agentic probes.
 
 ## License
 
 The **EVOKE policy layer** in this repository (`src/evoke/`, `scripts/`, `paper/`, `examples/`, `assets/`) is licensed under the **Apache License 2.0** (see `LICENSE`). This includes the patent grant: contributors are barred from initiating patent litigation over the contributed code.
 
-The **forked llama.cpp work** (the C primitives added in `<llama-cpp-fork>`) is a derivative work of [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) and remains under upstream's **MIT license**.
+The **forked llama.cpp work** (the C primitives, hosted at [Anyesh/llama.cpp](https://github.com/Anyesh/llama.cpp)) is a derivative work of [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) and remains under upstream's **MIT license**.
