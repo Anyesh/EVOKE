@@ -205,6 +205,7 @@ class Session:
                 layer=self._config.attention_capture_layer,
                 n_window=self._config.attention_window,
                 decay=self._config.attention_decay,
+                score_mode=self._config.attention_score_mode,
             )
         except (OSError, RuntimeError, ValueError):
             # If the binding fails (stale fork, ctypes mismatch, buffer

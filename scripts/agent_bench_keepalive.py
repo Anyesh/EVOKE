@@ -127,6 +127,7 @@ def run_strategy(
             layer=config.attention_capture_layer,
             n_window=config.attention_window,
             decay=config.attention_decay,
+            score_mode=config.attention_score_mode,
         )
     mgr = EvokeManager(engine, config, attention_scorer=attn_scorer)
     session = build_session()

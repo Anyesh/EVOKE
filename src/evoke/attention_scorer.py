@@ -30,6 +30,7 @@ class AttentionScorer:
         layers: list[int] | None = None,
         n_window: int = 64,
         decay: float = 0.95,
+        score_mode: str = "ewma",
         capture_capacity: int = 8 * 1024 * 1024,
     ):
         # capture_capacity is in f32 elements (32 MB at the default). The
@@ -39,8 +40,14 @@ class AttentionScorer:
         self._engine = engine
         self._n_window = n_window
         self._decay = float(decay)
+        self._score_mode = score_mode
         self._buffer = np.zeros(capture_capacity, dtype=np.float32)
         self._scores: dict[int, deque[float]] = {}
+        # Lifetime attention mass per block. Tracked unconditionally so callers
+        # can switch score_mode at runtime without losing prior history; the
+        # ewma path ignores this dict, and the cumulative path ignores the
+        # sliding window. Cleared per block by forget().
+        self._cumulative: dict[int, float] = {}
         if layers is not None:
             engine.attn_capture_set_layers(layers)
         else:
@@ -86,6 +93,11 @@ class AttentionScorer:
             self._push(block.block_id, per_step)
 
     def score(self, block: ActiveBlock) -> float | None:
+        if self._score_mode == "cumulative":
+            return self._score_cumulative(block)
+        return self._score_ewma(block)
+
+    def _score_ewma(self, block: ActiveBlock) -> float | None:
         window = self._scores.get(block.block_id)
         if not window:
             return None
@@ -100,11 +112,31 @@ class AttentionScorer:
             return None
         return float(total / weight_sum)
 
+    def _score_cumulative(self, block: ActiveBlock) -> float | None:
+        # H2O's heavy-hitter statistic: per-block lifetime attention mass, no
+        # decay. Normalized against the running max so the survivor with the
+        # highest cumulative attention scores exactly 1.0 (and is auto-protected
+        # via the score>=1.0 rule in EvokeManager._evictable_blocks). Other
+        # blocks scale linearly; the existing "evict lowest" sort in
+        # _enforce_budget then reproduces H2O's equilibrium where top-K by
+        # cumulative survive and the lowest get freed first.
+        value = self._cumulative.get(block.block_id)
+        if value is None:
+            return None
+        if not self._cumulative:
+            return None
+        max_val = max(self._cumulative.values())
+        if max_val <= 0.0:
+            return None
+        return float(value / max_val)
+
     def forget(self, block_id: int) -> None:
         # Called by the manager when a block is permanently evicted (no
-        # recovery saved). Keeps the score map from growing unbounded over
-        # long-running sessions.
+        # recovery saved). Keeps the score maps from growing unbounded over
+        # long-running sessions. Drops both window and cumulative entries so
+        # mode switches after a long run start from a clean slate.
         self._scores.pop(block_id, None)
+        self._cumulative.pop(block_id, None)
 
     def _push(self, block_id: int, value: float) -> None:
         win = self._scores.get(block_id)
@@ -112,3 +144,4 @@ class AttentionScorer:
             win = deque(maxlen=self._n_window)
             self._scores[block_id] = win
         win.append(value)
+        self._cumulative[block_id] = self._cumulative.get(block_id, 0.0) + value

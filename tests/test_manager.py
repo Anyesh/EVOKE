@@ -531,7 +531,11 @@ class TestHarnessPriority:
             manager._positions.next_logical_pos,
             manager._positions.next_logical_pos,
         )
-        evictable = manager._evictable_blocks(manager._positions.active_blocks, scores)
+        evictable = manager._evictable_blocks(
+            manager._positions.active_blocks,
+            scores,
+            manager._positions.next_logical_pos,
+        )
         assert all(not b.pinned for b in evictable), (
             "pinned blocks must never appear as eviction candidates"
         )

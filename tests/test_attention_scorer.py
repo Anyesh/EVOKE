@@ -139,3 +139,67 @@ class TestAttentionScorer:
         # No stub_capture: dims still (0,0,0). absorb must be a no-op.
         scorer.absorb_last_decode([block])
         assert scorer.score(block) is None
+
+
+class TestAttentionScorerCumulativeMode:
+    def test_cumulative_normalizes_to_max(self):
+        engine = FakeEngine()
+        scorer = AttentionScorer(
+            engine, layer=0, n_window=4, decay=0.9, score_mode="cumulative"
+        )
+        block_a = _block(1, 0, 4)
+        block_b = _block(2, 4, 8)
+        weights = np.zeros((1, 1, 8), dtype=np.float32)
+        weights[:, :, 0:4] = 0.25
+        weights[:, :, 4:8] = 0.125
+        engine.stub_capture(weights)
+        scorer.absorb_last_decode([block_a, block_b])
+        sa = scorer.score(block_a)
+        sb = scorer.score(block_b)
+        assert sa == 1.0
+        assert abs(sb - 0.5) < 1e-5
+
+    def test_cumulative_accumulates_without_decay(self):
+        engine = FakeEngine()
+        scorer = AttentionScorer(
+            engine, layer=0, n_window=4, decay=0.5, score_mode="cumulative"
+        )
+        block = _block(1, 0, 4)
+        for _ in range(3):
+            w = np.full((1, 1, 4), 0.125, dtype=np.float32)
+            engine.stub_capture(w)
+            scorer.absorb_last_decode([block])
+        # Single tracked block -> normalized score is always max == 1.0,
+        # but the underlying cumulative is sum-of-per-steps. Verify by
+        # checking the second block stays proportional.
+        block_b = _block(2, 0, 4)
+        weights2 = np.full((1, 1, 4), 0.0625, dtype=np.float32)
+        engine.stub_capture(weights2)
+        scorer.absorb_last_decode([block_b])
+        sa = scorer.score(block)
+        sb = scorer.score(block_b)
+        # block cumulative = 0.5 * 3 = 1.5; block_b cumulative = 0.25.
+        # max = 1.5; normalized: block=1.0, block_b ~= 0.1667.
+        assert sa == 1.0
+        assert abs(sb - 0.25 / 1.5) < 1e-5
+
+    def test_cumulative_forget_drops_state(self):
+        engine = FakeEngine()
+        scorer = AttentionScorer(
+            engine, layer=0, n_window=4, decay=0.9, score_mode="cumulative"
+        )
+        block = _block(1, 0, 4)
+        w = np.full((1, 1, 4), 0.25, dtype=np.float32)
+        engine.stub_capture(w)
+        scorer.absorb_last_decode([block])
+        assert scorer.score(block) is not None
+        scorer.forget(block.block_id)
+        assert scorer.score(block) is None
+
+    def test_cumulative_returns_none_before_absorb(self):
+        engine = FakeEngine()
+        scorer = AttentionScorer(
+            engine, layer=0, n_window=4, decay=0.9, score_mode="cumulative"
+        )
+        block = _block(1, 0, 4)
+        assert scorer.score(block) is None

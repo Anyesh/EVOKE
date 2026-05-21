@@ -92,6 +92,22 @@ STRATEGIES: dict[str, dict] = {
     "evoke_attention": dict(
         recovery_mode="kv_restore", w_attention=0.5, w_recency=0.2, w_coherence=0.3
     ),
+    # H2O baseline (arXiv:2306.14048) reimplemented atop EVOKE's AttentionScorer
+    # infrastructure. Heavy-hitter selection uses lifetime cumulative attention
+    # mass per block (no decay), the last 10% of cache budget is unconditionally
+    # protected as the recent window R, and eviction fires at the hard budget
+    # threshold with no watermark slack so the cache settles at H2O's
+    # equilibrium of top-K-by-cumulative survivors. Recovery is "discard"
+    # because H2O has no recovery story; an evicted token is gone for good.
+    "h2o": dict(
+        recovery_mode="discard",
+        w_attention=1.0,
+        w_recency=0.0,
+        w_coherence=0.0,
+        attention_score_mode="cumulative",
+        recent_tail_protect_frac=0.1,
+        eviction_policy="hard",
+    ),
 }
 
 
@@ -124,6 +140,7 @@ def run_strategy(
             layer=config.attention_capture_layer,
             n_window=config.attention_window,
             decay=config.attention_decay,
+            score_mode=config.attention_score_mode,
         )
     mgr = EvokeManager(engine, config, attention_scorer=attn_scorer)
 
@@ -183,6 +200,15 @@ def main() -> int:
             for name, overrides in STRATEGIES.items():
                 if name == "evoke_kv_restore" and not engine.supports_kv_block:
                     print(f"{budget:<8}{name:<18}SKIP (no LLAMA_CPP_LIB)")
+                    continue
+                if name == "h2o" and not engine.supports_kv_block:
+                    # H2O's selection rule depends on attention capture; without
+                    # the fork's primitive the scorer falls back to recency,
+                    # which would silently mislabel the run as H2O when it isn't.
+                    print(
+                        f"{budget:<8}{name:<18}SKIP "
+                        "(no LLAMA_CPP_LIB; attention capture unavailable)"
+                    )
                     continue
                 try:
                     r = run_strategy(engine, name, overrides, budget)

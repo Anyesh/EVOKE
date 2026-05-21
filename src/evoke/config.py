@@ -30,6 +30,21 @@ class EvokeConfig:
     # remembers per block. Decay applies exponentially across the window.
     attention_window: int = 64
     attention_decay: float = 0.95
+    # H2O uses cumulative attention without decay, where EVOKE's default uses
+    # a sliding-window EWMA. Setting "cumulative" makes AttentionScorer.score
+    # return per-block cumulative attention mass normalized against the running
+    # max across blocks (so the value stays in [0, 1]) instead of the EWMA
+    # over the last n_window steps. Other policies must leave this at "ewma"
+    # to preserve the multi-signal recipe.
+    attention_score_mode: str = "ewma"
+    # H2O protects a recent window R against eviction unconditionally (their
+    # default is 10% of cache budget). Setting > 0 excludes any block whose
+    # logical_end falls inside the last int(max_active_tokens *
+    # recent_tail_protect_frac) positions of the cache from the eviction
+    # candidate set, so heavy-hitter selection isn't confounded by recency
+    # pruning of mid-cache blocks. Default 0.0 preserves existing EVOKE
+    # behavior (no unconditional tail guard; recency is a soft signal only).
+    recent_tail_protect_frac: float = 0.0
 
     eviction_policy: str = "watermark"
     high_watermark: float = 0.95

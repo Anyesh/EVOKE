@@ -349,7 +349,7 @@ class EvokeManager:
         pos = self._positions.next_logical_pos
         scores = self._scorer.score_blocks(blocks, pos, pos)
 
-        candidates = self._evictable_blocks(blocks, scores)
+        candidates = self._evictable_blocks(blocks, scores, pos)
         candidates.sort(key=lambda b: scores.get(b.block_id, 0.0))
 
         to_evict: list[ActiveBlock] = []
@@ -364,13 +364,26 @@ class EvokeManager:
             self._evict_blocks({b.block_id for b in to_evict})
 
     def _evictable_blocks(
-        self, blocks: list[ActiveBlock], scores: dict[int, float]
+        self, blocks: list[ActiveBlock], scores: dict[int, float], current_pos: int
     ) -> list[ActiveBlock]:
+        # H2O-style recent-tail guard. Blocks whose logical_end falls within
+        # the last R positions of the cache are excluded from eviction
+        # candidates regardless of score, so heavy-hitter selection isn't
+        # confounded by recency pruning of mid-cache blocks. Default is 0
+        # (no guard) so existing EVOKE policies are unaffected.
+        recent_protect_n = int(
+            self._config.max_active_tokens * self._config.recent_tail_protect_frac
+        )
         evictable = []
         for block in blocks:
             if block.is_sink or block.pinned:
                 continue
             if scores.get(block.block_id, 0.0) >= 1.0:
+                continue
+            if (
+                recent_protect_n > 0
+                and block.logical_end >= current_pos - recent_protect_n
+            ):
                 continue
             # pin_generated protects the model's just-decoded output (an
             # ASSISTANT block) from being immediately evicted by the same
