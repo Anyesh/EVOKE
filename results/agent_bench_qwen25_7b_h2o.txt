@@ -1,0 +1,28 @@
+agentic eval | model=Qwen2.5-7B-Instruct-Q4_K_M
+kv_block primitives available: True
+budget  strategy          probe  evict  recov  active  rec_ms    answer
+-----------------------------------------------------------------------
+512     recency           fail   35     0      412     0.00      'The maximum retry limit set in config.py is not explicitly'
+512     streaming_llm     fail   35     0      398     0.00      'I cannot answer this question without inspecting the `conf'
+512     evoke_discard     fail   35     0      398     0.00      'I cannot answer this question without inspecting the `conf'
+512     evoke_breadcrumb  PASS   35     0      430     18.52     'The maximum retry limit set in `config.py` is 17 attempts.'
+512     evoke_kv_restore  PASS   35     1      430     3.81      'The maximum retry limit set in config.py is 17 attempts. B'
+512     evoke_attention   PASS   31     0      370     0.01      'The maximum retry limit set in `config.py` is 17 attempts.'
+512     h2o               fail   34     0      462     0.00      'To find the maximum retry limit set in `config.py`, I need'
+-----------------------------------------------------------------------
+1024    recency           fail   29     0      712     0.00      'The maximum retry limit set in config.py is not explicitly'
+1024    streaming_llm     fail   28     0      762     0.00      'I cannot provide an answer without inspecting the `config.'
+1024    evoke_discard     fail   28     0      720     0.00      'I cannot provide an answer without inspecting the `config.'
+1024    evoke_breadcrumb  PASS   28     0      752     15.46     'The maximum retry limit set in `config.py` is 17 attempts.'
+1024    evoke_kv_restore  PASS   28     1      752     3.22      'The maximum retry limit set in `config.py` is 17 attempts.'
+1024    evoke_attention   PASS   26     1      838     3.28      'The maximum retry limit set in `config.py` is 17 attempts.'
+1024    h2o               fail   24     0      976     0.00      'I cannot provide an answer without inspecting the `config.'
+-----------------------------------------------------------------------
+2048    recency           fail   9      0      1782    0.00      'The maximum retry limit set in config.py is not explicitly'
+2048    streaming_llm     fail   10     0      1746    0.00      'Based on the information provided, there are no files list'
+2048    evoke_discard     fail   10     0      1746    0.00      'Based on the information provided, there are no files list'
+2048    evoke_breadcrumb  PASS   10     0      1778    16.99     'The maximum retry limit set in `config.py` is 17 attempts.'
+2048    evoke_kv_restore  PASS   10     1      1778    2.95      'The maximum retry limit set in `config.py` is 17 attempts.'
+2048    evoke_attention   PASS   8      0      1758    0.00      'The maximum retry limit set in `config.py` is 17 attempts.'
+2048    h2o               fail   4      0      2046    0.00      'I cannot find a `config.py` file in the repository, and th'
+-----------------------------------------------------------------------
