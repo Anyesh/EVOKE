@@ -47,14 +47,9 @@ Measured on Qwen 2.5 7B, RTX 4070 Ti SUPER, Flash Attention enabled. `kv_block_l
 
 The gap widens linearly with block size: re-prefill is `O(tokens × model_FLOPs)`, load is `O(tokens × bytes)`.
 
-## Verified end-to-end
+## Live opencode integration
 
-The mechanism has been run, measured, and stress-tested against a real coding agent.
-
-- **Live opencode session against Qwen 3.5 9B (hybrid Mamba/Attention + thinking, budget=2048).** 250 cumulative evictions, 4 smart-recoveries, `active_tokens` held near 1414 (within budget) while `cached_tokens` grew to 32902. The agent's conversation was 23× larger than what was actually held in GPU at any moment.
-- **A real bug was caught and fixed during this live integration.** `_evictable_blocks` was over-pinning prompt-decoded `DOCUMENT` blocks under `pin_generated`, which silently zeroed evictions on the server path used by external harnesses. Root-cause traced via targeted reproducers (now folded into `tests/test_session_eviction.py`); fix in one targeted condition; 106 unit tests still pass.
-- **All paper §7 numbers are reproducible** from the scripts in `scripts/` per Appendix A. Raw output for the agentic eval (`results/agent_bench_qwen25_7b.txt`), the attention scorer ablation, and the keepalive workload are checked into the repo.
-- **Three model families verified at the primitive level** (Qwen 2.5 7B, Qwen 3.5 9B, Qwen 3.6 35B-A3B) via `scripts/verify_kv_restore.py`. The full server-side evaluation is on Qwen 2.5 7B; cross-architecture latency and scorer ablations are explicit limitations in §8 of the paper.
+A live opencode session against Qwen 3.5 9B (hybrid Mamba/Attention + thinking, budget=2048) ran 250 cumulative evictions and 4 smart-recoveries with `active_tokens` held near 1414 (within budget) while `cached_tokens` grew to 32902, so the agent's conversation was 23x larger than what was held in GPU at any moment. Every paper §7 number is reproducible from `scripts/` per Appendix A, with raw output for the agentic eval (`results/agent_bench_qwen25_7b.txt`), the attention scorer ablation, and the keepalive workload checked into the repo.
 
 ## Repository layout
 
