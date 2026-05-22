@@ -1,0 +1,38 @@
+﻿agentic eval | model=Qwen2.5-7B-Instruct-Q4_K_M
+kv cache quantization: type_k=type_v=q4_0
+kv_block primitives available: True
+budget  strategy          probe  evict  recov  active  rec_ms    answer
+-----------------------------------------------------------------------
+512     no_eviction       fail   0      0      2270    0.00      ', and, and, and, and, and, and, and, and, and, and, and, a'
+512     recency           fail   35     0      412     0.00      '19 1000000000000000000000000000'
+512     streaming_llm     fail   35     0      398     0.00      'pers, that  or, that,  wouldperspers the     1          1 '
+512     evoke_discard     fail   35     0      398     0.00      'pers, that  or, that,  wouldperspers the     1          1 '
+512     evoke_breadcrumb  fail   35     0      430     150.39    ', ,0 1.  the, the, ,    the000s000,,, thepersperspers'
+512     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-----------------------------------------------------------------------
+1024    no_eviction       fail   0      0      2270    0.00      ', and, and, and, and, and, and, and, and, and, and, and, a'
+1024    recency           fail   29     0      712     0.00      'shaping shaping. for the the.  response for0 for the, for '
+1024    streaming_llm     fail   28     0      762     0.00      '1 8 8 is is for the the it 8  it  2   2'
+1024    evoke_discard     fail   28     0      762     0.00      '1 8 8 is is for the the it 8  it  2   2'
+1024    evoke_breadcrumb  fail   29     0      772     17.11     '\\   def for the for \\   \\ for the the 1 to use. \\ for00000'
+1024    evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-----------------------------------------------------------------------
+2048    no_eviction       fail   0      0      2270    0.00      ', and, and, and, and, and, and, and, and, and, and, and, a'
+2048    recency           fail   9      0      1782    0.00      '1s for request 1 for small 1 for small 1 for small 2 2 for'
+2048    streaming_llm     fail   10     0      1746    0.00      'define define define define define define define define de'
+2048    evoke_discard     fail   10     0      1746    0.00      'define define define define define define define define de'
+2048    evoke_breadcrumb  fail   10     0      1778    17.02     '1 for request parsing parsing and for request parsing and '
+2048    evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-----------------------------------------------------------------------

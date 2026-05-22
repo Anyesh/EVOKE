@@ -1,0 +1,927 @@
+﻿niah eval | model=Qwen2.5-7B-Instruct-Q4_K_M
+kv cache quantization: type_k=type_v=q4_0
+kv_block primitives available: True
+haystack: 40 paragraphs, seed=0, 5 needles, 5 depths, 3 budgets
+budget  needle    depth  strategy          probe  evict  recov  active  sec    answer
+-------------------------------------------------------------------------------------
+512     password  5      no_eviction       fail   0      0      6001    2.51   'the the 1 the of the the the thes thes the the the the the the the the the the t'
+512     password  5      recency           fail   88     0      369     2.59   '111 the11111111111111 the1111111111011110111 the11111111111111111101111110101011'
+512     password  5      streaming_llm     fail   88     0      369     2.59   'questions the questions11111111 of pattern-weld blades of in of of of of of of o'
+512     password  5      evoke_discard     fail   88     0      369     2.59   'questions the questions11111111 of pattern-weld blades of in of of of of of of o'
+512     password  5      evoke_breadcrumb  fail   88     0      369     2.59   'questions the questions11111111 of pattern-weld blades of in of of of of of of o'
+512     password  5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     password  5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     password  25     no_eviction       fail   0      0      6001    2.47   'the the the the the the the the the the the the the the the the the the the the '
+512     password  25     recency           fail   88     0      369     2.56   'field the period0 of of thes111 the the the1 the the1 the of1 the the the the th'
+512     password  25     streaming_llm     fail   88     0      369     2.56   'The. of. of for of for of of of of for of of for of of of of of of of of for of '
+512     password  25     evoke_discard     fail   88     0      369     2.56   'The. of. of for of for of of of of for of of for of of of of of of of of for of '
+512     password  25     evoke_breadcrumb  fail   88     0      369     2.56   'The. of. of for of for of of of of for of of for of of of of of of of of for of '
+512     password  25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     password  25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     password  50     no_eviction       fail   0      0      6001    2.44   'the the the the the of the the the the the the the the the the the the the the t'
+512     password  50     recency           fail   88     0      369     2.56   'for period the01010100 111 the1 the111 the 1 1  of  and  and  and  and  and  and'
+512     password  50     streaming_llm     fail   88     0      369     2.56   'of the111111111 the the 1 1 11 111 1 1 1 111 1 1 1111111111111111 1 111 1 1 1 11'
+512     password  50     evoke_discard     fail   88     0      369     2.56   'of the111111111 the the 1 1 11 111 1 1 1 111 1 1 1111111111111111 1 111 1 1 1 11'
+512     password  50     evoke_breadcrumb  fail   88     0      369     2.59   'of the111111111 the the 1 1 11 111 1 1 1 111 1 1 1111111111111111 1 111 1 1 1 11'
+512     password  50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     password  50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     password  75     no_eviction       fail   0      0      6001    2.47   'the the the the the the the the the the the the the the the the the the the the '
+512     password  75     recency           fail   88     0      369     2.59   'the the the the of the the the the the the of the of the of of of the the the th'
+512     password  75     streaming_llm     fail   84     0      429     0.72   'The. The The1111111 of the for the is as for to and and and and the is as and to'
+512     password  75     evoke_discard     fail   84     0      429     0.72   'The. The The1111111 of the for the is as for to and and and and the is as and to'
+512     password  75     evoke_breadcrumb  fail   84     0      429     0.72   'The. The The1111111 of the for the is as for to and and and and the is as and to'
+512     password  75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     password  75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     password  95     no_eviction       fail   0      0      6001    2.47   'ss the the the the the the the the the the the the the the the the the the the t'
+512     password  95     recency           fail   88     0      369     2.59   'of. of of1111111 of the1 of the of of of the1 of 1 1 1 of of1111 of 11 111111111'
+512     password  95     streaming_llm     fail   88     0      369     2.59   'The: The. the for the metall of of in in the for the of in in of the1 of the 1 t'
+512     password  95     evoke_discard     fail   88     0      369     2.58   'The: The. the for the metall of of in in the for the of in in of the1 of the 1 t'
+512     password  95     evoke_breadcrumb  fail   88     0      369     2.56   'The: The. the for the metall of of in in the for the of in in of the1 of the 1 t'
+512     password  95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     password  95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     password  95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     capital   5      no_eviction       fail   0      0      6005    2.44   'the the the the the the the the the the the the the the the the the the the the '
+512     capital   5      recency           fail   88     0      373     2.56   '? the the the? the the the the the the the the the the the the on the thethe the'
+512     capital   5      streaming_llm     fail   88     0      373     2.56   'The the the of the thess of the s 7 the then of the the of the the of the of the'
+512     capital   5      evoke_discard     fail   88     0      373     2.56   'The the the of the thess of the s 7 the then of the the of the the of the of the'
+512     capital   5      evoke_breadcrumb  fail   88     0      373     2.56   'The the the of the thess of the s 7 the then of the the of the the of the of the'
+512     capital   5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     capital   25     no_eviction       fail   0      0      6005    2.44   'the the the the the the the the the the the the the the the the the the the the '
+512     capital   25     recency           fail   88     0      373     2.57   'the the the the? ?   pre pol?   ### influence the the the on on c? ?   pol?     '
+512     capital   25     streaming_llm     fail   88     0      373     2.59   'The the influence of epispticonic disturbance disturbance and recovery recovery '
+512     capital   25     evoke_discard     fail   88     0      373     2.59   'The the influence of epispticonic disturbance disturbance and recovery recovery '
+512     capital   25     evoke_breadcrumb  fail   88     0      373     2.59   'The the influence of epispticonic disturbance disturbance and recovery recovery '
+512     capital   25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     capital   50     no_eviction       fail   0      0      6005    2.48   'the the the the the the the the the the the the the the the the the the of the t'
+512     capital   50     recency           fail   88     0      373     2.59   '? the? ? ?  and  the ? ? ? ?   and ? ?  and  the   and ? ?  and  and  and  and ?'
+512     capital   50     streaming_llm     fail   88     0      373     2.60   'Thehe the the pol polen poli poli the pol pol pol the the the on pol pol on pol '
+512     capital   50     evoke_discard     fail   88     0      373     2.59   'Thehe the the pol polen poli poli the pol pol pol the the the on pol pol on pol '
+512     capital   50     evoke_breadcrumb  fail   88     0      373     2.59   'Thehe the the pol polen poli poli the pol pol pol the the the on pol pol on pol '
+512     capital   50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     capital   75     no_eviction       fail   0      0      6005    2.44   'the the the the the the the the the the the the the the the the the the the the '
+512     capital   75     recency           fail   88     0      373     2.56   '?    the 2 the the the the the the the the the the on the pol??     the  and and'
+512     capital   75     streaming_llm     fail   88     0      373     2.56   'Theeation the pol polen pols the pol of the pol of pol the of the pol pol of the'
+512     capital   75     evoke_discard     fail   88     0      373     2.56   'Theeation the pol polen pols the pol of the pol of pol the of the pol pol of the'
+512     capital   75     evoke_breadcrumb  fail   88     0      373     2.56   'Theeation the pol polen pols the pol of the pol of pol the of the pol pol of the'
+512     capital   75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     capital   95     no_eviction       fail   0      0      6005    2.44   'the the thes the the the the the the the the the the the the the the the the the'
+512     capital   95     recency           fail   88     0      373     2.56   '?? 0 0 the the pol of the pol the the the the on the the of0  ? 0?  0 and and an'
+512     capital   95     streaming_llm     fail   88     0      373     2.56   'Thee pol the thei pol the polen the pol pol the pol the the the the on pol pol p'
+512     capital   95     evoke_discard     fail   88     0      373     2.59   'Thee pol the thei pol the polen the pol pol the pol the the the the on pol pol p'
+512     capital   95     evoke_breadcrumb  fail   88     0      373     2.59   'Thee pol the thei pol the polen the pol pol the pol the the the the on pol pol p'
+512     capital   95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     capital   95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     amount    5      no_eviction       fail   0      0      6020    2.48   'the the the the of the of the the of the the of of of of of the the of the the o'
+512     amount    5      recency           fail   89     0      324     2.60   '11111100000000000100000000000000000050555550000000000550000000000000000000000000'
+512     amount    5      streaming_llm     fail   89     0      346     2.59   'question sed many 1 of in the many the thein thein in thein the theinin of on in'
+512     amount    5      evoke_discard     fail   89     0      346     2.59   'question sed many 1 of in the many the thein thein in thein the theinin of on in'
+512     amount    5      evoke_breadcrumb  fail   89     0      346     2.59   'question sed many 1 of in the many the thein thein in thein the theinin of on in'
+512     amount    5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     amount    25     no_eviction       fail   0      0      6020    2.47   'the the the of the the the the the the the the the the the the the the the of th'
+512     amount    25     recency           ERROR: 'charmap' codec can't encode character '\u8d4f' in position 115: character maps to <undefined>
+512     amount    25     streaming_llm     fail   89     0      346     2.57   'of the theo of in in the in the the- as the the the the the the-in of of of in i'
+512     amount    25     evoke_discard     fail   89     0      346     2.58   'of the theo of in in the in the the- as the the the the the the-in of of of in i'
+512     amount    25     evoke_breadcrumb  fail   89     0      346     2.58   'of the theo of in in the in the the- as the the the the the the-in of of of in i'
+512     amount    25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     amount    50     no_eviction       fail   0      0      6020    2.46   'the the the of of the of the the the the the the the of of of the of of of of th'
+512     amount    50     recency           fail   89     0      324     2.57   '10011 the the1 1 the the1 or10001100501 in10010001011 the1 the151001111111000010'
+512     amount    50     streaming_llm     fail   89     0      346     2.58   'question sed the   theos the the the the the the in the the which in the in the '
+512     amount    50     evoke_discard     fail   89     0      346     2.58   'question sed the   theos the the the the the the in the the which in the in the '
+512     amount    50     evoke_breadcrumb  fail   89     0      346     2.59   'question sed the   theos the the the the the the in the the which in the in the '
+512     amount    50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     amount    75     no_eviction       fail   0      0      6020    2.48   'the the the of the the the the the the the the the the of the the of the the the'
+512     amount    75     recency           fail   89     0      324     2.60   '9 the the the the-the-out the515 the0915 the0 1000000000000005 the00050000000000'
+512     amount    75     streaming_llm     fail   89     0      346     2.61   '1 the theose1 the in the in in the in in in the in the in the in of of of of the'
+512     amount    75     evoke_discard     fail   89     0      346     2.61   '1 the theose1 the in the in in the in in in the in the in the in of of of of the'
+512     amount    75     evoke_breadcrumb  fail   89     0      346     2.60   '1 the theose1 the in the in in the in in in the in the in the in of of of of the'
+512     amount    75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     amount    95     no_eviction       fail   0      0      6020    2.48   'the the the the of the the the the the the the the the the of the of the the the'
+512     amount    95     recency           fail   89     0      324     2.60   'the answer the thecreasing-in of of the- of the-ed many the-in-de-in the. 10 1- '
+512     amount    95     streaming_llm     fail   89     0      346     2.58   'the theose the the the the in the in the the in in in in the in the in in in in '
+512     amount    95     evoke_discard     fail   89     0      346     2.58   'the theose the the the the in the in the the in in in in the in the in in in in '
+512     amount    95     evoke_breadcrumb  fail   89     0      346     2.58   'the theose the the the the in the in the the in in in in the in the in in in in '
+512     amount    95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     amount    95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     code      5      no_eviction       ERROR: 'charmap' codec can't encode character '\u0451' in position 135: character maps to <undefined>
+512     code      5      recency           ERROR: 'charmap' codec can't encode character '\u0451' in position 80: character maps to <undefined>
+512     code      5      streaming_llm     ERROR: 'charmap' codec can't encode character '\u0451' in position 81: character maps to <undefined>
+512     code      5      evoke_discard     ERROR: 'charmap' codec can't encode character '\u0451' in position 81: character maps to <undefined>
+512     code      5      evoke_breadcrumb  ERROR: 'charmap' codec can't encode character '\u0451' in position 81: character maps to <undefined>
+512     code      5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     code      5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     code      25     no_eviction       fail   0      0      6005    2.47   'the the thes the the the the the the the the the the the the the the the the the'
+512     code      25     recency           fail   88     0      373     2.60   '000001 1 1 the the of 00000s 00 the 0000 the the the 000000000000000000 00 00000'
+512     code      25     streaming_llm     fail   88     0      373     2.60   'the the 1  the now the the now. 0555 the the the0 theis ? 0 0 00 0 0 0 0 0 0 0 0'
+512     code      25     evoke_discard     fail   88     0      373     2.59   'the the 1  the now the the now. 0555 the the the0 theis ? 0 0 00 0 0 0 0 0 0 0 0'
+512     code      25     evoke_breadcrumb  fail   88     0      373     2.60   'the the 1  the now the the now. 0555 the the the0 theis ? 0 0 00 0 0 0 0 0 0 0 0'
+512     code      25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     code      25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     code      50     no_eviction       fail   0      0      6005    2.47   'the the the the the the the the the the the the the the the the the the the the '
+512     code      50     recency           fail   88     0      373     2.60   'the the the the? the the the the the the? ? the the the the the. ** of thethe th'
+512     code      50     streaming_llm     fail   88     0      373     2.60   'the the the the the the the of the of the the of the the the the the  of of the '
+512     code      50     evoke_discard     fail   88     0      373     2.58   'the the the the the the the of the of the the of the the the the the  of of the '
+512     code      50     evoke_breadcrumb  fail   88     0      373     2.58   'the the the the the the the of the of the the of the the the the the  of of the '
+512     code      50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     code      50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     code      75     no_eviction       fail   0      0      6005    2.45   'the the the the the the the the the the the the the the the the the the the the '
+512     code      75     recency           fail   88     0      373     2.57   'in extraction and:TheThe?  the the the the the tos the the the the0 the440404040'
+512     code      75     streaming_llm     fail   88     0      373     2.57   'The the the the the the the of the of the the of of of of the of the of the the '
+512     code      75     evoke_discard     fail   88     0      373     2.57   'The the the the the the the of the of the the of of of of the of the of the the '
+512     code      75     evoke_breadcrumb  fail   88     0      373     2.58   'The the the the the the the of the of the the of of of of the of the of the the '
+512     code      75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     code      75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     code      95     no_eviction       fail   0      0      6005    2.46   'the the thes the the the of the the the the the the the the the the the the the '
+512     code      95     recency           fail   88     0      373     2.57   '00000000000000000000000000000000000000000000000000000000000000000000 the the the'
+512     code      95     streaming_llm     fail   88     0      373     2.57   'The The the the of the the of the the of of of of the the the the the the the th'
+512     code      95     evoke_discard     fail   88     0      373     2.57   'The The the the of the the of the the of of of of the the the the the the the th'
+512     code      95     evoke_breadcrumb  fail   88     0      373     2.57   'The The the the of the the of the the of of of of the the the the the the the th'
+512     code      95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     code      95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     code      95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     date      5      no_eviction       fail   0      0      6016    2.45   '90000000000000009000000000000000000010000000000000000000050500000000000000000000'
+512     date      5      recency           ERROR: 'charmap' codec can't encode characters in position 103-104: character maps to <undefined>
+512     date      5      streaming_llm     fail   88     0      384     2.57   '005 influence 005 1 influence 0 2 010  the the 1 of00 100 1 1 of 0 1 0 1 00 0 00'
+512     date      5      evoke_discard     fail   89     0      339     2.57   '005 influence 005 1 influence 0 2 010  the the 1 of00 100 1 1 of 0 1 0 1 00 0 00'
+512     date      5      evoke_breadcrumb  fail   89     0      339     2.57   '005 influence 005 1 influence 0 2 010  the the 1 of00 100 1 1 of 0 1 0 1 00 0 00'
+512     date      5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     date      5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     date      25     no_eviction       fail   0      0      6016    2.44   'the the the the the of the the the the the of the the the the the the the the th'
+512     date      25     recency           fail   88     0      384     2.57   'the of of of of of the of of Treaty of of ironholm the the the of of the influen'
+512     date      25     streaming_llm     fail   88     0      384     2.56   'of of the of of the thecelestial the of the of of the the of the the the of the '
+512     date      25     evoke_discard     fail   88     0      384     2.56   'of of the of of the thecelestial the of the of of the the of the the the of the '
+512     date      25     evoke_breadcrumb  fail   88     0      384     2.56   'of of the of of the thecelestial the of the of of the the of the the the of the '
+512     date      25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     date      25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     date      50     no_eviction       fail   0      0      6016    2.44   'the the the of the the the of the the the of the the the the the the of the the '
+512     date      50     recency           fail   88     0      384     2.56   's of of 2 2  the  the of of the the the the of in in the the the of of the the  '
+512     date      50     streaming_llm     fail   88     0      384     2.58   'the the the the the of theThe influence of episodic disturbance and recovery tim'
+512     date      50     evoke_discard     fail   88     0      384     2.59   'the the the the the of theThe influence of episodic disturbance and recovery tim'
+512     date      50     evoke_breadcrumb  fail   88     0      384     2.59   'the the the the the of theThe influence of episodic disturbance and recovery tim'
+512     date      50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     date      50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     date      75     no_eviction       fail   0      0      6016    2.47   'the the the of the the the and and and the the of the the the the the of the the'
+512     date      75     recency           fail   88     0      384     2.59   'the the the the the the the in the Treaty of iron iron the the the the the the o'
+512     date      75     streaming_llm     fail   88     0      384     2.59   'the the the the the of theThe the the of the of the the the the the the the the '
+512     date      75     evoke_discard     fail   88     0      384     2.59   'the the the the the of theThe the the of the of the the the the the the the the '
+512     date      75     evoke_breadcrumb  fail   88     0      384     2.59   'the the the the the of theThe the the of the of the the the the the the the the '
+512     date      75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     date      75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+512     date      95     no_eviction       fail   0      0      6016    2.46   'the the the of the the the of the the of the the of the of the the of the of the'
+512     date      95     recency           fail   88     0      384     2.56   's of the the of of of the the Pol ofse pol thes the of considerable of the the o'
+512     date      95     streaming_llm     fail   88     0      384     2.57   'of thefluence of the of theThe the the of of of of of the of the the the the the'
+512     date      95     evoke_discard     fail   88     0      384     2.57   'of thefluence of the of theThe the the of of of of of the of the the the the the'
+512     date      95     evoke_breadcrumb  fail   88     0      384     2.57   'of thefluence of the of theThe the the of of of of of the of the the the the the'
+512     date      95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+512     date      95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+512     date      95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    password  5      no_eviction       fail   0      0      6001    2.45   'the the 1 the of the the the thes thes the the the the the the the the the the t'
+1024    password  5      recency           fail   82     0      753     2.56   '10000000500500000000000000000000000000000000000800000080000000000101000000000555'
+1024    password  5      streaming_llm     fail   82     0      753     2.57   'the the the the the 1 of extraction of the of the of the the the the0 of the the'
+1024    password  5      evoke_discard     fail   82     0      753     2.58   'the the the the the 1 of extraction of the of the of the the the the0 of the the'
+1024    password  5      evoke_breadcrumb  fail   82     0      753     2.59   'the the the the the 1 of extraction of the of the of the the the the0 of the the'
+1024    password  5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    password  25     no_eviction       fail   0      0      6001    2.47   'the the the the the the the the the the the the the the the the the the the the '
+1024    password  25     recency           fail   82     0      753     2.59   'the the the the the the the the the of the for the the00 the the0 the the0 the t'
+1024    password  25     streaming_llm     fail   82     0      753     2.59   'the the the the the of in for in the the and and and that the the the and and an'
+1024    password  25     evoke_discard     fail   82     0      753     2.59   'the the the the the of in for in the the and and and that the the the and and an'
+1024    password  25     evoke_breadcrumb  fail   82     0      753     2.59   'the the the the the of in for in the the and and and that the the the and and an'
+1024    password  25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    password  50     no_eviction       fail   0      0      6001    2.48   'the the the the the of the the the the the the the the the the the the the the t'
+1024    password  50     recency           fail   82     0      753     2.58   'the the the the the the the the the of the of the the the the10 a the01 the00000'
+1024    password  50     streaming_llm     fail   82     0      753     2.57   'the the the the the the the the the the the the the the the the the the the the '
+1024    password  50     evoke_discard     fail   82     0      753     2.57   'the the the the the the the the the the the the the the the the the the the the '
+1024    password  50     evoke_breadcrumb  fail   82     0      753     2.56   'the the the the the the the the the the the the the the the the the the the the '
+1024    password  50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    password  75     no_eviction       fail   0      0      6001    2.44   'the the the the the the the the the the the the the the the the the the the the '
+1024    password  75     recency           fail   82     0      753     2.56   'the thess1 thes111 the11 the the and the 1 1  of the 1 thes and 1 the of the of '
+1024    password  75     streaming_llm     fail   82     0      753     2.57   '1: the 1 the  i  a 9  o ao :;   9 8 8  1                    1              1    '
+1024    password  75     evoke_discard     fail   82     0      753     2.56   '1: the 1 the  i  a 9  o ao :;   9 8 8  1                    1              1    '
+1024    password  75     evoke_breadcrumb  fail   82     0      753     2.57   '1: the 1 the  i  a 9  o ao :;   9 8 8  1                    1              1    '
+1024    password  75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    password  95     no_eviction       fail   0      0      6001    2.47   'ss the the the the the the the the the the the the the the the the the the the t'
+1024    password  95     recency           fail   82     0      753     2.59   'the over: the over: over: the: over: of to the to case 1 1 1 1  over  over  over'
+1024    password  95     streaming_llm     fail   82     0      753     2.60   'the the of for in in and and and for the it and the the of of for and and or and'
+1024    password  95     evoke_discard     fail   82     0      753     2.59   'the the of for in in and and and for the it and the the of of for and and or and'
+1024    password  95     evoke_breadcrumb  fail   82     0      753     2.59   'the the of for in in and and and for the it and the the of of for and and or and'
+1024    password  95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    password  95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    capital   5      no_eviction       fail   0      0      6005    2.47   'the the the the the the the the the the the the the the the the the the the the '
+1024    capital   5      recency           fail   82     0      757     2.59   'thes the the the the of the the the the the the the the the thes the the the the'
+1024    capital   5      streaming_llm     fail   82     0      757     2.60   'and and the the and and the and and and the the the the the the the on the the t'
+1024    capital   5      evoke_discard     fail   82     0      757     2.57   'and and the the and and the and and and the the the the the the the on the the t'
+1024    capital   5      evoke_breadcrumb  fail   82     0      757     2.57   'and and the the and and the and and and the the the the the the the on the the t'
+1024    capital   5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    capital   25     no_eviction       fail   0      0      6005    2.45   'the the the the the the the the the the the the the the the the the the the the '
+1024    capital   25     recency           fail   82     0      757     2.57   'the the of the of the the of of of of the the the the the the of the the the the'
+1024    capital   25     streaming_llm     fail   82     0      757     2.57   'and and the the and and and and and and and the the the the the of the on the th'
+1024    capital   25     evoke_discard     fail   82     0      757     2.57   'and and the the and and and and and and and the the the the the of the on the th'
+1024    capital   25     evoke_breadcrumb  fail   82     0      757     2.57   'and and the the and and and and and and and the the the the the of the on the th'
+1024    capital   25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    capital   50     no_eviction       fail   0      0      6005    2.45   'the the the the the the the the the the the the the the the the the the of the t'
+1024    capital   50     recency           fail   82     0      757     2.59   'the the the the the the of the the the the the the the the thes the  the the the'
+1024    capital   50     streaming_llm     fail   82     0      757     2.59   'x and the the and and and and and and and the the in the in the the. the of the '
+1024    capital   50     evoke_discard     fail   82     0      757     2.60   'x and the the and and and and and and and the the in the in the the. the of the '
+1024    capital   50     evoke_breadcrumb  fail   82     0      757     2.59   'x and the the and and and and and and and the the in the in the the. the of the '
+1024    capital   50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    capital   75     no_eviction       fail   0      0      6005    2.47   'the the the the the the the the the the the the the the the the the the the the '
+1024    capital   75     recency           fail   82     0      757     2.60   'the the the of the the of of of of of the the the the the the of the the the the'
+1024    capital   75     streaming_llm     fail   82     0      757     2.59   'c 3 to the and and and and and the the of the the in of the on of the for now th'
+1024    capital   75     evoke_discard     fail   82     0      757     2.59   'c 3 to the and and and and and the the of the the in of the on of the for now th'
+1024    capital   75     evoke_breadcrumb  fail   82     0      757     2.56   'c 3 to the and and and and and the the of the the in of the on of the for now th'
+1024    capital   75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    capital   95     no_eviction       fail   0      0      6005    2.44   'the the thes the the the the the the the the the the the the the the the the the'
+1024    capital   95     recency           fail   82     0      757     2.56   'the the the the the of the the thes the of the the of the the of the the of the '
+1024    capital   95     streaming_llm     fail   82     0      757     2.57   'current the of the  and to of the of of of the the   of the the the the the the '
+1024    capital   95     evoke_discard     fail   82     0      757     2.56   'current the of the  and to of the of of of the the   of the the the the the the '
+1024    capital   95     evoke_breadcrumb  fail   82     0      757     2.56   'current the of the  and to of the of of of the the   of the the the the the the '
+1024    capital   95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    capital   95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    amount    5      no_eviction       fail   0      0      6020    2.45   'the the the the of the of the the of the the of of of of of the the of the the o'
+1024    amount    5      recency           fail   83     0      708     2.57   '11188111 1 1 as the the the1 the the the n  1 the the the1 the the the the1 the '
+1024    amount    5      streaming_llm     fail   83     0      708     2.59   'of the the I 0 of  practice  the.  the the the the the the 0 the 1 03 1 000 the0'
+1024    amount    5      evoke_discard     fail   83     0      708     2.60   'of the the I 0 of  practice  the.  the the the the the the 0 the 1 03 1 000 the0'
+1024    amount    5      evoke_breadcrumb  fail   83     0      708     2.59   'of the the I 0 of  practice  the.  the the the the the the 0 the 1 03 1 000 the0'
+1024    amount    5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    amount    25     no_eviction       fail   0      0      6020    2.48   'the the the of the the the the the the the the the the the the the the the of th'
+1024    amount    25     recency           fail   83     0      708     2.59   '00000001 000011000510150000000 the051 0500 0 0 00000500005 005000000000000 50000'
+1024    amount    25     streaming_llm     fail   83     0      708     2.59   'the the0 the the the the1 010 9 or00 the0 750 10940   109 0 0 10000009000090000.'
+1024    amount    25     evoke_discard     fail   83     0      708     2.60   'the the0 the the the the1 010 9 or00 the0 750 10940   109 0 0 10000009000090000.'
+1024    amount    25     evoke_breadcrumb  fail   83     0      708     2.60   'the the0 the the the the1 010 9 or00 the0 750 10940   109 0 0 10000009000090000.'
+1024    amount    25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    amount    50     no_eviction       fail   0      0      6020    2.45   'the the the of of the of the the the the the the the of of of the of of of of th'
+1024    amount    50     recency           fail   83     0      708     2.57   'of the the 1 2  the the the the0 the the  the the  the the  the  the of  the  th'
+1024    amount    50     streaming_llm     fail   83     0      708     2.56   'The the The of the the the the the the the the fe a the0 the the qu the the the '
+1024    amount    50     evoke_discard     fail   83     0      708     2.57   'The the The of the the the the the the the the fe a the0 the the qu the the the '
+1024    amount    50     evoke_breadcrumb  fail   83     0      708     2.57   'The the The of the the the the the the the the fe a the0 the the qu the the the '
+1024    amount    50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    amount    75     no_eviction       fail   0      0      6020    2.45   'the the the of the the the the the the the the the the of the the of the the the'
+1024    amount    75     recency           fail   83     0      708     2.57   '00    100 HOWEVER the9 the the of 1 the the the the 1 the the the the the the th'
+1024    amount    75     streaming_llm     fail   83     0      708     2.57   'the the the the 0  a the 0 0  the 1  the 1   the  the  the   the  the  the  the '
+1024    amount    75     evoke_discard     fail   83     0      708     2.59   'the the the the 0  a the 0 0  the 1  the 1   the  the  the   the  the  the  the '
+1024    amount    75     evoke_breadcrumb  fail   83     0      708     2.59   'the the the the 0  a the 0 0  the 1  the 1   the  the  the   the  the  the  the '
+1024    amount    75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    amount    95     no_eviction       fail   0      0      6020    2.47   'the the the the of the the the the the the the the the the of the of the the the'
+1024    amount    95     recency           fail   83     0      708     2.59   '0099009000 0 0 0 00 09010000009 009000950009040000005000490000000000000000000000'
+1024    amount    95     streaming_llm     fail   83     0      708     2.59   '.The the The0       7 7 8 8 8  4 the  the0 the1 1 1 1  the 1 1 1 1 1 the the the'
+1024    amount    95     evoke_discard     fail   83     0      708     2.60   '.The the The0       7 7 8 8 8  4 the  the0 the1 1 1 1  the 1 1 1 1 1 the the the'
+1024    amount    95     evoke_breadcrumb  fail   83     0      708     2.60   '.The the The0       7 7 8 8 8  4 the  the0 the1 1 1 1  the 1 1 1 1 1 the the the'
+1024    amount    95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    amount    95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    code      5      no_eviction       ERROR: 'charmap' codec can't encode character '\u0451' in position 135: character maps to <undefined>
+1024    code      5      recency           ERROR: 'charmap' codec can't encode character '\u0451' in position 83: character maps to <undefined>
+1024    code      5      streaming_llm     fail   82     0      757     2.56   '09 055 pΘrdida999  Col909 pΘrdida9 15 pΘrdida0 bi≤0bi≤9007bi≤000bi≤9999099 the00'
+1024    code      5      evoke_discard     fail   82     0      757     2.56   '09 055 pΘrdida999  Col909 pΘrdida9 15 pΘrdida0 bi≤0bi≤9007bi≤000bi≤9999099 the00'
+1024    code      5      evoke_breadcrumb  fail   82     0      757     2.56   '09 055 pΘrdida999  Col909 pΘrdida9 15 pΘrdida0 bi≤0bi≤9007bi≤000bi≤9999099 the00'
+1024    code      5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    code      25     no_eviction       fail   0      0      6005    2.44   'the the thes the the the the the the the the the the the the the the the the the'
+1024    code      25     recency           fail   82     0      757     2.56   'the 1 the,, 101 00 the 1 1 00) the, the 0000000 the00000000000 0 000000000000000'
+1024    code      25     streaming_llm     fail   82     0      757     2.56   'nows. the.10 a0 the 1  the. the01 1 of 1 now the the000 the  the  the 0 0 00 0 0'
+1024    code      25     evoke_discard     fail   82     0      757     2.56   'nows. the.10 a0 the 1  the. the01 1 of 1 now the the000 the  the  the 0 0 00 0 0'
+1024    code      25     evoke_breadcrumb  fail   82     0      757     2.59   'nows. the.10 a0 the 1  the. the01 1 of 1 now the the000 the  the  the 0 0 00 0 0'
+1024    code      25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    code      50     no_eviction       fail   0      0      6005    2.47   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      50     recency           fail   82     0      757     2.59   '000000000000000000000000000000000000000000000000000000000000000000000 00000 0000'
+1024    code      50     streaming_llm     fail   82     0      757     2.60   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      50     evoke_discard     fail   82     0      757     2.60   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      50     evoke_breadcrumb  fail   82     0      757     2.60   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    code      75     no_eviction       fail   0      0      6005    2.47   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      75     recency           fail   82     0      757     2.59   ':0:1: in:::::: : the the the the the the of the of: of: of the frequent the the '
+1024    code      75     streaming_llm     fail   82     0      757     2.58   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      75     evoke_discard     fail   82     0      757     2.56   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      75     evoke_breadcrumb  fail   82     0      757     2.57   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    code      95     no_eviction       fail   0      0      6005    2.45   'the the thes the the the of the the the the the the the the the the the the the '
+1024    code      95     recency           fail   82     0      757     2.57   'the workshopss the the the of of the of of of of the of the the of the of of the'
+1024    code      95     streaming_llm     fail   82     0      757     2.56   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      95     evoke_discard     fail   82     0      757     2.56   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      95     evoke_breadcrumb  fail   82     0      757     2.57   'the the the the the the the the the the the the the the the the the the the the '
+1024    code      95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    code      95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    date      5      no_eviction       fail   0      0      6016    2.46   '90000000000000009000000000000000000010000000000000000000050500000000000000000000'
+1024    date      5      recency           fail   82     0      768     2.59   '05055500000000000050050000000000000000 0000 000000000000000000000000000000000000'
+1024    date      5      streaming_llm     fail   82     0      768     2.60   '0000000 0 00 0000 0 000 00 0 0 0 0 00 0 00 0 0 0 0 0 0 0 00 0 000 0 0000 000 0 0'
+1024    date      5      evoke_discard     fail   82     0      768     2.60   '0000000 0 00 0000 0 000 00 0 0 0 0 00 0 00 0 0 0 0 0 0 0 00 0 000 0 0000 000 0 0'
+1024    date      5      evoke_breadcrumb  fail   82     0      768     2.59   '0000000 0 00 0000 0 000 00 0 0 0 0 00 0 00 0 0 0 0 0 0 0 00 0 000 0 0000 000 0 0'
+1024    date      5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    date      25     no_eviction       fail   0      0      6016    2.48   'the the the the the of the the the the the of the the the the the the the the th'
+1024    date      25     recency           fail   82     0      768     2.60   'cases:cases of cases of the of thea the of the of the of the of the of the of th'
+1024    date      25     streaming_llm     fail   82     0      768     2.60   'the of the the the of the of the the the the of the the the of the of the of the'
+1024    date      25     evoke_discard     fail   82     0      768     2.58   'the of the the the of the of the the the the of the the the of the of the of the'
+1024    date      25     evoke_breadcrumb  fail   82     0      768     2.57   'the of the the the of the of the the the the of the the the of the of the of the'
+1024    date      25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    date      50     no_eviction       fail   0      0      6016    2.45   'the the the of the the the of the the the of the the the the the the of the the '
+1024    date      50     recency           fail   82     0      768     2.56   'lates the the the of the of the of the of the of the of the of the of the of the'
+1024    date      50     streaming_llm     fail   82     0      768     2.56   'the of 7he of 7 the the  of  of  of  of  of  of  of  of  of  of  of  of  of  of '
+1024    date      50     evoke_discard     fail   82     0      768     2.57   'the of 7he of 7 the the  of  of  of  of  of  of  of  of  of  of  of  of  of  of '
+1024    date      50     evoke_breadcrumb  fail   82     0      768     2.57   'the of 7he of 7 the the  of  of  of  of  of  of  of  of  of  of  of  of  of  of '
+1024    date      50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    date      75     no_eviction       fail   0      0      6016    2.44   'the the the of the the the and and and the the of the the the the the of the the'
+1024    date      75     recency           fail   82     0      768     2.57   'll: of of of of of of of of of of of of of of of of of of of of of of of of of o'
+1024    date      75     streaming_llm     fail   82     0      768     2.59   ': the the the the of the the of the the the of the the the the of the of the of '
+1024    date      75     evoke_discard     fail   82     0      768     2.60   ': the the the the of the the of the the the of the the the the of the of the of '
+1024    date      75     evoke_breadcrumb  fail   82     0      768     2.59   ': the the the the of the the of the the the of the the the the of the of the of '
+1024    date      75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+1024    date      95     no_eviction       fail   0      0      6016    2.47   'the the the of the the the of the the of the the of the of the the of the of the'
+1024    date      95     recency           fail   82     0      768     2.59   'of the 1 of the of thes the of the of the of 1 the 1 the of  of the of for the o'
+1024    date      95     streaming_llm     fail   82     0      768     2.59   'of the the of the of the of the of the of the the of the of the of the of the of'
+1024    date      95     evoke_discard     fail   82     0      768     2.60   'of the the of the of the of the of the of the the of the of the of the of the of'
+1024    date      95     evoke_breadcrumb  fail   82     0      768     2.59   'of the the of the of the of the of the of the the of the of the of the of the of'
+1024    date      95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+1024    date      95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    password  5      no_eviction       fail   0      0      6001    2.45   'the the 1 the of the the the thes thes the the the the the the the the the the t'
+2048    password  5      recency           fail   66     0      1777    2.57   '5ene0000000000000050000000000000000005000515100000000050000000000000000000000000'
+2048    password  5      streaming_llm     fail   66     0      1777    2.57   '010109000002010000000000000009 the09000000909000)0010)0010)0 01000 0)0  the00900'
+2048    password  5      evoke_discard     fail   66     0      1777    2.57   '010109000002010000000000000009 the09000000909000)0010)0010)0 01000 0)0  the00900'
+2048    password  5      evoke_breadcrumb  fail   66     0      1777    2.57   '010109000002010000000000000009 the09000000909000)0010)0010)0 01000 0)0  the00900'
+2048    password  5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    password  25     no_eviction       fail   0      0      6001    2.44   'the the the the the the the the the the the the the the the the the the the the '
+2048    password  25     recency           fail   66     0      1777    2.57   'the thes the the the the the the the the the00 the the0000000000000000090 and th'
+2048    password  25     streaming_llm     fail   66     0      1777    2.57   'the thes of the the the the the the the the the the the the the the the the the '
+2048    password  25     evoke_discard     fail   66     0      1777    2.60   'the thes of the the the the the the the the the the the the the the the the the '
+2048    password  25     evoke_breadcrumb  fail   66     0      1777    2.59   'the thes of the the the the the the the the the the the the the the the the the '
+2048    password  25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    password  50     no_eviction       fail   0      0      6001    2.48   'the the the the the of the the the the the the the the the the the the the the t'
+2048    password  50     recency           fail   66     0      1777    2.59   '5  the the15100005 the000000000000000000000050000 the the the11 the11 the9100001'
+2048    password  50     streaming_llm     fail   66     0      1777    2.60   's the the the the the the the the the ofs the of the of the the the the the the '
+2048    password  50     evoke_discard     fail   66     0      1777    2.59   's the the the the the the the the the ofs the of the of the the the the the the '
+2048    password  50     evoke_breadcrumb  fail   66     0      1777    2.60   's the the the the the the the the the ofs the of the of the the the the the the '
+2048    password  50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    password  75     no_eviction       fail   0      0      6001    2.47   'the the the the the the the the the the the the the the the the the the the the '
+2048    password  75     recency           fail   66     0      1777    2.56   'The secret the the the thes the thes1 theas the111111 thes the1 the the the 1 th'
+2048    password  75     streaming_llm     fail   66     0      1777    2.56   'the the the the the the the of the the the the the the the the of the the the th'
+2048    password  75     evoke_discard     fail   66     0      1777    2.56   'the the the the the the the of the the the the the the the the of the the the th'
+2048    password  75     evoke_breadcrumb  fail   66     0      1777    2.56   'the the the the the the the of the the the the the the the the of the the the th'
+2048    password  75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    password  95     no_eviction       fail   0      0      6001    2.44   'ss the the the the the the the the the the the the the the the the the the the t'
+2048    password  95     recency           fail   66     0      1777    2.56   'of  of the of the of the of the of the of2 000000000 of0001 of000000000000000000'
+2048    password  95     streaming_llm     fail   66     0      1777    2.56   'the theses of the the the the the of the the the of the 0 the 0 0 0090 the the t'
+2048    password  95     evoke_discard     fail   66     0      1777    2.57   'the theses of the the the the the of the the the of the 0 the 0 0 0090 the the t'
+2048    password  95     evoke_breadcrumb  fail   66     0      1777    2.60   'the theses of the the the the the of the the the of the 0 the 0 0 0090 the the t'
+2048    password  95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    password  95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    capital   5      no_eviction       fail   0      0      6005    2.48   'the the the the the the the the the the the the the the the the the the the the '
+2048    capital   5      recency           fail   66     0      1781    2.60   'the and and and and and and and and and0 1 and 1 1 1 and and the 1 1 1 and 1 and'
+2048    capital   5      streaming_llm     fail   66     0      1781    2.59   'the the the the the the in the of the in the in in the in in the the the the the'
+2048    capital   5      evoke_discard     fail   66     0      1781    2.59   'the the the the the the in the of the in the in in the in in the the the the the'
+2048    capital   5      evoke_breadcrumb  fail   66     0      1781    2.60   'the the the the the the in the of the in the in in the in in the the the the the'
+2048    capital   5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    capital   25     no_eviction       fail   0      0      6005    2.47   'the the the the the the the the the the the the the the the the the the the the '
+2048    capital   25     recency           fail   66     0      1781    2.60   '1111 the of of the of the the the of-in in in of 1 the of the of theing 1 11 the'
+2048    capital   25     streaming_llm     fail   66     0      1781    2.56   'the the the the the the the in the of the in in of the the the the the the the t'
+2048    capital   25     evoke_discard     fail   66     0      1781    2.56   'the the the the the the the in the of the in in of the the the the the the the t'
+2048    capital   25     evoke_breadcrumb  fail   66     0      1781    2.57   'the the the the the the the in the of the in in of the the the the the the the t'
+2048    capital   25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    capital   50     no_eviction       fail   0      0      6005    2.45   'the the the the the the the the the the the the the the the the the the of the t'
+2048    capital   50     recency           fail   66     0      1781    2.56   's and in in in in in in in in in in the serious the of of1 in the of the of in o'
+2048    capital   50     streaming_llm     fail   66     0      1781    2.56   'the the of the the the the in the of in in of in of in the the the of the the of'
+2048    capital   50     evoke_discard     fail   66     0      1781    2.56   'the the of the the the the in the of in in of in of in the the the of the the of'
+2048    capital   50     evoke_breadcrumb  fail   66     0      1781    2.57   'the the of the the the the in the of in in of in of in the the the of the the of'
+2048    capital   50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    capital   75     no_eviction       fail   0      0      6005    2.47   'the the the the the the the the the the the the the the the the the the the the '
+2048    capital   75     recency           fail   66     0      1781    2.59   'frequency the in in the1100 the the1 in the the of in the in the the the the the'
+2048    capital   75     streaming_llm     fail   66     0      1781    2.60   ': the the the the the in the of the in the of in in the of in the of the of the '
+2048    capital   75     evoke_discard     fail   66     0      1781    2.59   ': the the the the the in the of the in the of in in the of in the of the of the '
+2048    capital   75     evoke_breadcrumb  fail   66     0      1781    2.59   ': the the the the the in the of the in the of in in the of in the of the of the '
+2048    capital   75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    capital   95     no_eviction       fail   0      0      6005    2.47   'the the thes the the the the the the the the the the the the the the the the the'
+2048    capital   95     recency           fail   66     0      1781    2.59   's the0002000 00000000 0000000000000000000000000000000000000000000000000000000000'
+2048    capital   95     streaming_llm     fail   66     0      1781    2.60   'and the the and and and and and and of and and and and and and and and and and a'
+2048    capital   95     evoke_discard     fail   66     0      1781    2.57   'and the the and and and and and and of and and and and and and and and and and a'
+2048    capital   95     evoke_breadcrumb  fail   66     0      1781    2.57   'and the the and and and and and and of and and and and and and and and and and a'
+2048    capital   95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    capital   95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    amount    5      no_eviction       fail   0      0      6020    2.45   'the the the the of the of the the of the the of of of of of the the of the the o'
+2048    amount    5      recency           fail   66     0      1796    2.56   'the of of of a of an0 of of of  of of of 1 of of  of  of  of  of  the  of  of  o'
+2048    amount    5      streaming_llm     fail   66     0      1796    2.56   'the of of of an ofan of the of of an1 of1 of of of as of of extraction of of1 of'
+2048    amount    5      evoke_discard     fail   66     0      1796    2.56   'the of of of an ofan of the of of an1 of1 of of of as of of extraction of of1 of'
+2048    amount    5      evoke_breadcrumb  fail   66     0      1796    2.56   'the of of of an ofan of the of of an1 of1 of of of as of of extraction of of1 of'
+2048    amount    5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    amount    25     no_eviction       fail   0      0      6020    2.44   'the the the of the the the the the the the the the the the the the the the of th'
+2048    amount    25     recency           fail   66     0      1796    2.59   '041 the191100001105005 of the00000 the110001 the001010 1111- 1 0 the the01 111 1'
+2048    amount    25     streaming_llm     fail   66     0      1796    2.60   'the of of of of the0 the of of of of and t of0 of0 of with for the of of of with'
+2048    amount    25     evoke_discard     fail   66     0      1796    2.59   'the of of of of the0 the of of of of and t of0 of0 of with for the of of of with'
+2048    amount    25     evoke_breadcrumb  fail   66     0      1796    2.60   'the of of of of the0 the of of of of and t of0 of0 of with for the of of of with'
+2048    amount    25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    amount    50     no_eviction       fail   0      0      6020    2.48   'the the the of of the of the the the the the the the of of of the of of of of th'
+2048    amount    50     recency           fail   66     0      1796    2.59   'the of of of and of of an of armed of an1 of1 of1 of extraction     of of of of1'
+2048    amount    50     streaming_llm     fail   66     0      1796    2.60   'the of of of an of an0 for the a for 1 of0 of of as of as of for the1 for of for'
+2048    amount    50     evoke_discard     fail   66     0      1796    2.59   'the of of of an of an0 for the a for 1 of0 of of as of as of for the1 for of for'
+2048    amount    50     evoke_breadcrumb  fail   66     0      1796    2.57   'the of of of an of an0 for the a for 1 of0 of of as of as of for the1 for of for'
+2048    amount    50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    amount    75     no_eviction       fail   0      0      6020    2.45   'the the the of the the the the the the the the the the of the the of the the the'
+2048    amount    75     recency           fail   66     0      1796    2.57   'the of of of of0 the of of of of the of of extraction of as of example1 of of th'
+2048    amount    75     streaming_llm     fail   66     0      1796    2.56   'the of of of to the0 the of to and and and of of to and and and and and the of t'
+2048    amount    75     evoke_discard     fail   66     0      1796    2.56   'the of of of to the0 the of to and and and of of to and and and and and the of t'
+2048    amount    75     evoke_breadcrumb  fail   66     0      1796    2.56   'the of of of to the0 the of to and and and of of to and and and and and the of t'
+2048    amount    75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    amount    95     no_eviction       fail   0      0      6020    2.45   'the the the the of the the the the the the the the the the of the of the the the'
+2048    amount    95     recency           fail   66     0      1796    2.56   '0 of the of of extraction of of to the, of 2 of  of 0  of of  of  of  of  of  of'
+2048    amount    95     streaming_llm     fail   66     0      1796    2.58   'the of of the of extraction the of of extraction extraction extraction extractio'
+2048    amount    95     evoke_discard     fail   66     0      1796    2.59   'the of of the of extraction the of of extraction extraction extraction extractio'
+2048    amount    95     evoke_breadcrumb  fail   66     0      1796    2.60   'the of of the of extraction the of of extraction extraction extraction extractio'
+2048    amount    95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    amount    95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    code      5      no_eviction       ERROR: 'charmap' codec can't encode character '\u0451' in position 135: character maps to <undefined>
+2048    code      5      recency           ERROR: 'charmap' codec can't encode character '\u0451' in position 127: character maps to <undefined>
+2048    code      5      streaming_llm     fail   66     0      1781    2.59   '09099009990  5.0.90..  000099 9bi≤99.0 000 09 the9059bi≤990509bi≤5990 bi≤9 9bi≤0'
+2048    code      5      evoke_discard     fail   66     0      1781    2.60   '09099009990  5.0.90..  000099 9bi≤99.0 000 09 the9059bi≤990509bi≤5990 bi≤9 9bi≤0'
+2048    code      5      evoke_breadcrumb  fail   66     0      1781    2.59   '09099009990  5.0.90..  000099 9bi≤99.0 000 09 the9059bi≤990509bi≤5990 bi≤9 9bi≤0'
+2048    code      5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    code      25     no_eviction       fail   0      0      6005    2.45   'the the thes the the the the the the the the the the the the the the the the the'
+2048    code      25     recency           fail   66     0      1781    2.56   '10000000000000000000000000000000000000000000000000000000000000000000000000000000'
+2048    code      25     streaming_llm     fail   66     0      1781    2.56   '1 9 the the 980 the the0 9 the0000222 109,00 9s the 9 91 9 the 9 1s the a1s the '
+2048    code      25     evoke_discard     fail   66     0      1781    2.56   '1 9 the the 980 the the0 9 the0000222 109,00 9s the 9 91 9 the 9 1s the a1s the '
+2048    code      25     evoke_breadcrumb  fail   66     0      1781    2.56   '1 9 the the 980 the the0 9 the0000222 109,00 9s the 9 91 9 the 9 1s the a1s the '
+2048    code      25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    code      50     no_eviction       fail   0      0      6005    2.44   'the the the the the the the the the the the the the the the the the the the the '
+2048    code      50     recency           fail   66     0      1781    2.56   '50000000000000000000000000000000000000bat000000000000000000000000000000000000000'
+2048    code      50     streaming_llm     fail   66     0      1781    2.56   'the the the the the the the the the the the a thes these inan? the theug of ofba'
+2048    code      50     evoke_discard     fail   66     0      1781    2.58   'the the the the the the the the the the the a thes these inan? the theug of ofba'
+2048    code      50     evoke_breadcrumb  fail   66     0      1781    2.59   'the the the the the the the the the the the a thes these inan? the theug of ofba'
+2048    code      50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    code      75     no_eviction       fail   0      0      6005    2.48   'the the the the the the the the the the the the the the the the the the the the '
+2048    code      75     recency           fail   66     0      1781    2.59   'thef of the the the-00 4 4 3 4 3 5 0 0 90500 5000900 9 00000 0 055000950 0000 00'
+2048    code      75     streaming_llm     fail   66     0      1781    2.60   'thes the the the the the the the the the for the of the the the the the the the '
+2048    code      75     evoke_discard     fail   66     0      1781    2.59   'thes the the the the the the the the the for the of the the the the the the the '
+2048    code      75     evoke_breadcrumb  fail   66     0      1781    2.59   'thes the the the the the the the the the for the of the the the the the the the '
+2048    code      75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    code      95     no_eviction       fail   0      0      6005    2.48   'the the thes the the the of the the the the the the the the the the the the the '
+2048    code      95     recency           fail   66     0      1781    2.59   'of the for the   ofs the of thes the ofs of of of2 or the the2 of 0 000 and 0000'
+2048    code      95     streaming_llm     fail   66     0      1781    2.56   'the the the the the for the the the for and of the the the the the thes the the '
+2048    code      95     evoke_discard     fail   66     0      1781    2.57   'the the the the the for the the the for and of the the the the the thes the the '
+2048    code      95     evoke_breadcrumb  fail   66     0      1781    2.57   'the the the the the for the the the for and of the the the the the thes the the '
+2048    code      95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    code      95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    date      5      no_eviction       fail   0      0      6016    2.44   '90000000000000009000000000000000000010000000000000000000050500000000000000000000'
+2048    date      5      recency           ERROR: 'charmap' codec can't encode characters in position 83-84: character maps to <undefined>
+2048    date      5      streaming_llm     fail   66     0      1792    2.56   '0 0000000000000005000000000000 000000000100 000000000000000000000000000000000000'
+2048    date      5      evoke_discard     fail   66     0      1792    2.56   '0 0000000000000005000000000000 000000000100 000000000000000000000000000000000000'
+2048    date      5      evoke_breadcrumb  fail   66     0      1792    2.57   '0 0000000000000005000000000000 000000000100 000000000000000000000000000000000000'
+2048    date      5      evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      5      evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      5      evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      5      h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      5      snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      5      infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    date      25     no_eviction       fail   0      0      6016    2.48   'the the the the the of the the the the the of the the the the the the the the th'
+2048    date      25     recency           fail   66     0      1792    2.60   'of the the 1 of of of thes of the of the of thes the of the of the of the of the'
+2048    date      25     streaming_llm     fail   66     0      1792    2.60   'the the the the the of the of the the of the the the of the of the of the of the'
+2048    date      25     evoke_discard     fail   66     0      1792    2.59   'the the the the the of the of the the of the the the of the of the of the of the'
+2048    date      25     evoke_breadcrumb  fail   66     0      1792    2.59   'the the the the the of the of the the of the the the of the of the of the of the'
+2048    date      25     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      25     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      25     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      25     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      25     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      25     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    date      50     no_eviction       fail   0      0      6016    2.47   'the the the of the the the of the the the of the the the the the the of the the '
+2048    date      50     recency           fail   66     0      1792    2.60   'c the of the of the of the of the of the of the of the of the of the of the of t'
+2048    date      50     streaming_llm     fail   66     0      1792    2.59   'the to of the the of the and and of the the of and and of and and of or and and '
+2048    date      50     evoke_discard     fail   66     0      1792    2.56   'the to of the the of the and and of the the of and and of and and of or and and '
+2048    date      50     evoke_breadcrumb  fail   66     0      1792    2.56   'the to of the the of the and and of the the of and and of and and of or and and '
+2048    date      50     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      50     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      50     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      50     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      50     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      50     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    date      75     no_eviction       fail   0      0      6016    2.44   'the the the of the the the and and and the the of the the the the the of the the'
+2048    date      75     recency           fail   66     0      1792    2.56   'of the the    0 of 0 the the0 of  of 0 the of 00 of 0 of 000 of 00 of 0000000000'
+2048    date      75     streaming_llm     fail   66     0      1792    2.56   'for the the the to a And   e  in  which? the the co the  is  the    of   by  the'
+2048    date      75     evoke_discard     fail   66     0      1792    2.56   'for the the the to a And   e  in  which? the the co the  is  the    of   by  the'
+2048    date      75     evoke_breadcrumb  fail   66     0      1792    2.56   'for the the the to a And   e  in  which? the the co the  is  the    of   by  the'
+2048    date      75     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      75     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      75     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      75     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      75     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      75     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+2048    date      95     no_eviction       fail   0      0      6016    2.44   'the the the of the the the of the the of the the of the of the the of the of the'
+2048    date      95     recency           fail   66     0      1792    2.59   'holmprene the of of of of of of of at at at at at at of of of the of the of of o'
+2048    date      95     streaming_llm     fail   66     0      1792    2.59   'of of at at at of of of at at at at at at at of the the of at at at of of of of '
+2048    date      95     evoke_discard     fail   66     0      1792    2.60   'of of at at at of of of at at at at at at at of the the of at at at of of of of '
+2048    date      95     evoke_breadcrumb  fail   66     0      1792    2.59   'of of at at at of of of at at at at at at at of the the of at at at of of of of '
+2048    date      95     evoke_kv_restore  SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      95     evoke_recovery_awareSKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      95     evoke_attention   SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      95     h2o               SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      95     snapkv            SKIP (kv_block splice unsafe under quantized KV cache)
+2048    date      95     infllm            SKIP (kv_block splice unsafe under quantized KV cache)
+-------------------------------------------------------------------------------------
+
+Aggregate pass-rate per (budget, strategy)
+budget  strategy            pass_rate   n_cells 
+--------------------------------------------------
+512     evoke_breadcrumb    0.00%       24      
+512     evoke_discard       0.00%       24      
+512     no_eviction         0.00%       24      
+512     recency             0.00%       22      
+512     streaming_llm       0.00%       24      
+1024    evoke_breadcrumb    0.00%       25      
+1024    evoke_discard       0.00%       25      
+1024    no_eviction         0.00%       24      
+1024    recency             0.00%       24      
+1024    streaming_llm       0.00%       25      
+2048    evoke_breadcrumb    0.00%       25      
+2048    evoke_discard       0.00%       25      
+2048    no_eviction         0.00%       24      
+2048    recency             0.00%       23      
+2048    streaming_llm       0.00%       25      
+
+results JSON: results\niah_kv_quant_q4_Qwen2.5-7B-Instruct-Q4_K_M.json
