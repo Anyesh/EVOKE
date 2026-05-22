@@ -46,6 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from evoke.attention_scorer import AttentionScorer
 from evoke.config import EvokeConfig
 from evoke.embed import RetrievalEmbedder
+from evoke.judge import LLMJudge
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
 
@@ -208,6 +209,12 @@ class CellResult:
     strategy: str
     fact_results: dict[str, bool] = field(default_factory=dict)
     fact_answers: dict[str, str] = field(default_factory=dict)
+    # Per-fact "needs LLM judge" flag. True when string-match-set failed
+    # AND the answer contains semantic keywords (suggesting the model
+    # engaged with the topic but produced a paraphrase/partial match the
+    # string matcher cannot see). False on clean match or clean miss.
+    fact_ambiguous: dict[str, bool] = field(default_factory=dict)
+    fact_plant_texts: dict[str, str] = field(default_factory=dict)
     evictions: int = 0
     recoveries: int = 0
     active_tokens: int = 0
@@ -225,6 +232,16 @@ class CellResult:
 def _string_match(answer: str, expected: list[str]) -> bool:
     lower = answer.lower()
     return any(e.lower() in lower for e in expected)
+
+
+def _semantically_engaged(answer: str, keywords: list[str], threshold: int = 1) -> bool:
+    # The answer engaged with the fact's topic when at least `threshold`
+    # of the fact's semantic keywords appear in it; we then route to the
+    # LLM judge to decide whether the model recalled the right value or
+    # confabulated. Threshold 1 is permissive; raise it if the judge is
+    # firing on too many shallow matches.
+    lower = answer.lower()
+    return sum(1 for k in keywords if k.lower() in lower) >= threshold
 
 
 def _build_scorer(
@@ -292,10 +309,16 @@ def run_cell(
             )
         else:
             answer = mgr.generate(128)
-        result.fact_results[fact.fact_id] = _string_match(
-            answer, fact.expected_substrings
-        )
+        matched = _string_match(answer, fact.expected_substrings)
+        result.fact_results[fact.fact_id] = matched
         result.fact_answers[fact.fact_id] = answer.strip().replace("\n", " ")[:120]
+        result.fact_plant_texts[fact.fact_id] = fact.plant_text
+        if not matched:
+            result.fact_ambiguous[fact.fact_id] = _semantically_engaged(
+                answer, fact.semantic_keywords
+            )
+        else:
+            result.fact_ambiguous[fact.fact_id] = False
     result.elapsed = time.perf_counter() - t0
     stats = mgr.get_stats()
     result.evictions = stats.total_evictions
@@ -378,6 +401,36 @@ def main() -> int:
                 print("-" * 90)
     finally:
         engine.close()
+
+    judge_mode = os.environ.get("EVOKE_MFB_JUDGE", "gemma").lower()
+    if judge_mode != "none":
+        ambiguous_cells = [
+            (r, fact_id)
+            for r in all_results
+            for fact_id, ambiguous in r.fact_ambiguous.items()
+            if ambiguous
+        ]
+        if ambiguous_cells:
+            print(
+                f"\nLoading judge to break {len(ambiguous_cells)} ambiguous "
+                "cases (string-match failed, semantic keywords present)..."
+            )
+            try:
+                with LLMJudge() as judge:
+                    for r, fact_id in ambiguous_cells:
+                        verdict = judge.score(
+                            r.fact_plant_texts[fact_id],
+                            r.fact_answers[fact_id],
+                        )
+                        if verdict:
+                            r.fact_results[fact_id] = True
+                print("Judge pass complete.")
+            except FileNotFoundError as exc:
+                print(f"Judge unavailable, falling back to string-match-only: {exc}")
+            except (OSError, RuntimeError) as exc:
+                print(f"Judge load failed, falling back to string-match-only: {exc}")
+        else:
+            print("\nNo ambiguous cases; skipping judge pass.")
 
     print()
     print("Aggregate per (budget, strategy) over seeds")
