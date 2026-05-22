@@ -272,13 +272,14 @@ def run_cell(
     seed: int,
 ) -> CellResult:
     engine.reset()
-    config = EvokeConfig(
+    config_kwargs: dict = dict(
         max_active_tokens=budget,
         block_size=64,
         high_watermark=0.95,
         low_watermark=0.75,
-        **overrides,
     )
+    config_kwargs.update(overrides)
+    config = EvokeConfig(**config_kwargs)
     attn_scorer = _build_scorer(engine, config)
     retrieval = _RETRIEVAL_EMBEDDER if config.use_retrieval_embeddings else None
     mgr = EvokeManager(

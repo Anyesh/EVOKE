@@ -364,13 +364,17 @@ def run_cell(
     seed: int,
 ) -> NiahResult:
     engine.reset()
-    config = EvokeConfig(
+    # Build config kwargs in two stages so per-ablation overrides can carry
+    # block_size (or any other default) without colliding with a hardcoded
+    # keyword (Python: TypeError: got multiple values for keyword arg).
+    config_kwargs: dict = dict(
         max_active_tokens=budget,
         block_size=64,
         high_watermark=0.95,
         low_watermark=0.75,
-        **overrides,
     )
+    config_kwargs.update(overrides)
+    config = EvokeConfig(**config_kwargs)
     attn_scorer = _build_scorer(engine, config)
     retrieval = _RETRIEVAL_EMBEDDER if config.use_retrieval_embeddings else None
     mgr = EvokeManager(
