@@ -254,6 +254,20 @@ class EvokeManager:
 
         self._track_conversation_block(tokens, msg_start)
         self._update_recent_context_embedding(tokens, end_pos)
+        # Pull the user-message decode's attention into the scorer before the
+        # eviction pass. Without this hook H2O's cumulative scorer never saw
+        # attention from the question (only from add_context prefill and from
+        # the gen-time tail), and SnapKV had no observation-window signal to
+        # snapshot from — both relied on the user-message attention to pick
+        # which prior blocks to keep. snapshot() then freezes SnapKV's
+        # pending bucket so the immediately following _enforce_budget call
+        # uses the question-window scores; for other score modes it is a
+        # no-op.
+        self._absorb_attention()
+        if self._attention_scorer is not None and hasattr(
+            self._attention_scorer, "snapshot"
+        ):
+            self._attention_scorer.snapshot()
         self._enforce_budget()
 
     def get_stats(self) -> CacheStats:
@@ -355,6 +369,18 @@ class EvokeManager:
 
     def _enforce_budget(self) -> None:
         cfg = self._config
+        # SnapKV defers eviction until the first process_user_message snapshot
+        # has fired so the observation-window scores exist before any block is
+        # dropped. Without this gate, add_context's per-chunk _enforce_budget
+        # would tie every block at 0.0 (score() returns None pre-snapshot) and
+        # evict in insertion order — meaning the needle is gone before SnapKV
+        # ever sees the question. Other scorers (ewma, cumulative) always
+        # report ready and proceed normally.
+        if self._attention_scorer is not None and hasattr(
+            self._attention_scorer, "is_eviction_ready"
+        ):
+            if not self._attention_scorer.is_eviction_ready():
+                return
         active_tokens = self._positions.active_token_count
 
         if cfg.eviction_policy == "watermark":

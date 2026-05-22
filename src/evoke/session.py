@@ -206,6 +206,7 @@ class Session:
                 n_window=self._config.attention_window,
                 decay=self._config.attention_decay,
                 score_mode=self._config.attention_score_mode,
+                snapkv_observation_window=self._config.snapkv_observation_window,
             )
         except (OSError, RuntimeError, ValueError):
             # If the binding fails (stale fork, ctypes mismatch, buffer

@@ -35,8 +35,21 @@ class EvokeConfig:
     # return per-block cumulative attention mass normalized against the running
     # max across blocks (so the value stays in [0, 1]) instead of the EWMA
     # over the last n_window steps. Other policies must leave this at "ewma"
-    # to preserve the multi-signal recipe.
+    # to preserve the multi-signal recipe. Setting "snapkv" runs SnapKV
+    # (Liu et al., NeurIPS 2024): the scorer ignores per-step decode
+    # attention and instead freezes a one-shot snapshot of attention from
+    # the last `snapkv_observation_window` query tokens of the most recent
+    # process_user_message call. Eviction during the subsequent generate
+    # uses that frozen snapshot, matching SnapKV's "compress once per
+    # prompt" policy.
     attention_score_mode: str = "ewma"
+    # SnapKV's observation window: number of trailing prompt tokens whose
+    # attention to prior keys defines block importance. The paper's default
+    # is 32. Only meaningful when attention_score_mode == "snapkv". The
+    # capture buffer must hold n_layers * obs_window * n_heads * n_kv f32
+    # entries — the default 8M elements covers obs_window=32 across all
+    # benchmark budgets up to ~8K tokens of n_kv for Qwen 2.5 7B.
+    snapkv_observation_window: int = 32
     # H2O protects a recent window R against eviction unconditionally (their
     # default is 10% of cache budget). Setting > 0 excludes any block whose
     # logical_end falls inside the last int(max_active_tokens *
