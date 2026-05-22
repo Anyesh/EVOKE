@@ -1,0 +1,145 @@
+ablation | model=Qwen2.5-7B-Instruct-Q4_K_M dim=block_size base=evoke_attention
+values=[32, 64, 128, 256, 512] budget=1024 needles=['password', 'capital', 'amount', 'code', 'date'] depths=[5, 25, 50, 75, 95]
+value       needle    depth  probe  evict  recov  
+------------------------------------------------------------
+32          password  5      PASS   164    4      
+32          password  25     PASS   164    4      
+32          password  50     PASS   164    4      
+32          password  75     PASS   164    4      
+32          password  95     PASS   164    4      
+32          capital   5      fail   164    4      
+32          capital   25     PASS   164    4      
+32          capital   50     PASS   164    4      
+32          capital   75     fail   164    4      
+32          capital   95     PASS   164    4      
+32          amount    5      PASS   165    4      
+32          amount    25     PASS   165    4      
+32          amount    50     PASS   165    4      
+32          amount    75     PASS   165    4      
+32          amount    95     PASS   165    4      
+32          code      5      fail   164    4      
+32          code      25     PASS   164    4      
+32          code      50     PASS   164    4      
+32          code      75     PASS   164    4      
+32          code      95     PASS   164    4      
+32          date      5      fail   165    4      
+32          date      25     PASS   165    4      
+32          date      50     PASS   165    4      
+32          date      75     PASS   165    4      
+32          date      95     PASS   165    4      
+------------------------------------------------------------
+64          password  5      PASS   82     4      
+64          password  25     PASS   82     4      
+64          password  50     PASS   82     4      
+64          password  75     PASS   82     4      
+64          password  95     PASS   82     4      
+64          capital   5      PASS   82     4      
+64          capital   25     PASS   82     4      
+64          capital   50     PASS   82     4      
+64          capital   75     PASS   82     4      
+64          capital   95     PASS   82     4      
+64          amount    5      PASS   82     4      
+64          amount    25     PASS   82     4      
+64          amount    50     PASS   82     4      
+64          amount    75     PASS   82     4      
+64          amount    95     PASS   82     4      
+64          code      5      PASS   82     4      
+64          code      25     PASS   82     4      
+64          code      50     PASS   82     4      
+64          code      75     PASS   82     4      
+64          code      95     PASS   82     4      
+64          date      5      PASS   82     4      
+64          date      25     PASS   82     4      
+64          date      50     PASS   82     4      
+64          date      75     PASS   82     4      
+64          date      95     PASS   82     4      
+------------------------------------------------------------
+128         password  5      PASS   43     4      
+128         password  25     PASS   43     4      
+128         password  50     PASS   43     4      
+128         password  75     PASS   43     4      
+128         password  95     fail   43     4      
+128         capital   5      PASS   43     4      
+128         capital   25     PASS   43     4      
+128         capital   50     PASS   43     4      
+128         capital   75     PASS   43     4      
+128         capital   95     fail   43     4      
+128         amount    5      PASS   43     4      
+128         amount    25     PASS   43     4      
+128         amount    50     PASS   43     4      
+128         amount    75     PASS   43     4      
+128         amount    95     fail   43     4      
+128         code      5      PASS   43     4      
+128         code      25     PASS   43     4      
+128         code      50     PASS   43     4      
+128         code      75     PASS   43     4      
+128         code      95     fail   43     4      
+128         date      5      PASS   43     4      
+128         date      25     PASS   43     4      
+128         date      50     PASS   43     4      
+128         date      75     PASS   43     4      
+128         date      95     fail   43     4      
+------------------------------------------------------------
+256         password  5      PASS   24     4      
+256         password  25     fail   24     4      
+256         password  50     PASS   24     4      
+256         password  75     fail   24     4      
+256         password  95     fail   24     4      
+256         capital   5      PASS   24     4      
+256         capital   25     PASS   24     4      
+256         capital   50     PASS   24     4      
+256         capital   75     fail   24     4      
+256         capital   95     fail   24     4      
+256         amount    5      PASS   24     4      
+256         amount    25     PASS   24     4      
+256         amount    50     PASS   24     4      
+256         amount    75     fail   24     4      
+256         amount    95     fail   24     4      
+256         code      5      PASS   24     4      
+256         code      25     fail   24     4      
+256         code      50     PASS   24     4      
+256         code      75     PASS   24     4      
+256         code      95     fail   24     4      
+256         date      5      PASS   24     4      
+256         date      25     PASS   24     4      
+256         date      50     PASS   24     4      
+256         date      75     fail   24     4      
+256         date      95     fail   24     4      
+------------------------------------------------------------
+512         password  5      PASS   15     4      
+512         password  25     fail   15     4      
+512         password  50     fail   15     4      
+512         password  75     fail   15     4      
+512         password  95     fail   15     4      
+512         capital   5      PASS   15     4      
+512         capital   25     fail   15     4      
+512         capital   50     fail   15     4      
+512         capital   75     fail   15     4      
+512         capital   95     fail   15     4      
+512         amount    5      PASS   15     4      
+512         amount    25     fail   15     4      
+512         amount    50     fail   15     4      
+512         amount    75     fail   15     4      
+512         amount    95     fail   15     4      
+512         code      5      PASS   15     4      
+512         code      25     fail   15     4      
+512         code      50     fail   15     4      
+512         code      75     fail   15     4      
+512         code      95     fail   15     4      
+512         date      5      PASS   15     4      
+512         date      25     fail   15     4      
+512         date      50     fail   15     4      
+512         date      75     fail   15     4      
+512         date      95     fail   15     4      
+------------------------------------------------------------
+
+Aggregate per block_size value
+value       pass_rate  95% CI                n_cells   
+------------------------------------------------------------
+32          84.00%     [65.35%, 93.60%]      21/25
+64          100.00%    [86.68%, 100.00%]      25/25
+128         80.00%     [60.87%, 91.14%]      20/25
+256         56.00%     [37.07%, 73.33%]      14/25
+512         20.00%     [8.86%, 39.13%]      5/25
+
+results JSON: results\abl_block_size_qwen25_v2.json
