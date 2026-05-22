@@ -161,6 +161,7 @@ def main() -> int:
             n_window=config.attention_window,
             decay=config.attention_decay,
             score_mode=config.attention_score_mode,
+            snapkv_observation_window=config.snapkv_observation_window,
         )
     retrieval = None
     if config.use_retrieval_embeddings:

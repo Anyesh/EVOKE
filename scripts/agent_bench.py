@@ -108,6 +108,45 @@ STRATEGIES: dict[str, dict] = {
         recent_tail_protect_frac=0.1,
         eviction_policy="hard",
     ),
+    # SnapKV baseline (Liu et al., NeurIPS 2024). Reuses EVOKE's AttentionScorer
+    # with a one-shot snapshot of last-W-token attention frozen at the end of
+    # process_user_message; eviction during the turn keeps the top-K blocks by
+    # that snapshot. No recovery (SnapKV cannot bring evicted tokens back).
+    # See paper §7.3 for the head-to-head; matches H2O's hard-eviction and
+    # tail-guard pattern.
+    "snapkv": dict(
+        recovery_mode="discard",
+        w_attention=1.0,
+        w_recency=0.0,
+        w_coherence=0.0,
+        attention_score_mode="snapkv",
+        snapkv_observation_window=32,
+        recent_tail_protect_frac=0.05,
+        eviction_policy="hard",
+    ),
+    # InfLLM (Xiao et al., NeurIPS 2024) adapted onto EVOKE's kv_restore +
+    # smart-recovery infrastructure. See the niah_bench STRATEGIES entry
+    # for the full implementation note. In agent_bench the oracle
+    # recovery path (recover the fact's known key) substitutes for
+    # similarity-based retrieval — this isolates the primitive cost (kv
+    # splice latency) shared with evoke_kv_restore. The InfLLM-specific
+    # value here is the aggressive eviction footprint that exposes
+    # whether the local-window approximation still finds the planted
+    # block via the oracle recover call.
+    "infllm": dict(
+        recovery_mode="kv_restore",
+        w_recency=0.0,
+        w_coherence=0.0,
+        w_attention=0.0,
+        sink_count=4,
+        smart_recover_k=8,
+        use_retrieval_embeddings=True,
+        block_embedding_strategy="mean",
+        eviction_policy="watermark",
+        high_watermark=0.5,
+        low_watermark=0.3,
+        recent_tail_protect_frac=0.25,
+    ),
 }
 
 
@@ -126,13 +165,14 @@ def run_strategy(
     engine: LlamaCppEngine, name: str, overrides: dict, budget: int
 ) -> Result:
     engine.reset()
-    config = EvokeConfig(
+    config_kwargs: dict = dict(
         max_active_tokens=budget,
         block_size=64,
         high_watermark=0.95,
         low_watermark=0.75,
-        **overrides,
     )
+    config_kwargs.update(overrides)
+    config = EvokeConfig(**config_kwargs)
     attn_scorer: AttentionScorer | None = None
     if config.w_attention > 0 and engine.supports_kv_block:
         attn_scorer = AttentionScorer(
@@ -141,6 +181,7 @@ def run_strategy(
             n_window=config.attention_window,
             decay=config.attention_decay,
             score_mode=config.attention_score_mode,
+            snapkv_observation_window=config.snapkv_observation_window,
         )
     mgr = EvokeManager(engine, config, attention_scorer=attn_scorer)
 
@@ -201,10 +242,10 @@ def main() -> int:
                 if name == "evoke_kv_restore" and not engine.supports_kv_block:
                     print(f"{budget:<8}{name:<18}SKIP (no LLAMA_CPP_LIB)")
                     continue
-                if name == "h2o" and not engine.supports_kv_block:
-                    # H2O's selection rule depends on attention capture; without
-                    # the fork's primitive the scorer falls back to recency,
-                    # which would silently mislabel the run as H2O when it isn't.
+                if name in ("h2o", "snapkv", "infllm") and not engine.supports_kv_block:
+                    # H2O and SnapKV both depend on the fork's attention capture
+                    # primitive. Without it the scorer falls back to recency,
+                    # which would silently mislabel the run as the named baseline.
                     print(
                         f"{budget:<8}{name:<18}SKIP "
                         "(no LLAMA_CPP_LIB; attention capture unavailable)"

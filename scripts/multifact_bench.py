@@ -255,6 +255,7 @@ def _build_scorer(
         n_window=config.attention_window,
         decay=config.attention_decay,
         score_mode=config.attention_score_mode,
+        snapkv_observation_window=config.snapkv_observation_window,
     )
 
 
@@ -373,6 +374,8 @@ def main() -> int:
                         "evoke_kv_restore",
                         "evoke_attention",
                         "h2o",
+                        "snapkv",
+                        "infllm",
                     )
                     if needs_kv_block and not engine.supports_kv_block:
                         continue

@@ -215,6 +215,58 @@ STRATEGIES: dict[str, dict] = {
         recent_tail_protect_frac=0.1,
         eviction_policy="hard",
     ),
+    # SnapKV baseline (Liu et al., NeurIPS 2024) reimplemented on top of
+    # EVOKE's AttentionScorer + manager snapshot hook. Per-block importance is
+    # the sum of softmax attention from the last `snapkv_observation_window`
+    # tokens of the most recent user message to that block; the score is
+    # frozen at the end of process_user_message and the eviction pass keeps
+    # the top-K blocks by that snapshot for the rest of the turn. No recovery
+    # (SnapKV has no concept of bringing evicted tokens back), hard eviction
+    # at the budget so the cache settles to SnapKV's compressed footprint
+    # before generation begins, and a 5% recent-tail guard so the just-added
+    # observation window is never evicted by its own score.
+    "snapkv": dict(
+        recovery_mode="discard",
+        w_attention=1.0,
+        w_recency=0.0,
+        w_coherence=0.0,
+        attention_score_mode="snapkv",
+        snapkv_observation_window=32,
+        recent_tail_protect_frac=0.05,
+        eviction_policy="hard",
+    ),
+    # InfLLM baseline (Xiao et al., NeurIPS 2024) adapted onto EVOKE's
+    # kv_restore + smart-recovery infrastructure. The original paper masks
+    # attention to a top-K block selection per decode step, keeping every
+    # block resident in an external memory segment. We adapt that to a
+    # cache-resident model: aggressive eviction (only sinks and a 25%
+    # local-window tail stay resident) plus K=8 query-based smart recovery
+    # at each user-message boundary, with recovered blocks spliced back via
+    # kv_block_load rather than attended-to-from-elsewhere. The substantive
+    # InfLLM choices — block-level external memory, similarity-based block
+    # retrieval, larger K than typical heavy-hitter policies — are
+    # preserved; the per-decode-step retrieval rhythm of the original is
+    # approximated by the per-turn boundary (a reasonable approximation for
+    # NIAH / multifact / agent where one user message yields one short
+    # answer). bge-small retrieval embeddings stand in for InfLLM's
+    # attention-weighted representative-token pooling. The policy weights
+    # are zeroed out so retrieval is purely similarity-driven (no recency
+    # or coherence priors) — sink protection and the local-window guard
+    # carry the resident-set logic.
+    "infllm": dict(
+        recovery_mode="kv_restore",
+        w_recency=0.0,
+        w_coherence=0.0,
+        w_attention=0.0,
+        sink_count=4,
+        smart_recover_k=8,
+        use_retrieval_embeddings=True,
+        block_embedding_strategy="mean",
+        eviction_policy="watermark",
+        high_watermark=0.5,
+        low_watermark=0.3,
+        recent_tail_protect_frac=0.25,
+    ),
 }
 
 
@@ -276,6 +328,7 @@ def _build_scorer(
         n_window=config.attention_window,
         decay=config.attention_decay,
         score_mode=config.attention_score_mode,
+        snapkv_observation_window=config.snapkv_observation_window,
     )
 
 
@@ -400,9 +453,11 @@ def run_cell(
         # needle. Recovering first puts the probe as the freshest context
         # and recovered blocks become earlier context the model attends
         # back to. _last_user_text is set manually here because
-        # process_user_message hasn't run yet.
+        # process_user_message hasn't run yet. K is read from the config so
+        # baselines that tune K differently (InfLLM at K=8 vs EVOKE at K=4)
+        # exercise their own retrieval breadth.
         mgr._last_user_text = probe
-        _smart_recover(mgr, k=4)
+        _smart_recover(mgr, k=config.smart_recover_k)
     mgr.process_user_message(probe)
     # Thinking models (Qwen 3.x and similar) emit <think>...</think> before
     # the actual answer; without think_close the 128-token budget gets
@@ -420,7 +475,16 @@ def run_cell(
             512, think_close=think_close, thinking_budget=2048, answer_budget=256
         )
     else:
-        answer = mgr.generate(128)
+        # 256 (was 128) so the substring matcher catches needle strings the
+        # model is still in the middle of emitting. The reviewer flagged a
+        # cell at budget 512 where the model recovered the needle, began
+        # answering ``...the historic settlement of Zit'' and ran out of
+        # the 128-token budget mid-word; the matcher then missed
+        # ``Zithrand'' and the cell was scored fail. 256 closes that gap
+        # without changing any policy's recovery work — every policy's
+        # generation budget moves together so no row is selectively
+        # advantaged.
+        answer = mgr.generate(256)
     elapsed = time.perf_counter() - t0
     stats = mgr.get_stats()
     expected = needle["expected"].lower()
@@ -504,6 +568,8 @@ def main() -> int:
                             "evoke_kv_restore",
                             "evoke_attention",
                             "h2o",
+                            "snapkv",
+                            "infllm",
                         )
                         if needs_kv_block and not engine.supports_kv_block:
                             print(

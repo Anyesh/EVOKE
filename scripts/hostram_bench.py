@@ -175,6 +175,7 @@ def main() -> int:
             n_window=config.attention_window,
             decay=config.attention_decay,
             score_mode=config.attention_score_mode,
+            snapkv_observation_window=config.snapkv_observation_window,
         )
         if engine.supports_kv_block
         else None
