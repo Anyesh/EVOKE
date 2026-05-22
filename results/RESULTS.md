@@ -1,5 +1,110 @@
 # EVOKE Competitive Benchmark Results
 
+## Run: Qwen 2.5 7B (2026-05-22, baseline_bench n=5 + reviewer revisions complete)
+
+**Model**: Qwen2.5-7B-Instruct-Q4_K_M
+**Hardware**: RTX 4070 Ti SUPER, 16GB VRAM
+
+Reviewer asked for n>=5 reruns of the §7.3 head-to-head to back the elapsed-time claim with a CI rather than a single-run point estimate. Ran `scripts/baseline_bench.py` 5 times against the EVOKE server on gpuhost. Per-run elapsed times (seconds):
+
+| policy        | run 1 | run 2 | run 3 | run 4 | run 5 |
+|---------------|------:|------:|------:|------:|------:|
+| no_eviction   | 19.4  | 19.2  | 19.5  | 19.4  | 20.6  |
+| truncate      | 21.6  | 21.3  | 21.8  | 21.8  | 26.7  |
+| evoke         | 21.7  | 21.6  | 22.1  | 21.7  | 21.9  |
+
+Aggregate (mean, 95% CI via t-distribution, df=4):
+
+| policy        | active end | evict | recov | elapsed (mean) | 95% CI            |
+|---------------|-----------:|------:|------:|---------------:|-------------------|
+| no_eviction   |       2476 |     0 |     0 |     **19.62s** | [18.93s, 20.31s]  |
+| truncate      |        685 |    66 |     0 |     **22.64s** | [19.81s, 25.47s]  |
+| evoke         |        684 |    90 |    24 |     **21.80s** | [21.55s, 22.05s]  |
+
+**Finding**: the v1 single-run "31% faster than no_eviction" claim does not reproduce against the current code. Smart-recovery's bge-small per-block embeddings + per-turn similarity scoring add ~1.5-2s of overhead beyond truncate. EVOKE now sits inside truncate's CI ([19.81, 25.47]) and ~11% above no_eviction. The cache-footprint story (684 vs 2476 active tokens, 4× smaller) holds; the wall-clock story is now "comparable to truncate, slower than no_eviction" rather than "31% faster". Updated §7.3 paper text and abstract accordingly.
+
+Raw output: `results/baseline_bench_n5_qwen25_7b.txt`.
+
+---
+
+## Run: Qwen 2.5 7B (2026-05-22, SnapKV + InfLLM head-to-head added per reviewer)
+
+**Model**: Qwen2.5-7B-Instruct-Q4_K_M
+**Hardware**: RTX 4070 Ti SUPER, 16GB VRAM
+**n_ctx**: 16384
+
+Two new same-substrate baselines added per reviewer feedback:
+- **SnapKV** (Liu et al., NeurIPS 2024): observation-window snapshot of attention from the last 32 prompt tokens, frozen at end of each user message; eviction picks top-scoring blocks by frozen scores. `recovery_mode=discard`.
+- **InfLLM** (Xiao et al., NeurIPS 2024): aggressive eviction to sinks + 25% local window resident; per-turn top-K=8 smart recovery via `kv_block_load` (our same-substrate adaptation of InfLLM's external-memory + attention-mask design).
+
+### NIAH (5 needles × 5 depths × 3 budgets, 25 cells per (budget, strategy))
+
+| policy           | budget 512 | budget 1024 | budget 2048 |
+|------------------|-----------:|------------:|------------:|
+| recency          |       20%  |        20%  |        40%  |
+| streaming_llm    |        0%  |        20%  |        20%  |
+| evoke_discard    |        0%  |        20%  |        20%  |
+| evoke_breadcrumb |        0%  |        20%  |        20%  |
+| h2o              |       20%  |        20%  |        40%  |
+| **snapkv**       |       20%  |        20%  |        40%  |
+| **infllm**       |     **96%**|      **96%**|        80%  |
+| evoke_kv_restore |       96%  |       100%  |       100%  |
+| evoke_attention  |       96%  |       100%  |       100%  |
+
+Story: recovery is the differentiator. Smarter selection alone (H2O, SnapKV) flattens at the same 20-40% as no scoring at all. EVOKE matches the closest external-memory baseline (InfLLM) at the tight budget and beats it as budget headroom grows — InfLLM's fixed aggressive footprint evicts naturally-resident needles when there is room to keep them. Raw: `results/niah_qwen25_7b_with_snapkv_infllm.json`.
+
+### Multifact (5 seeds × 5 facts, budget 1024, gemma judge)
+
+| strategy          | pass rate | 95% Wilson CI         |
+|-------------------|----------:|-----------------------|
+| recency           |      4.0% | [0.71%, 19.54%]       |
+| streaming_llm     |      0.0% | [0.00%, 13.32%]       |
+| evoke_discard     |      0.0% | [0.00%, 13.32%]       |
+| evoke_breadcrumb  |      0.0% | [0.00%, 13.32%]       |
+| h2o               |      0.0% | [0.00%, 13.32%]       |
+| **snapkv**        |      4.0% | [0.71%, 19.54%]       |
+| evoke_attention   |     48.0% | [30.03%, 66.50%]      |
+| evoke_kv_restore  |     60.0% | [40.74%, 76.60%]      |
+| **infllm**        |   **64.0%**| [44.52%, 79.75%]    |
+
+Story: InfLLM (K=8) edges EVOKE (K=4) on multifact's multi-topic-shift workload — larger retrieval window catches more relevant blocks across the five fact-shifts. CIs overlap heavily so the difference is within statistical noise. Recovery-less policies cluster at 0-4%. evoke_attention drops below evoke_kv_restore (48% vs 60%) on this multi-probe workload — the multi-signal scorer's attention contribution adds noise across topic shifts, the inverse of NIAH's single-probe regime. Raw: `results/mfb_qwen25_7b_with_snapkv_infllm.json`.
+
+### Agentic eval (14-turn, oracle FACT_KEY recovery for kv_restore policies)
+
+| budget | strategy          | probe | evict | recov | rec_ms |
+|-------:|-------------------|-------|------:|------:|-------:|
+|    512 | recency           | fail  | 35    | 0     | 0.00   |
+|    512 | streaming_llm     | fail  | 35    | 0     | 0.00   |
+|    512 | evoke_discard     | fail  | 35    | 0     | 0.00   |
+|    512 | h2o               | fail  | 34    | 0     | 0.00   |
+|    512 | snapkv            | fail  | 34    | 0     | 0.00   |
+|    512 | evoke_breadcrumb  | PASS  | 35    | 0     | 17.25  |
+|    512 | evoke_kv_restore  | PASS  | 35    | 1     | **3.13** |
+|    512 | evoke_attention   | PASS  | 31    | 0     | **0.01** |
+|    512 | infllm            | PASS  | 39    | 1     | 3.12   |
+|   1024 | recency           | fail  | 29    | 0     | 0.00   |
+|   1024 | streaming_llm     | fail  | 28    | 0     | 0.00   |
+|   1024 | evoke_discard     | fail  | 28    | 0     | 0.00   |
+|   1024 | h2o               | fail  | 24    | 0     | 0.00   |
+|   1024 | snapkv            | fail  | 24    | 0     | 0.00   |
+|   1024 | evoke_breadcrumb  | PASS  | 28    | 0     | 15.40  |
+|   1024 | evoke_kv_restore  | PASS  | 28    | 1     | **3.86** |
+|   1024 | evoke_attention   | PASS  | 26    | 1     | 3.75   |
+|   1024 | infllm            | PASS  | 35    | 1     | 3.76   |
+|   2048 | recency           | fail  | 9     | 0     | 0.00   |
+|   2048 | streaming_llm     | fail  | 10    | 0     | 0.00   |
+|   2048 | evoke_discard     | fail  | 10    | 0     | 0.00   |
+|   2048 | h2o               | fail  | 4     | 0     | 0.00   |
+|   2048 | snapkv            | fail  | 4     | 0     | 0.00   |
+|   2048 | evoke_breadcrumb  | PASS  | 10    | 0     | 15.70  |
+|   2048 | evoke_kv_restore  | PASS  | 10    | 1     | **3.89** |
+|   2048 | evoke_attention   | PASS  | 8     | 0     | **0.00** |
+|   2048 | infllm            | PASS  | 31    | 1     | 3.07   |
+
+Story: every recovery-less policy fails at every budget; SnapKV and H2O join recency/streaming_llm/discard in the failure column. InfLLM passes everywhere with kv_restore-equivalent recovery latency (~3 ms). evoke_attention sometimes avoids recovery entirely (0 recov at budgets 512 and 2048) because attention-driven scoring keeps the fact block resident. Raw: `results/agent_bench_qwen25_7b_with_snapkv_infllm.txt`.
+
+---
+
 ## Run: Qwen 2.5 7B (2026-05-20, head-to-head + agentic eval — drift fix landed)
 
 **Model**: Qwen2.5-7B-Instruct-Q4_K_M

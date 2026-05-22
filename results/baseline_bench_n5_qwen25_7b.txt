@@ -1,0 +1,45 @@
+=== Run 1 ===
+
+## Baseline comparison
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   19.4s |
+| truncate      | PASS  |        66 |          0 |    685 |   21.6s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.7s |
+=== Run 2 ===
+
+## Baseline comparison
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   19.2s |
+| truncate      | PASS  |        66 |          0 |    685 |   21.3s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.6s |
+=== Run 3 ===
+
+## Baseline comparison
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   19.5s |
+| truncate      | PASS  |        66 |          0 |    685 |   21.8s |
+| evoke         | PASS  |        90 |         24 |    684 |   22.1s |
+=== Run 4 ===
+
+## Baseline comparison
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   19.4s |
+| truncate      | PASS  |        66 |          0 |    685 |   21.8s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.7s |
+=== Run 5 ===
+
+## Baseline comparison
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   20.6s |
+| truncate      | PASS  |        66 |          0 |    685 |   26.7s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.9s |
