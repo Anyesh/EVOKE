@@ -1,0 +1,66 @@
+niah eval | model=Qwen2.5-7B-Instruct-Q4_K_M
+kv_block primitives available: True
+haystack: 30 paragraphs, seed=0, 2 needles, 3 depths, 1 budgets
+budget  needle    depth  strategy          probe  evict  recov  active  sec    answer
+-------------------------------------------------------------------------------------
+1024    password  10     recency           fail   55     0      822     0.60   'The unique password for the laboratory vault is the mathematical biology communi'
+1024    password  10     streaming_llm     fail   55     0      822     0.59   'The secret password for the laboratory vault is "metallurgy mysteries." It\'s a r'
+1024    password  10     evoke_discard     fail   55     0      822     0.59   'The secret password for the laboratory vault is "metallurgy mysteries." It\'s a r'
+1024    password  10     evoke_breadcrumb  fail   55     0      822     0.59   'The secret password for the laboratory vault is "metallurgy mysteries." It\'s a r'
+1024    password  10     evoke_kv_restore  PASS   59     4      822     0.62   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Can you p'
+1024    password  10     evoke_attention   PASS   59     4      822     0.65   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Can you p'
+1024    password  10     h2o               fail   52     0      1014    0.59   'The secret password for the laboratory vault is "metallurgy mysteries." This phr'
+-------------------------------------------------------------------------------------
+1024    password  50     recency           fail   55     0      822     0.59   'The unique password for the laboratory vault is the deep-sea hydrothermal vent c'
+1024    password  50     streaming_llm     fail   55     0      822     0.59   'The secret password for the laboratory vault is "metallurgy mysteries." It\'s a r'
+1024    password  50     evoke_discard     fail   55     0      822     0.59   'The secret password for the laboratory vault is "metallurgy mysteries." It\'s a r'
+1024    password  50     evoke_breadcrumb  fail   55     0      822     0.59   'The secret password for the laboratory vault is "metallurgy mysteries." It\'s a r'
+1024    password  50     evoke_kv_restore  PASS   59     4      822     0.63   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Could you'
+1024    password  50     evoke_attention   PASS   59     4      822     0.62   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Could you'
+1024    password  50     h2o               fail   52     0      1014    0.60   'The secret password for the laboratory vault is "metallurgy mysteries." This phr'
+-------------------------------------------------------------------------------------
+1024    password  90     recency           PASS   55     0      822     0.59   'The secret password is icarus-pinwheel-43. Important administrative note: the se'
+1024    password  90     streaming_llm     PASS   55     0      822     0.60   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Could you'
+1024    password  90     evoke_discard     PASS   55     0      822     0.59   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Could you'
+1024    password  90     evoke_breadcrumb  PASS   55     0      822     0.59   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Could you'
+1024    password  90     evoke_kv_restore  PASS   59     4      822     0.62   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Can you p'
+1024    password  90     evoke_attention   PASS   59     4      822     0.62   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Can you p'
+1024    password  90     h2o               PASS   52     0      1014    0.59   'The secret password for the laboratory vault is "icarus-pinwheel-43."  Could you'
+-------------------------------------------------------------------------------------
+1024    capital   10     recency           fail   55     0      826     0.59   'The capital city of the country called Polopia is called Polopia. The capital ci'
+1024    capital   10     streaming_llm     fail   55     0      826     0.59   'The question does not provide any information about a country called Polopia, so'
+1024    capital   10     evoke_discard     fail   55     0      826     0.59   'The question does not provide any information about a country called Polopia, so'
+1024    capital   10     evoke_breadcrumb  fail   55     0      826     0.59   'The question does not provide any information about a country called Polopia, so'
+1024    capital   10     evoke_kv_restore  PASS   59     4      826     0.62   'The capital city of Polopia is the historic settlement of Zithrand.   This answe'
+1024    capital   10     evoke_attention   PASS   59     4      826     0.62   'The capital city of Polopia is the historic settlement of Zithrand.   This answe'
+1024    capital   10     h2o               fail   52     0      1018    0.59   'The question does not provide enough information to determine the capital city o'
+-------------------------------------------------------------------------------------
+1024    capital   50     recency           fail   55     0      826     0.59   'The capital city of the country called Polopia is called Capitalia. Explanation:'
+1024    capital   50     streaming_llm     fail   55     0      826     0.59   'The information provided does not include the name of the capital city of the fi'
+1024    capital   50     evoke_discard     fail   55     0      826     0.59   'The information provided does not include the name of the capital city of the fi'
+1024    capital   50     evoke_breadcrumb  fail   55     0      826     0.59   'The information provided does not include the name of the capital city of the fi'
+1024    capital   50     evoke_kv_restore  PASS   59     4      826     0.62   'The capital city of Polopia is Zithrand. This information can be inferred from t'
+1024    capital   50     evoke_attention   PASS   59     4      826     0.62   'The capital city of Polopia is Zithrand. This information can be inferred from t'
+1024    capital   50     h2o               fail   52     0      1018    0.59   'The information provided does not include the name of the capital city of the fi'
+-------------------------------------------------------------------------------------
+1024    capital   90     recency           PASS   55     0      826     0.59   'The capital city of Polopia is the historic settlement of Zithrand, located near'
+1024    capital   90     streaming_llm     PASS   55     0      826     0.59   'The capital city of the country called Polopia is Zithrand. This information is '
+1024    capital   90     evoke_discard     PASS   55     0      826     0.59   'The capital city of the country called Polopia is Zithrand. This information is '
+1024    capital   90     evoke_breadcrumb  PASS   55     0      826     0.59   'The capital city of the country called Polopia is Zithrand. This information is '
+1024    capital   90     evoke_kv_restore  PASS   59     4      826     0.64   'The capital city of the small inland country of Polopia is the historic settleme'
+1024    capital   90     evoke_attention   PASS   59     4      826     0.62   'The capital city of the small inland country of Polopia is the historic settleme'
+1024    capital   90     h2o               PASS   52     0      1018    0.59   'The capital city of the country Polopia is the historic settlement of Zithrand, '
+-------------------------------------------------------------------------------------
+
+Aggregate pass-rate per (budget, strategy)
+budget  strategy            pass_rate   n_cells 
+--------------------------------------------------
+1024    evoke_attention     100.00%     6       
+1024    evoke_breadcrumb    33.33%      6       
+1024    evoke_discard       33.33%      6       
+1024    evoke_kv_restore    100.00%     6       
+1024    h2o                 33.33%      6       
+1024    recency             33.33%      6       
+1024    streaming_llm       33.33%      6       
+
+results JSON: results\niah_qwen25_7b_recover_before_probe.json

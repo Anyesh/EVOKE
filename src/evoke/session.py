@@ -453,7 +453,23 @@ class Session:
                 divergence = 0
 
         tail = prompt_tokens[divergence:]
+        # Smart recovery runs BEFORE decoding the new tail so recovered blocks
+        # land EARLIER in cache position than the new tail. With the old order
+        # (recover-after-decode), recovered blocks ended up positionally after
+        # the user message and held the model's freshest attention slot during
+        # generation — and since each 64-token block typically ends in
+        # post-needle filler content, the model continued from filler noise
+        # rather than the answer in the middle of the block. Recovering first
+        # puts the new tail as the freshest context and recovered blocks
+        # become earlier context the model attends back to. NIAH passed 100%
+        # only after this re-ordering; the old order failed every cell with
+        # a planted fact away from the recent tail.
+        recovered = 0
         if tail:
+            tail_text = self._engine.detokenize(tail)
+            if tail_text:
+                self._manager._last_user_text = tail_text
+                recovered = self._smart_recover(k=self._recovery_k)
             self._manager.add_context_tokens(
                 tail,
                 key=f"turn{self._turn_id}",
@@ -462,11 +478,6 @@ class Session:
             )
             self._turn_id += 1
             self._cached_tokens.extend(tail)
-
-        # Smart recovery runs AFTER the new tail is decoded so we have fresh
-        # per-token embeddings for the latest user message; we score evicted
-        # blocks against that and bring back the top-K most coherent ones.
-        recovered = self._smart_recover(k=self._recovery_k)
 
         stats = self._manager.get_stats()
         return SyncStats(

@@ -379,9 +379,20 @@ def run_cell(
 
     probe = f"\n\nQuestion: {needle['question']}\nAnswer:"
     t0 = time.perf_counter()
-    mgr.process_user_message(probe)
     if overrides.get("recovery_mode") != "discard":
+        # Recover BEFORE decoding the probe so recovered blocks land earlier
+        # in the cache than the probe. With the old "recover after probe"
+        # order, the probe got buried mid-cache while recovered blocks held
+        # the model's freshest attention slot — and since each 64-token
+        # recovered block ends in post-needle haystack content, the model
+        # continued from haystack noise instead of looking back at the
+        # needle. Recovering first puts the probe as the freshest context
+        # and recovered blocks become earlier context the model attends
+        # back to. _last_user_text is set manually here because
+        # process_user_message hasn't run yet.
+        mgr._last_user_text = probe
         _smart_recover(mgr, k=4)
+    mgr.process_user_message(probe)
     answer = mgr.generate(64)
     elapsed = time.perf_counter() - t0
     stats = mgr.get_stats()
