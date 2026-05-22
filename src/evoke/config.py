@@ -94,6 +94,23 @@ class EvokeConfig:
 
     pin_generated: bool = True
 
+    # Recovery-aware eviction. Closes the recover-then-immediately-evict
+    # thrash exposed by the session-length sweep at T=28 (5-seed CIs disjoint:
+    # evoke 68.06s [67.23, 68.89] vs truncate 65.14s [64.35, 65.94], driven
+    # by 80 redundant evictions at ~30 ms each). On each recover() the new
+    # block's recovery_strength is set to recovery_strength_init; on each
+    # per-turn tick_turn() the strength is multiplied by recovery_decay; the
+    # scorer adds w_recovery * recovery_strength to the weighted score, so
+    # a fresh recovery survives the eviction pass that fires later in the
+    # same turn (when new content arrives and the watermark trips). The
+    # block decays back to a normal eviction candidate over ~5 turns at
+    # decay 0.7 (strength 0.7 -> 0.49 -> 0.34 -> 0.24 -> 0.17 -> ...).
+    # Default w_recovery=0.0 preserves the pre-fix scorer behavior so
+    # existing benches see no change until the bench explicitly opts in.
+    w_recovery: float = 0.0
+    recovery_strength_init: float = 1.0
+    recovery_decay: float = 0.7
+
     conversation_score_floor: float = 0.6
     assistant_score_floor: float = 0.5
     context_history_size: int = 5

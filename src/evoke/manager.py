@@ -243,7 +243,33 @@ class EvokeManager:
         self._enforce_budget()
         return self._engine.detokenize(output_tokens)
 
+    def tick_turn(self) -> None:
+        # Per-turn maintenance hook for recovery-aware eviction. Decays the
+        # recovery_strength signal on every active block by recovery_decay so
+        # the per-block protection from being a recent recovery target fades
+        # over time, eventually returning the block to ordinary eviction
+        # eligibility. Called once at the start of each user turn from both
+        # the standalone-manager flow (process_user_message) and the server
+        # flow (Session.sync_prefix). decay >= 1.0 disables decay entirely.
+        decay = self._config.recovery_decay
+        if decay >= 1.0:
+            return
+        for block in self._positions.active_blocks:
+            if block.recovery_strength <= 0.0:
+                continue
+            block.recovery_strength *= decay
+            if block.recovery_strength < 1e-3:
+                block.recovery_strength = 0.0
+
     def process_user_message(self, text: str) -> None:
+        # tick_turn must run BEFORE _current_turn_start_id moves so the
+        # previous turn's recovered blocks lose their protection before this
+        # turn's eviction pass evaluates them. A block recovered LAST turn at
+        # strength 1.0 enters this turn at strength `recovery_decay`; a block
+        # recovered THIS turn (via the upstream session.sync_prefix smart
+        # recover) was set to recovery_strength_init AFTER the tick, so it
+        # still carries full protection when eviction fires.
+        self.tick_turn()
         self._current_turn_start_id = self._next_block_id
         self._last_user_text = text
 
@@ -358,6 +384,7 @@ class EvokeManager:
             representative_embedding=saved.representative_embedding,
             source=saved.source,
             key=saved.key,
+            recovery_strength=self._config.recovery_strength_init,
         )
         self._positions.append_block(block, new_p0)
         self._total_recoveries += 1

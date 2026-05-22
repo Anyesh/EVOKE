@@ -425,6 +425,16 @@ class Session:
         pinned: bool = False,
         task_boundary: bool = False,
     ) -> SyncStats:
+        # Decay the previous turn's recovery_strength signal before any of
+        # this turn's recoveries or evictions run. The decay must precede
+        # _smart_recover (which sets strength back to 1.0 on the newly-
+        # recovered blocks) and the add_context_tokens _enforce_budget call
+        # (which reads strength via the scorer). Without this, a recovery
+        # made at turn N has the same protection at turn N+5 as it did at
+        # turn N — the resident-set ages but the grace period does not, and
+        # the eviction pressure that should kick stale recoveries out never
+        # arrives.
+        self._manager.tick_turn()
         if task_boundary:
             self._manager.signal_task_boundary()
         # Rebuild from the manager so prior-turn evictions and recoveries are

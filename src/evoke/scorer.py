@@ -89,6 +89,10 @@ class RelevanceScorer:
         recency = self._score_recency(block, current_pos, context_length)
         coherence = self._score_coherence(block)
         attn = self._score_attention(block)
+        # Recovery-aware term: the model already signaled this block matters
+        # by recovering it; protect it from eviction until the decay schedule
+        # in tick_turn() has thinned the signal back to noise.
+        recovery = block.recovery_strength
 
         # Multi-signal combination. When attention is available (cfg.w_attention
         # > 0 and the AttentionScorer returned a value for this block), it's
@@ -96,9 +100,11 @@ class RelevanceScorer:
         # to in recent decode steps. Recency and coherence are stability priors
         # that prevent thrashing on a single high-attention spike. When
         # attention is unavailable, fall back to the recency+coherence weighted
-        # combination (preserves pre-rework behavior at default config).
+        # combination (preserves pre-rework behavior at default config). The
+        # recovery term joins the weighted sum at w_recovery and the denominator
+        # so default w_recovery=0.0 is a no-op for existing policies.
         if attn is not None and cfg.w_attention > 0:
-            total = cfg.w_attention + cfg.w_recency + cfg.w_coherence
+            total = cfg.w_attention + cfg.w_recency + cfg.w_coherence + cfg.w_recovery
             if total == 0:
                 raw = recency
             else:
@@ -106,13 +112,18 @@ class RelevanceScorer:
                     cfg.w_attention * attn
                     + cfg.w_recency * recency
                     + cfg.w_coherence * coherence
+                    + cfg.w_recovery * recovery
                 ) / total
         else:
-            total = cfg.w_recency + cfg.w_coherence
+            total = cfg.w_recency + cfg.w_coherence + cfg.w_recovery
             if total == 0:
                 raw = recency
             else:
-                raw = (cfg.w_recency * recency + cfg.w_coherence * coherence) / total
+                raw = (
+                    cfg.w_recency * recency
+                    + cfg.w_coherence * coherence
+                    + cfg.w_recovery * recovery
+                ) / total
 
         # Source-type floors: USER and ASSISTANT turns are conversation
         # backbone; even when their coherence drops they shouldn't be evicted

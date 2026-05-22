@@ -31,6 +31,16 @@ class ActiveBlock:
     # entirely (alongside is_sink and current-turn-pin).
     priority: float = 1.0
     pinned: bool = False
+    # Recovery-aware eviction: tracks "the model recently signaled this
+    # block matters" via the smart_recover path. Set to recovery_strength_init
+    # on each recover() call and decayed by recovery_decay on each per-turn
+    # tick_turn(). The scorer adds w_recovery * recovery_strength to the
+    # weighted relevance score so a freshly-recovered block survives the
+    # next eviction pass that would otherwise toss it on recency alone.
+    # Without this signal the recover-then-immediately-evict thrash that
+    # the session-length sweep diagnosed at T=28 (80 redundant evictions
+    # = ~2.4s of pure churn) reappears on every long session.
+    recovery_strength: float = 0.0
 
     @property
     def size(self) -> int:
