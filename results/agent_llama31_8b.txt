@@ -1,0 +1,37 @@
+﻿agentic eval | model=Meta-Llama-3.1-8B-Instruct-Q4_K_M
+kv_block primitives available: True
+budget  strategy          probe  evict  recov  active  rec_ms    answer
+-----------------------------------------------------------------------
+512     no_eviction       PASS   0      0      2269    0.00      'The maximum retry limit is set to 17 attempts. ```python #'
+512     recency           fail   35     0      412     0.00      'what is the maximum retry time time time time time time ti'
+512     streaming_llm     fail   35     0      398     0.00      '``` # config.py MAX_RETRY = 3 ``` Explanation: The maximum'
+512     evoke_discard     fail   35     0      398     0.00      '``` # config.py MAX_RETRY = 3 ``` Explanation: The maximum'
+512     evoke_breadcrumb  PASS   35     0      429     20.01     '17 attempts ```python # config.py MAX_RETRY_LIMIT = 17 ```'
+512     evoke_kv_restore  PASS   35     1      429     6.40      'The maximum retry limit is set to 17 attempts. ```python #'
+512     evoke_attention   PASS   36     1      407     6.42      'The maximum retry limit is set to 17 attempts. ```python #'
+512     h2o               fail   34     0      504     0.00      '``` # config.py MAX_RETRIES = 5 ``` Explanation: The maxim'
+512     snapkv            fail   34     0      504     0.00      'The maximum retry limit is set to 3 in config.py. ```pytho'
+512     infllm            PASS   39     1      215     6.45      'The maximum retry limit is set to 17 attempts. ```python #'
+-----------------------------------------------------------------------
+1024    no_eviction       PASS   0      0      2269    0.00      'The maximum retry limit is set to 17 attempts. ```python #'
+1024    recency           fail   29     0      712     0.00      ''
+1024    streaming_llm     fail   28     0      762     0.00      '``` # config.py MAX_RETRIES = 3 ``` Explanation: The maxim'
+1024    evoke_discard     fail   30     0      718     0.00      '``` # config.py MAX_RETRIES = 3 ``` Explanation: The maxim'
+1024    evoke_breadcrumb  PASS   30     0      749     15.79     '17 attempts.   Explanation: The maximum retry limit is set'
+1024    evoke_kv_restore  PASS   30     1      749     6.55      'The maximum retry limit is set to 17 attempts. ```python #'
+1024    evoke_attention   PASS   28     1      793     6.42      'The maximum retry limit is set to 17 attempts. ```python #'
+1024    h2o               fail   24     0      1018    0.00      '``` # config.py MAX_RETRIES = 3 ``` Explanation: The maxim'
+1024    snapkv            fail   26     0      974     0.00      'The maximum retry limit is set to 5 in config.py. ```pytho'
+1024    infllm            PASS   35     1      429     5.45      'The maximum retry limit is set to 17 attempts. ```python #'
+-----------------------------------------------------------------------
+2048    no_eviction       PASS   0      0      2269    0.00      'The maximum retry limit is set to 17 attempts. ```python #'
+2048    recency           fail   9      0      1782    0.00      ''
+2048    streaming_llm     fail   10     0      1746    0.00      'The maximum retry limit is set to 3 in config.py. ```pytho'
+2048    evoke_discard     fail   10     0      1746    0.00      'The maximum retry limit is set to 3 in config.py. ```pytho'
+2048    evoke_breadcrumb  PASS   10     0      1777    16.18     'The maximum retry limit is set to 17 attempts in config.py'
+2048    evoke_kv_restore  PASS   10     1      1777    6.45      'The maximum retry limit is set to 17 attempts. ```python #'
+2048    evoke_attention   PASS   8      0      1757    0.00      'The maximum retry limit is set to 17 attempts. ```python #'
+2048    h2o               fail   4      0      2046    0.00      'The maximum retry limit is set to 3 in config.py. ```pytho'
+2048    snapkv            PASS   4      0      2013    0.00      'The maximum retry limit is set to 17 attempts in config.py'
+2048    infllm            PASS   31     1      643     5.56      '17 attempts ```python # config.py MAX_RETRY_LIMIT = 17 ```'
+-----------------------------------------------------------------------
