@@ -1,0 +1,61 @@
+multifact eval | model=Qwen3.5-9B-Q4_K_M
+kv_block primitives available: True
+haystack: 40 paragraphs, 5 seeds, 5 facts per session
+seed budget  strategy          pass  evict  recov  sec    details
+------------------------------------------------------------------------------------------
+0    1024    recency           0/5  80     0      126.25 password:0,capital:0,amount:0,code:0,date:0
+0    1024    streaming_llm     0/5  80     0      126.24 password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_discard     0/5  80     0      126.38 password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_breadcrumb  0/5  80     0      128.09 password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_kv_restore  3/5  84     5      128.54 password:1,capital:1,amount:0,code:1,date:0
+0    1024    evoke_attention   3/5  84     5      129.58 password:1,capital:1,amount:0,code:1,date:0
+0    1024    h2o               0/5  78     0      132.27 password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+1    1024    recency           0/5  77     0      129.10 password:0,capital:0,amount:0,code:0,date:0
+1    1024    streaming_llm     0/5  77     0      127.88 password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_discard     0/5  77     0      128.09 password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_breadcrumb  0/5  77     0      128.03 password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_kv_restore  3/5  86     9      128.55 password:1,capital:1,amount:1,code:0,date:0
+1    1024    evoke_attention   3/5  86     9      126.55 password:1,capital:1,amount:1,code:0,date:0
+1    1024    h2o               0/5  75     0      126.59 password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+2    1024    recency           0/5  83     0      126.52 password:0,capital:0,amount:0,code:0,date:0
+2    1024    streaming_llm     0/5  83     0      126.50 password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_discard     0/5  83     0      126.68 password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_breadcrumb  0/5  83     0      128.39 password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_kv_restore  4/5  91     9      129.05 password:1,capital:1,amount:1,code:1,date:0
+2    1024    evoke_attention   4/5  91     9      128.41 password:1,capital:1,amount:1,code:1,date:0
+2    1024    h2o               0/5  80     0      127.19 password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+3    1024    recency           0/5  79     0      125.67 password:0,capital:0,amount:0,code:0,date:0
+3    1024    streaming_llm     0/5  79     0      127.57 password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_discard     0/5  79     0      124.57 password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_breadcrumb  0/5  79     0      123.94 password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_kv_restore  3/5  83     5      124.03 password:1,capital:1,amount:1,code:0,date:0
+3    1024    evoke_attention   3/5  83     5      124.04 password:1,capital:1,amount:1,code:0,date:0
+3    1024    h2o               1/5  76     0      123.96 password:0,capital:0,amount:0,code:0,date:1
+------------------------------------------------------------------------------------------
+4    1024    recency           0/5  79     0      123.83 password:0,capital:0,amount:0,code:0,date:0
+4    1024    streaming_llm     0/5  79     0      123.90 password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_discard     0/5  79     0      123.84 password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_breadcrumb  0/5  79     0      123.87 password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_kv_restore  4/5  88     8      124.01 password:1,capital:1,amount:1,code:0,date:1
+4    1024    evoke_attention   4/5  88     8      124.08 password:1,capital:1,amount:1,code:0,date:1
+4    1024    h2o               1/5  76     0      123.92 password:0,capital:0,amount:0,code:0,date:1
+------------------------------------------------------------------------------------------
+
+Loading judge to break 137 ambiguous cases (string-match failed, semantic keywords present)...
+Judge pass complete.
+
+Aggregate per (budget, strategy) over seeds
+budget  strategy            pass_rate  95% CI                n_facts   
+---------------------------------------------------------------------------
+1024    evoke_attention     68.00%     [48.41%, 82.80%]      17/25
+1024    evoke_breadcrumb    0.00%      [0.00%, 13.32%]      0/25
+1024    evoke_discard       0.00%      [0.00%, 13.32%]      0/25
+1024    evoke_kv_restore    68.00%     [48.41%, 82.80%]      17/25
+1024    h2o                 8.00%      [2.22%, 24.97%]      2/25
+1024    recency             4.00%      [0.71%, 19.54%]      1/25
+1024    streaming_llm       0.00%      [0.00%, 13.32%]      0/25
+
+results JSON: results\mfb_qwen35_9b.json
