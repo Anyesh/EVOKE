@@ -1,0 +1,145 @@
+ablation | model=Qwen2.5-7B-Instruct-Q4_K_M dim=topk base=evoke_attention
+values=[1, 2, 4, 8, 16] budget=1024 needles=['password', 'capital', 'amount', 'code', 'date'] depths=[5, 25, 50, 75, 95]
+value       needle    depth  probe  evict  recov  
+------------------------------------------------------------
+1           password  5      PASS   82     4      
+1           password  25     PASS   82     4      
+1           password  50     PASS   82     4      
+1           password  75     PASS   82     4      
+1           password  95     PASS   82     4      
+1           capital   5      PASS   82     4      
+1           capital   25     PASS   82     4      
+1           capital   50     PASS   82     4      
+1           capital   75     PASS   82     4      
+1           capital   95     PASS   82     4      
+1           amount    5      PASS   82     4      
+1           amount    25     PASS   82     4      
+1           amount    50     PASS   82     4      
+1           amount    75     PASS   82     4      
+1           amount    95     PASS   82     4      
+1           code      5      PASS   82     4      
+1           code      25     PASS   82     4      
+1           code      50     PASS   82     4      
+1           code      75     PASS   82     4      
+1           code      95     PASS   82     4      
+1           date      5      PASS   82     4      
+1           date      25     PASS   82     4      
+1           date      50     PASS   82     4      
+1           date      75     PASS   82     4      
+1           date      95     PASS   82     4      
+------------------------------------------------------------
+2           password  5      PASS   82     4      
+2           password  25     PASS   82     4      
+2           password  50     PASS   82     4      
+2           password  75     PASS   82     4      
+2           password  95     PASS   82     4      
+2           capital   5      PASS   82     4      
+2           capital   25     PASS   82     4      
+2           capital   50     PASS   82     4      
+2           capital   75     PASS   82     4      
+2           capital   95     PASS   82     4      
+2           amount    5      PASS   82     4      
+2           amount    25     PASS   82     4      
+2           amount    50     PASS   82     4      
+2           amount    75     PASS   82     4      
+2           amount    95     PASS   82     4      
+2           code      5      PASS   82     4      
+2           code      25     PASS   82     4      
+2           code      50     PASS   82     4      
+2           code      75     PASS   82     4      
+2           code      95     PASS   82     4      
+2           date      5      PASS   82     4      
+2           date      25     PASS   82     4      
+2           date      50     PASS   82     4      
+2           date      75     PASS   82     4      
+2           date      95     PASS   82     4      
+------------------------------------------------------------
+4           password  5      PASS   82     4      
+4           password  25     PASS   82     4      
+4           password  50     PASS   82     4      
+4           password  75     PASS   82     4      
+4           password  95     PASS   82     4      
+4           capital   5      PASS   82     4      
+4           capital   25     PASS   82     4      
+4           capital   50     PASS   82     4      
+4           capital   75     PASS   82     4      
+4           capital   95     PASS   82     4      
+4           amount    5      PASS   82     4      
+4           amount    25     PASS   82     4      
+4           amount    50     PASS   82     4      
+4           amount    75     PASS   82     4      
+4           amount    95     PASS   82     4      
+4           code      5      PASS   82     4      
+4           code      25     PASS   82     4      
+4           code      50     PASS   82     4      
+4           code      75     PASS   82     4      
+4           code      95     PASS   82     4      
+4           date      5      PASS   82     4      
+4           date      25     PASS   82     4      
+4           date      50     PASS   82     4      
+4           date      75     PASS   82     4      
+4           date      95     PASS   82     4      
+------------------------------------------------------------
+8           password  5      PASS   82     4      
+8           password  25     PASS   82     4      
+8           password  50     PASS   82     4      
+8           password  75     PASS   82     4      
+8           password  95     PASS   82     4      
+8           capital   5      PASS   82     4      
+8           capital   25     PASS   82     4      
+8           capital   50     PASS   82     4      
+8           capital   75     PASS   82     4      
+8           capital   95     PASS   82     4      
+8           amount    5      PASS   82     4      
+8           amount    25     PASS   82     4      
+8           amount    50     PASS   82     4      
+8           amount    75     PASS   82     4      
+8           amount    95     PASS   82     4      
+8           code      5      PASS   82     4      
+8           code      25     PASS   82     4      
+8           code      50     PASS   82     4      
+8           code      75     PASS   82     4      
+8           code      95     PASS   82     4      
+8           date      5      PASS   82     4      
+8           date      25     PASS   82     4      
+8           date      50     PASS   82     4      
+8           date      75     PASS   82     4      
+8           date      95     PASS   82     4      
+------------------------------------------------------------
+16          password  5      PASS   82     4      
+16          password  25     PASS   82     4      
+16          password  50     PASS   82     4      
+16          password  75     PASS   82     4      
+16          password  95     PASS   82     4      
+16          capital   5      PASS   82     4      
+16          capital   25     PASS   82     4      
+16          capital   50     PASS   82     4      
+16          capital   75     PASS   82     4      
+16          capital   95     PASS   82     4      
+16          amount    5      PASS   82     4      
+16          amount    25     PASS   82     4      
+16          amount    50     PASS   82     4      
+16          amount    75     PASS   82     4      
+16          amount    95     PASS   82     4      
+16          code      5      PASS   82     4      
+16          code      25     PASS   82     4      
+16          code      50     PASS   82     4      
+16          code      75     PASS   82     4      
+16          code      95     PASS   82     4      
+16          date      5      PASS   82     4      
+16          date      25     PASS   82     4      
+16          date      50     PASS   82     4      
+16          date      75     PASS   82     4      
+16          date      95     PASS   82     4      
+------------------------------------------------------------
+
+Aggregate per topk value
+value       pass_rate  95% CI                n_cells   
+------------------------------------------------------------
+1           100.00%    [86.68%, 100.00%]      25/25
+2           100.00%    [86.68%, 100.00%]      25/25
+4           100.00%    [86.68%, 100.00%]      25/25
+8           100.00%    [86.68%, 100.00%]      25/25
+16          100.00%    [86.68%, 100.00%]      25/25
+
+results JSON: results\abl_topk_qwen25.json
