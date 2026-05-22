@@ -1,0 +1,120 @@
+﻿multifact eval | model=Qwen2.5-7B-Instruct-Q4_K_M
+kv cache quantization: type_k=type_v=q4_0
+kv_block primitives available: True
+haystack: 40 paragraphs, 5 seeds, 5 facts per session
+seed budget  strategy          pass  evict  recov  sec    details
+------------------------------------------------------------------------------------------
+0    512     no_eviction       0/5  0      0      6.31   password:0,capital:0,amount:0,code:0,date:0
+0    512     recency           0/5  95     0      6.49   password:0,capital:0,amount:0,code:0,date:0
+0    512     streaming_llm     0/5  94     0      6.60   password:0,capital:0,amount:0,code:0,date:0
+0    512     evoke_discard     0/5  93     0      6.68   password:0,capital:0,amount:0,code:0,date:0
+0    512     evoke_breadcrumb  0/5  93     0      6.69   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+0    1024    no_eviction       0/5  0      0      6.28   password:0,capital:0,amount:0,code:0,date:0
+0    1024    recency           0/5  89     0      6.63   password:0,capital:0,amount:0,code:0,date:0
+0    1024    streaming_llm     0/5  89     0      6.63   password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_discard     0/5  86     0      6.63   password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_breadcrumb  0/5  86     0      6.57   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+0    2048    no_eviction       0/5  0      0      6.22   password:0,capital:0,amount:0,code:0,date:0
+0    2048    recency           0/5  77     0      6.43   password:0,capital:0,amount:0,code:0,date:0
+0    2048    streaming_llm     0/5  77     0      6.42   password:0,capital:0,amount:0,code:0,date:0
+0    2048    evoke_discard     0/5  74     0      6.50   password:0,capital:0,amount:0,code:0,date:0
+0    2048    evoke_breadcrumb  0/5  74     0      6.49   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+1    512     no_eviction       0/5  0      0      6.27   password:0,capital:0,amount:0,code:0,date:0
+1    512     recency           0/5  91     0      6.52   password:0,capital:0,amount:0,code:0,date:0
+1    512     streaming_llm     0/5  90     0      6.47   password:0,capital:0,amount:0,code:0,date:0
+1    512     evoke_discard     0/5  89     0      6.78   password:0,capital:0,amount:0,code:0,date:0
+1    512     evoke_breadcrumb  0/5  89     0      6.77   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+1    1024    no_eviction       0/5  0      0      6.20   password:0,capital:0,amount:0,code:0,date:0
+1    1024    recency           0/5  86     0      6.58   password:0,capital:0,amount:0,code:0,date:0
+1    1024    streaming_llm     0/5  86     0      6.59   password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_discard     0/5  83     0      6.59   password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_breadcrumb  0/5  83     0      6.58   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+1    2048    no_eviction       0/5  0      0      6.19   password:0,capital:0,amount:0,code:0,date:0
+1    2048    recency           0/5  71     0      6.38   password:0,capital:0,amount:0,code:0,date:0
+1    2048    streaming_llm     0/5  71     0      6.38   password:0,capital:0,amount:0,code:0,date:0
+1    2048    evoke_discard     0/5  69     0      6.38   password:0,capital:0,amount:0,code:0,date:0
+1    2048    evoke_breadcrumb  0/5  69     0      6.46   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+2    512     no_eviction       0/5  0      0      6.31   password:0,capital:0,amount:0,code:0,date:0
+2    512     recency           0/5  97     0      6.56   password:0,capital:0,amount:0,code:0,date:0
+2    512     streaming_llm     0/5  96     0      6.57   password:0,capital:0,amount:0,code:0,date:0
+2    512     evoke_discard     0/5  96     0      6.86   password:0,capital:0,amount:0,code:0,date:0
+2    512     evoke_breadcrumb  0/5  96     0      6.86   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+2    1024    no_eviction       0/5  0      0      6.24   password:0,capital:0,amount:0,code:0,date:0
+2    1024    recency           0/5  91     0      6.62   password:0,capital:0,amount:0,code:0,date:0
+2    1024    streaming_llm     0/5  91     0      6.68   password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_discard     0/5  88     0      6.67   password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_breadcrumb  0/5  88     0      6.67   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+2    2048    no_eviction       0/5  0      0      6.26   password:0,capital:0,amount:0,code:0,date:0
+2    2048    recency           0/5  77     0      6.46   password:0,capital:0,amount:0,code:0,date:0
+2    2048    streaming_llm     0/5  77     0      6.46   password:0,capital:0,amount:0,code:0,date:0
+2    2048    evoke_discard     0/5  75     0      6.46   password:0,capital:0,amount:0,code:0,date:0
+2    2048    evoke_breadcrumb  0/5  75     0      6.52   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+3    512     no_eviction       0/5  0      0      6.27   password:0,capital:0,amount:0,code:0,date:0
+3    512     recency           0/5  93     0      6.55   password:0,capital:0,amount:0,code:0,date:0
+3    512     streaming_llm     0/5  92     0      6.57   password:0,capital:0,amount:0,code:0,date:0
+3    512     evoke_discard     0/5  91     0      6.84   password:0,capital:0,amount:0,code:0,date:0
+3    512     evoke_breadcrumb  0/5  91     0      6.82   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+3    1024    no_eviction       0/5  0      0      6.21   password:0,capital:0,amount:0,code:0,date:0
+3    1024    recency           0/5  88     0      6.56   password:0,capital:0,amount:0,code:0,date:0
+3    1024    streaming_llm     0/5  88     0      6.62   password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_discard     0/5  85     0      6.63   password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_breadcrumb  0/5  85     0      6.63   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+3    2048    no_eviction       0/5  0      0      6.28   password:0,capital:0,amount:0,code:0,date:0
+3    2048    recency           0/5  73     0      6.42   password:0,capital:0,amount:0,code:0,date:0
+3    2048    streaming_llm     0/5  73     0      6.42   password:0,capital:0,amount:0,code:0,date:0
+3    2048    evoke_discard     0/5  71     0      6.42   password:0,capital:0,amount:0,code:0,date:0
+3    2048    evoke_breadcrumb  0/5  71     0      6.42   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+4    512     no_eviction       0/5  0      0      6.28   password:0,capital:0,amount:0,code:0,date:0
+4    512     recency           0/5  93     0      6.55   password:0,capital:0,amount:0,code:0,date:0
+4    512     streaming_llm     0/5  92     0      6.68   password:0,capital:0,amount:0,code:0,date:0
+4    512     evoke_discard     0/5  91     0      6.89   password:0,capital:0,amount:0,code:0,date:0
+4    512     evoke_breadcrumb  0/5  91     0      6.83   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+4    1024    no_eviction       0/5  0      0      6.21   password:0,capital:0,amount:0,code:0,date:0
+4    1024    recency           0/5  87     0      6.56   password:0,capital:0,amount:0,code:0,date:0
+4    1024    streaming_llm     0/5  87     0      6.57   password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_discard     0/5  84     0      6.63   password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_breadcrumb  0/5  84     0      6.63   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+4    2048    no_eviction       0/5  0      0      6.28   password:0,capital:0,amount:0,code:0,date:0
+4    2048    recency           0/5  73     0      6.48   password:0,capital:0,amount:0,code:0,date:0
+4    2048    streaming_llm     0/5  73     0      6.43   password:0,capital:0,amount:0,code:0,date:0
+4    2048    evoke_discard     0/5  71     0      6.42   password:0,capital:0,amount:0,code:0,date:0
+4    2048    evoke_breadcrumb  0/5  71     0      6.43   password:0,capital:0,amount:0,code:0,date:0
+------------------------------------------------------------------------------------------
+
+Loading judge to break 2 ambiguous cases (string-match failed, semantic keywords present)...
+Judge pass complete.
+
+Aggregate per (budget, strategy) over seeds
+budget  strategy            pass_rate  95% CI                n_facts   
+---------------------------------------------------------------------------
+512     evoke_breadcrumb    0.00%      [0.00%, 13.32%]      0/25
+512     evoke_discard       0.00%      [0.00%, 13.32%]      0/25
+512     no_eviction         0.00%      [0.00%, 13.32%]      0/25
+512     recency             0.00%      [0.00%, 13.32%]      0/25
+512     streaming_llm       0.00%      [0.00%, 13.32%]      0/25
+1024    evoke_breadcrumb    0.00%      [0.00%, 13.32%]      0/25
+1024    evoke_discard       0.00%      [0.00%, 13.32%]      0/25
+1024    no_eviction         0.00%      [0.00%, 13.32%]      0/25
+1024    recency             0.00%      [0.00%, 13.32%]      0/25
+1024    streaming_llm       0.00%      [0.00%, 13.32%]      0/25
+2048    evoke_breadcrumb    0.00%      [0.00%, 13.32%]      0/25
+2048    evoke_discard       0.00%      [0.00%, 13.32%]      0/25
+2048    no_eviction         0.00%      [0.00%, 13.32%]      0/25
+2048    recency             0.00%      [0.00%, 13.32%]      0/25
+2048    streaming_llm       0.00%      [0.00%, 13.32%]      0/25
+
+results JSON: results\mfb_kv_quant_q4_Qwen2.5-7B-Instruct-Q4_K_M.json
