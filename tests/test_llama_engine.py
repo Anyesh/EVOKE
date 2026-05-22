@@ -13,6 +13,61 @@ requires_model = pytest.mark.skipif(
 )
 
 
+class TestResolveKvType:
+    """Pure-function tests for the EVOKE_KV_QUANT env var entry point.
+
+    These do not need a real model; they cover the string-to-ggml-enum
+    translation that the bench harnesses go through when EVOKE_KV_QUANT
+    is set. Without this coverage a typo in a strategy override or env
+    var would silently fall back to F16 and the kv_quant comparison
+    would mislabel a Q4 cell as F16.
+    """
+
+    def test_none_returns_default(self):
+        from evoke.llama_engine import _resolve_kv_type
+
+        assert _resolve_kv_type(None) == 1
+
+    def test_none_returns_explicit_default(self):
+        from evoke.llama_engine import _resolve_kv_type
+
+        assert _resolve_kv_type(None, default=8) == 8
+
+    def test_int_passthrough(self):
+        from evoke.llama_engine import _resolve_kv_type
+
+        assert _resolve_kv_type(8) == 8
+        assert _resolve_kv_type(2) == 2
+
+    @pytest.mark.parametrize(
+        "name,expected",
+        [
+            ("f16", 1),
+            ("F16", 1),
+            ("q4_0", 2),
+            ("Q4_0", 2),
+            ("q8_0", 8),
+            ("q5_1", 7),
+            ("f32", 0),
+        ],
+    )
+    def test_known_names(self, name, expected):
+        from evoke.llama_engine import _resolve_kv_type
+
+        assert _resolve_kv_type(name) == expected
+
+    def test_unknown_name_raises(self):
+        from evoke.llama_engine import _resolve_kv_type
+
+        with pytest.raises(ValueError, match="unknown kv cache type"):
+            _resolve_kv_type("not_a_real_type")
+
+    def test_whitespace_stripped(self):
+        from evoke.llama_engine import _resolve_kv_type
+
+        assert _resolve_kv_type("  q4_0  ") == 2
+
+
 @requires_model
 class TestLlamaCppEngine:
     @pytest.fixture(scope="class")
