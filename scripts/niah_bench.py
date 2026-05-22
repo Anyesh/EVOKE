@@ -279,6 +279,13 @@ def _build_scorer(
     )
 
 
+def _think_close_for(model_path: str) -> str | None:
+    name = Path(model_path).name.lower()
+    if "qwen3" in name or "qwen-3" in name:
+        return "</think>"
+    return None
+
+
 def _smart_recover(mgr: EvokeManager, k: int = 4) -> int:
     # Mirrors Session._smart_recover: after the probe is decoded, score the
     # evicted blocks by embedding similarity against the freshest n_last=32
@@ -393,7 +400,23 @@ def run_cell(
         mgr._last_user_text = probe
         _smart_recover(mgr, k=4)
     mgr.process_user_message(probe)
-    answer = mgr.generate(64)
+    # Thinking models (Qwen 3.x and similar) emit <think>...</think> before
+    # the actual answer; without think_close the 128-token budget gets
+    # consumed by the thinking trace and no answer reaches the scorer.
+    # Detected from model name so the bench stays self-configuring across
+    # families.
+    think_close = _think_close_for(os.environ.get("EVOKE_MODEL_PATH", ""))
+    if think_close:
+        # Thinking models emit verbose answer preambles after the </think>
+        # close ("The capital city of the country called Polopia is the
+        # historic settlement of..."). 128 answer tokens get the preamble
+        # but cut off the actual needle string; 256 gives the answer room
+        # to complete. The thinking_budget covers the trace itself.
+        answer = mgr.generate(
+            512, think_close=think_close, thinking_budget=2048, answer_budget=256
+        )
+    else:
+        answer = mgr.generate(128)
     elapsed = time.perf_counter() - t0
     stats = mgr.get_stats()
     expected = needle["expected"].lower()
