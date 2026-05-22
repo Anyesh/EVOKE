@@ -28,6 +28,10 @@ scripts/*.ps1
 scripts/*.cmd
 scripts/sdk_response.json
 
+# Transient bench dispatcher stdout, not canonical result data
+results/*launch.log
+results/*launch_log
+
 # Docs
 docs/
 

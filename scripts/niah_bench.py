@@ -213,6 +213,20 @@ STRATEGIES: dict[str, dict] = {
     "evoke_discard": dict(recovery_mode="discard"),
     "evoke_breadcrumb": dict(recovery_mode="breadcrumb"),
     "evoke_kv_restore": dict(recovery_mode="kv_restore", use_retrieval_embeddings=True),
+    # Recovery-aware eviction variant: same selection rule as evoke_kv_restore
+    # but the scorer weighs per-block recovery_strength (set on recover, decayed
+    # per turn via tick_turn) at w_recovery=1.0. Closes the recover-then-evict
+    # thrash that the session-length sweep diagnosed at T=28+. Multifact compares
+    # this entry against plain evoke_kv_restore in the same JSON so any pass-rate
+    # delta is attributable to the protection mechanism alone (selection,
+    # recovery primitive, retrieval embedder all unchanged).
+    "evoke_recovery_aware": dict(
+        recovery_mode="kv_restore",
+        use_retrieval_embeddings=True,
+        w_recovery=1.0,
+        recovery_decay=0.7,
+        recovery_strength_init=1.0,
+    ),
     "evoke_attention": dict(
         recovery_mode="kv_restore",
         w_attention=0.5,
@@ -593,6 +607,7 @@ def main() -> int:
                         # mislabel the row.
                         needs_kv_block = name in (
                             "evoke_kv_restore",
+                            "evoke_recovery_aware",
                             "evoke_attention",
                             "h2o",
                             "snapkv",

@@ -264,6 +264,7 @@ def main() -> int:
             for name, overrides in STRATEGIES.items():
                 needs_kv_block = name in (
                     "evoke_kv_restore",
+                    "evoke_recovery_aware",
                     "evoke_attention",
                     "h2o",
                     "snapkv",

@@ -266,7 +266,7 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
         f"$env:EVOKE_MODEL_NAME='{MODEL_NAME}'; "
         f"uv run python scripts/evoke_serve.py"
     )
-    print(f"  launch: {launch}")
+    print(f"  launch: policy={policy} budget={BUDGET} n_ctx={N_CTX}")
     expected_budget = int(N_CTX) if policy == "no_eviction" else int(BUDGET)
     proc = _ssh_bg(launch)
     deadline = time.time() + 240
