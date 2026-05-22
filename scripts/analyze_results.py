@@ -44,9 +44,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+import os
+
 REPO = Path(__file__).resolve().parents[1]
-NIAH_JSON = REPO / "results" / "niah_qwen25_7b_with_snapkv_infllm.json"
-MFB_JSON = REPO / "results" / "mfb_qwen25_7b_with_snapkv_infllm.json"
+NIAH_JSON = Path(
+    os.environ.get(
+        "EVOKE_ANALYZE_NIAH",
+        REPO / "results" / "niah_qwen25_7b_with_snapkv_infllm.json",
+    )
+)
+MFB_JSON = Path(
+    os.environ.get(
+        "EVOKE_ANALYZE_MFB",
+        REPO / "results" / "mfb_qwen25_7b_with_snapkv_infllm.json",
+    )
+)
+RUN_TAG = os.environ.get("EVOKE_ANALYZE_TAG", "qwen25_7b_snapkv_infllm")
 FIG_DIR = REPO / "results" / "figures"
 ANL_DIR = REPO / "results" / "analysis"
 
@@ -236,16 +249,19 @@ def multifact_failure_xtab(records: list[dict], out_path: Path, run_tag: str) ->
 
     facts_sorted = sorted(fact_ids)
     strategies = [s for s in STRATEGY_ORDER if any(s == k[0] for k in by_strategy_fact)]
+    seeds_seen = sorted({r["seed"] for r in records})
+    budgets_seen = sorted({r["budget"] for r in records})
     lines = [
         f"# Multifact per-fact pass-rate cross-tab ({run_tag})",
         "",
-        "Pass rate of each strategy on each of the five planted facts, aggregated",
-        "over the n=5 seeds. The reviewer's Q4 asks whether multifact's 60%",
-        "headline is selection failure (wrong block recovered) or substitution",
-        "failure (right block, wrong K/V). A strategy that fails the same fact",
-        "across most seeds is consistent with that fact being structurally hard",
-        "for the strategy's selection rule. A strategy whose failure mass is",
-        "spread evenly across facts is more consistent with substitution noise.",
+        f"Pass rate of each strategy on each of the five planted facts, aggregated",
+        f"over {len(seeds_seen)} seeds x {len(budgets_seen)} budgets ({len(seeds_seen) * len(budgets_seen)} cells per (strategy, fact)).",
+        "The reviewer's Q4 asks whether multifact's pass-rate headline is selection",
+        "failure (wrong block recovered) or substitution failure (right block,",
+        "wrong K/V). A strategy that fails the same fact across most seeds is",
+        "consistent with that fact being structurally hard for the strategy's",
+        "selection rule. A strategy whose failure mass is spread evenly across",
+        "facts is more consistent with substitution noise.",
         "",
         "| strategy        | "
         + " | ".join(f"{f:<8}" for f in facts_sorted)
@@ -276,16 +292,20 @@ def main() -> int:
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     ANL_DIR.mkdir(parents=True, exist_ok=True)
 
-    niah = json.loads(NIAH_JSON.read_text(encoding="utf-8"))
     mfb = json.loads(MFB_JSON.read_text(encoding="utf-8"))
-    run_tag = "qwen25_7b_snapkv_infllm"
+    run_tag = RUN_TAG
 
-    niah_heatmap(niah, FIG_DIR / f"niah_heatmap_{run_tag}.png", run_tag)
     multifact_bar(mfb, FIG_DIR / f"multifact_bar_{run_tag}.png", run_tag)
-    tail_latency_table(niah, ANL_DIR / f"tail_latency_{run_tag}.md", run_tag)
     multifact_failure_xtab(
         mfb, ANL_DIR / f"multifact_failure_xtab_{run_tag}.md", run_tag
     )
+
+    if NIAH_JSON.exists():
+        niah = json.loads(NIAH_JSON.read_text(encoding="utf-8"))
+        niah_heatmap(niah, FIG_DIR / f"niah_heatmap_{run_tag}.png", run_tag)
+        tail_latency_table(niah, ANL_DIR / f"tail_latency_{run_tag}.md", run_tag)
+    else:
+        print(f"NIAH JSON {NIAH_JSON} not found; skipping NIAH plots")
 
     print(f"figures written to {FIG_DIR}")
     print(f"analysis written to {ANL_DIR}")
