@@ -1,8 +1,8 @@
 # EVOKE
 
-**EV**ict and rec**O**ver **K**V cache **E**ntries — **recompute-free K/V block recovery for long-context LLM inference.**
+**A KV-cache memory hierarchy with recompute-free block recovery for LLM serving.**
 
-Long-running LLM agent sessions outgrow the physical KV cache budget within a few turns. EVOKE evicts low-relevance blocks under budget pressure and **recovers them with no forward pass** by splicing the original K/V tensors back into the unified attention cache with one RoPE phase shift, via custom save/restore primitives in a forked llama.cpp. The recovery primitive is 20–32× faster than re-prefilling the same tokens, and on standard needle-in-a-haystack at 4× compression, EVOKE recovers **96–100% of needles** across three model families (Qwen 2.5 7B, Qwen 3.5 9B hybrid, Qwen 3.6 35B-A3B MoE), where every baseline including H2O fails 60–100% of cells.
+Long-running LLM agent sessions outgrow the physical KV cache budget within a few turns. **EV**ict and rec**O**ver **K**V cache **E**ntries (EVOKE) treats the KV cache as a small fast tier of a memory hierarchy: low-relevance blocks are evicted under budget pressure and **recovered with no forward pass** by splicing the original K/V tensors back into the unified attention cache with one RoPE phase shift, via custom save/restore primitives in a forked llama.cpp. The recovery primitive is 20–32× faster than re-prefilling the same tokens (5.9–7.5× over the full save+load lifecycle). On standard needle-in-a-haystack at 4× compression, EVOKE recovers **96–100% of needles** across three model families (Qwen 2.5 7B, Qwen 3.5 9B hybrid, Qwen 3.6 35B-A3B MoE); recovery-less baselines (recency, StreamingLLM, H2O, SnapKV) flatten at 20–40% and the same-substrate InfLLM external-memory adaptation matches EVOKE at tight budgets but degrades at the loosest.
 
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
