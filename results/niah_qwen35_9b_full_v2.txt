@@ -1,0 +1,218 @@
+niah eval | model=Qwen3.5-9B-Q4_K_M
+kv_block primitives available: True
+haystack: 40 paragraphs, seed=0, 5 needles, 5 depths, 1 budgets
+budget  needle    depth  strategy          probe  evict  recov  active  sec    answer
+-------------------------------------------------------------------------------------
+1024    password  5      recency           fail   79     0      730     24.59  'The secret password for the laboratory vault is the secret password for the labo'
+1024    password  5      streaming_llm     fail   79     0      730     24.52  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  5      evoke_discard     fail   79     0      730     24.46  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  5      evoke_breadcrumb  fail   79     0      730     24.61  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  5      evoke_kv_restore  PASS   83     4      730     24.45  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  5      evoke_attention   PASS   83     4      730     24.65  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  5      h2o               fail   75     0      986     24.41  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+-------------------------------------------------------------------------------------
+1024    password  25     recency           fail   79     0      730     24.58  'The secret password for the laboratory vault is The secret password for the labo'
+1024    password  25     streaming_llm     fail   79     0      730     24.49  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  25     evoke_discard     fail   79     0      730     24.51  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  25     evoke_breadcrumb  fail   79     0      730     24.57  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  25     evoke_kv_restore  fail   83     4      730     24.46  'icarus-pinwheel-4  Question: What is the secret password for the laboratory vaul'
+1024    password  25     evoke_attention   fail   83     4      730     24.66  'icarus-pinwheel-4  Question: What is the secret password for the laboratory vaul'
+1024    password  25     h2o               fail   75     0      986     24.43  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+-------------------------------------------------------------------------------------
+1024    password  50     recency           fail   79     0      730     24.61  'The secret password for the laboratory vault is The secret password for the labo'
+1024    password  50     streaming_llm     fail   79     0      730     24.47  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  50     evoke_discard     fail   79     0      730     24.54  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  50     evoke_breadcrumb  fail   79     0      730     24.55  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  50     evoke_kv_restore  PASS   83     4      730     24.51  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  50     evoke_attention   PASS   83     4      730     24.61  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  50     h2o               fail   75     0      986     24.40  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+-------------------------------------------------------------------------------------
+1024    password  75     recency           fail   79     0      730     24.63  'The secret password for the laboratory vault is The secret password for the labo'
+1024    password  75     streaming_llm     fail   79     0      730     24.43  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  75     evoke_discard     fail   79     0      730     24.58  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  75     evoke_breadcrumb  fail   79     0      730     24.48  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+1024    password  75     evoke_kv_restore  PASS   83     4      730     24.53  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  75     evoke_attention   PASS   83     4      730     24.59  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  75     h2o               fail   75     0      986     24.47  'The secret password for the laboratory vault is "QuantumFlux2024".  Question: Wh'
+-------------------------------------------------------------------------------------
+1024    password  95     recency           PASS   79     0      730     24.63  'icarus-pinwheel-43  Important administrative note: the secret password for the l'
+1024    password  95     streaming_llm     PASS   79     0      730     24.40  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  95     evoke_discard     PASS   79     0      730     24.59  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  95     evoke_breadcrumb  PASS   79     0      730     24.48  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  95     evoke_kv_restore  PASS   83     4      730     24.58  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  95     evoke_attention   PASS   83     4      730     24.55  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+1024    password  95     h2o               PASS   75     0      986     24.47  'icarus-pinwheel-43  Question: What is the secret password for the laboratory vau'
+-------------------------------------------------------------------------------------
+1024    capital   5      recency           fail   79     0      734     24.61  'The capital city of the country called Polopia is Polopia.  Question: What is th'
+1024    capital   5      streaming_llm     fail   79     0      734     24.43  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   5      evoke_discard     fail   79     0      734     24.62  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   5      evoke_breadcrumb  fail   79     0      734     24.42  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   5      evoke_kv_restore  PASS   84     4      722     24.59  'The capital city of the country called Polopia is the historic settlement of Zit'
+1024    capital   5      evoke_attention   PASS   84     4      722     24.53  'The capital city of the country called Polopia is the historic settlement of Zit'
+1024    capital   5      h2o               fail   75     0      990     24.53  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+-------------------------------------------------------------------------------------
+1024    capital   25     recency           fail   79     0      734     24.56  'The capital city of the country called Polopia is Polopolis.  Question: What is '
+1024    capital   25     streaming_llm     fail   79     0      734     24.43  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   25     evoke_discard     fail   79     0      734     24.64  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   25     evoke_breadcrumb  fail   79     0      734     24.44  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   25     evoke_kv_restore  PASS   84     4      722     24.66  'The capital city of the country called Polopia is the historic settlement of Zit'
+1024    capital   25     evoke_attention   PASS   84     4      722     24.50  'The capital city of the country called Polopia is the historic settlement of Zit'
+1024    capital   25     h2o               fail   75     0      990     24.55  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+-------------------------------------------------------------------------------------
+1024    capital   50     recency           fail   79     0      734     24.55  'The capital city of the country called Polopia is Polopolis.  Question: What is '
+1024    capital   50     streaming_llm     fail   79     0      734     24.50  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   50     evoke_discard     fail   79     0      734     24.62  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   50     evoke_breadcrumb  fail   79     0      734     24.43  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   50     evoke_kv_restore  PASS   84     4      722     24.65  'The capital city of the country called Polopia is Zithrand.  Question: What is t'
+1024    capital   50     evoke_attention   PASS   84     4      722     24.50  'The capital city of the country called Polopia is Zithrand.  Question: What is t'
+1024    capital   50     h2o               fail   75     0      990     24.60  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+-------------------------------------------------------------------------------------
+1024    capital   75     recency           fail   79     0      734     24.53  'The capital city of the country called Polopia is Polopolis.  Question: What is '
+1024    capital   75     streaming_llm     fail   79     0      734     24.51  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   75     evoke_discard     fail   79     0      734     24.60  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   75     evoke_breadcrumb  fail   79     0      734     24.44  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+1024    capital   75     evoke_kv_restore  PASS   84     4      722     24.67  'The capital city of the country called Polopia is the historic settlement of Zit'
+1024    capital   75     evoke_attention   PASS   84     4      722     24.44  'The capital city of the country called Polopia is the historic settlement of Zit'
+1024    capital   75     h2o               fail   75     0      990     24.62  'The capital city of Polopia is Polopolis.  Question: What is the capital city of'
+-------------------------------------------------------------------------------------
+1024    capital   95     recency           PASS   79     0      734     24.50  'The capital city of the country called Polopia is the historic settlement of Zit'
+1024    capital   95     streaming_llm     PASS   79     0      734     24.54  'The capital city of the country called Polopia is Zithrand.  Question: What is t'
+1024    capital   95     evoke_discard     PASS   79     0      734     24.58  'The capital city of the country called Polopia is Zithrand.  Question: What is t'
+1024    capital   95     evoke_breadcrumb  PASS   79     0      734     24.48  'The capital city of the country called Polopia is Zithrand.  Question: What is t'
+1024    capital   95     evoke_kv_restore  PASS   84     4      722     24.66  'Zithrand  Question: What is the capital city of the country called Polopia? Answ'
+1024    capital   95     evoke_attention   PASS   84     4      722     24.47  'Zithrand  Question: What is the capital city of the country called Polopia? Answ'
+1024    capital   95     h2o               PASS   75     0      990     24.65  'The capital city of the country called Polopia is Zithrand.  Question: What is t'
+-------------------------------------------------------------------------------------
+1024    amount    5      recency           fail   79     0      747     24.47  '12 milligrams of cesium chloride did Dr. Halvorsen use in the calibration run.  '
+1024    amount    5      streaming_llm     fail   79     0      747     24.59  '12.5 mg.  Question: What was the primary reason for the delay in the launch of t'
+1024    amount    5      evoke_discard     fail   79     0      747     24.53  '12.5 mg.  Question: What was the primary reason for the delay in the launch of t'
+1024    amount    5      evoke_breadcrumb  fail   79     0      747     24.52  '12.5 mg.  Question: What was the primary reason for the delay in the launch of t'
+1024    amount    5      evoke_kv_restore  PASS   83     4      747     24.63  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    5      evoke_attention   PASS   83     4      747     24.46  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    5      h2o               fail   75     0      1003    24.63  '12.5 mg  Question: What was the primary reason for the delay in the launch of th'
+-------------------------------------------------------------------------------------
+1024    amount    25     recency           fail   79     0      747     24.43  '12 milligrams of cesium chloride did Dr. Halvorsen use in the calibration run.  '
+1024    amount    25     streaming_llm     fail   79     0      747     24.62  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+1024    amount    25     evoke_discard     fail   79     0      747     24.49  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+1024    amount    25     evoke_breadcrumb  fail   79     0      747     24.53  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+1024    amount    25     evoke_kv_restore  PASS   83     4      747     24.60  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    25     evoke_attention   PASS   83     4      747     24.51  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    25     h2o               fail   75     0      1003    24.64  '12.5 mg  Question: What was the primary reason for the delay in the launch of th'
+-------------------------------------------------------------------------------------
+1024    amount    50     recency           fail   79     0      747     24.42  '12 milligrams of cesium chloride did Dr. Halvorsen use in the calibration run.  '
+1024    amount    50     streaming_llm     fail   79     0      747     24.63  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+1024    amount    50     evoke_discard     fail   79     0      747     24.49  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+1024    amount    50     evoke_breadcrumb  fail   79     0      747     24.57  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+1024    amount    50     evoke_kv_restore  PASS   83     4      747     24.55  '47 milligrams.  Question: What is the primary focus of the field expeditions inv'
+1024    amount    50     evoke_attention   PASS   83     4      747     24.53  '47 milligrams.  Question: What is the primary focus of the field expeditions inv'
+1024    amount    50     h2o               fail   75     0      1003    24.61  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+-------------------------------------------------------------------------------------
+1024    amount    75     recency           fail   79     0      747     24.45  '12 milligrams of cesium chloride did Dr. Halvorsen use in the calibration run.  '
+1024    amount    75     streaming_llm     fail   79     0      747     24.65  '12.4 mg.  Question: What was the primary reason for the delay in the launch of t'
+1024    amount    75     evoke_discard     fail   79     0      747     24.43  '12.4 mg.  Question: What was the primary reason for the delay in the launch of t'
+1024    amount    75     evoke_breadcrumb  fail   79     0      747     24.59  '12.4 mg.  Question: What was the primary reason for the delay in the launch of t'
+1024    amount    75     evoke_kv_restore  PASS   83     4      747     24.55  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    75     evoke_attention   PASS   83     4      747     24.58  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    75     h2o               fail   75     0      1003    24.55  '12.4 mg  Question: What was the primary reason for the delay in the launch of th'
+-------------------------------------------------------------------------------------
+1024    amount    95     recency           PASS   79     0      747     24.45  '47 milligrams of cesium chloride.  Question: What was the result of Dr. Halvorse'
+1024    amount    95     streaming_llm     PASS   79     0      747     24.65  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    95     evoke_discard     PASS   79     0      747     24.42  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    95     evoke_breadcrumb  PASS   79     0      747     24.62  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    95     evoke_kv_restore  PASS   83     4      747     24.50  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    95     evoke_attention   PASS   83     4      747     24.59  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+1024    amount    95     h2o               PASS   75     0      1003    24.55  '47 milligrams.  Question: What is the main topic of the text? Answer: The text d'
+-------------------------------------------------------------------------------------
+1024    code      5      recency           fail   79     0      734     24.51  'The activation code for the orbital relay station is 777777777777777777777777777'
+1024    code      5      streaming_llm     fail   79     0      734     24.61  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+1024    code      5      evoke_discard     fail   79     0      734     24.42  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+1024    code      5      evoke_breadcrumb  fail   79     0      734     24.66  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+1024    code      5      evoke_kv_restore  PASS   83     4      734     24.46  'BLUE-MOUNTAIN-7-DELTA  Question: What is the activation code for the orbital rel'
+1024    code      5      evoke_attention   PASS   83     4      734     24.64  'BLUE-MOUNTAIN-7-DELTA  Question: What is the activation code for the orbital rel'
+1024    code      5      h2o               fail   75     0      990     24.51  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+-------------------------------------------------------------------------------------
+1024    code      25     recency           fail   79     0      734     24.55  'The activation code for the orbital relay station is 777777777777777777777777777'
+1024    code      25     streaming_llm     fail   79     0      734     24.58  'The activation code is 7X-9K-2M.  Question: What is the name of the protagonist '
+1024    code      25     evoke_discard     fail   79     0      734     24.50  'The activation code is 7X-9K-2M.  Question: What is the name of the protagonist '
+1024    code      25     evoke_breadcrumb  fail   79     0      734     24.63  'The activation code is 7X-9K-2M.  Question: What is the name of the protagonist '
+1024    code      25     evoke_kv_restore  fail   83     4      734     24.42  'BLUE  Question: What is the activation code for the orbital relay station? Answe'
+1024    code      25     evoke_attention   fail   83     4      734     24.64  'BLUE  Question: What is the activation code for the orbital relay station? Answe'
+1024    code      25     h2o               fail   75     0      990     24.46  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+-------------------------------------------------------------------------------------
+1024    code      50     recency           fail   79     0      734     24.57  'The activation code for the orbital relay station is 777777777777777777777777777'
+1024    code      50     streaming_llm     fail   79     0      734     24.53  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+1024    code      50     evoke_discard     fail   79     0      734     24.45  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+1024    code      50     evoke_breadcrumb  fail   79     0      734     24.62  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+1024    code      50     evoke_kv_restore  PASS   83     4      734     24.44  'BLUE-MOUNTAIN-7-DELTA  Question: What is the activation code for the orbital rel'
+1024    code      50     evoke_attention   PASS   83     4      734     24.65  'BLUE-MOUNTAIN-7-DELTA  Question: What is the activation code for the orbital rel'
+1024    code      50     h2o               fail   75     0      990     24.43  'The activation code is 7X-9K-2M.  Question: What is the name of the protagonist '
+-------------------------------------------------------------------------------------
+1024    code      75     recency           fail   79     0      734     24.60  'The activation code for the orbital relay station is 777777777777777777777777777'
+1024    code      75     streaming_llm     fail   79     0      734     24.50  'The activation code is 7X-9B-2M.  Question: What is the name of the protagonist '
+1024    code      75     evoke_discard     fail   79     0      734     24.50  'The activation code is 7X-9B-2M.  Question: What is the name of the protagonist '
+1024    code      75     evoke_breadcrumb  fail   79     0      734     24.56  'The activation code is 7X-9B-2M.  Question: What is the name of the protagonist '
+1024    code      75     evoke_kv_restore  PASS   83     4      734     24.45  'BLUE-MOUNTAIN-7-DELTA  Operational note for the duty officer: the activation cod'
+1024    code      75     evoke_attention   PASS   83     4      734     24.64  'BLUE-MOUNTAIN-7-DELTA  Operational note for the duty officer: the activation cod'
+1024    code      75     h2o               fail   75     0      990     24.43  'The activation code is 7X-9Q-2M.  Question: What is the name of the protagonist '
+-------------------------------------------------------------------------------------
+1024    code      95     recency           PASS   79     0      734     24.60  'BLUE-MOUNTAIN-7-DELTA  Operational note for the duty officer: the activation cod'
+1024    code      95     streaming_llm     PASS   79     0      734     24.45  'BLUE-MOUNTAIN-7-DELTA  Question: What is the next step for the duty officer? Ans'
+1024    code      95     evoke_discard     PASS   79     0      734     24.53  'BLUE-MOUNTAIN-7-DELTA  Question: What is the next step for the duty officer? Ans'
+1024    code      95     evoke_breadcrumb  PASS   79     0      734     24.55  'BLUE-MOUNTAIN-7-DELTA  Question: What is the next step for the duty officer? Ans'
+1024    code      95     evoke_kv_restore  PASS   83     4      734     24.48  'BLUE-MOUNTAIN-7-DELTA  Question: What is the next step for the duty officer? Ans'
+1024    code      95     evoke_attention   PASS   83     4      734     24.62  'BLUE-MOUNTAIN-7-DELTA  Question: What is the next step for the duty officer? Ans'
+1024    code      95     h2o               PASS   75     0      990     24.39  'BLUE-MOUNTAIN-7-DELTA  Question: What is the next step for the duty officer? Ans'
+-------------------------------------------------------------------------------------
+1024    date      5      recency           fail   79     0      745     24.63  'The Treaty of Vrenholm was signed on the 17th of Vrenholm. Answer: The Treaty of'
+1024    date      5      streaming_llm     fail   79     0      745     24.44  'The Treaty of Vrenholm was signed on 14th of March, 1923 at 10:00 AM.  Question:'
+1024    date      5      evoke_discard     fail   79     0      745     24.57  'The Treaty of Vrenholm was signed on 14th of March, 1923 at 10:00 AM.  Question:'
+1024    date      5      evoke_breadcrumb  fail   79     0      745     24.50  'The Treaty of Vrenholm was signed on 14th of March, 1923 at 10:00 AM.  Question:'
+1024    date      5      evoke_kv_restore  PASS   83     4      745     24.51  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      5      evoke_attention   PASS   83     4      745     24.59  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      5      h2o               fail   75     0      1001    24.44  'The Treaty of Vrenholm was signed on 14th of March, 1892 at 10:00 AM.  Question:'
+-------------------------------------------------------------------------------------
+1024    date      25     recency           fail   79     0      745     24.61  'The Treaty of Vrenholm was signed on the 17th of Vrenholm. Answer: The Treaty of'
+1024    date      25     streaming_llm     fail   79     0      745     24.41  'The Treaty of Vrenholm was signed on 14th February 1923 at 10:00 AM.  Question: '
+1024    date      25     evoke_discard     fail   79     0      745     24.59  'The Treaty of Vrenholm was signed on 14th February 1923 at 10:00 AM.  Question: '
+1024    date      25     evoke_breadcrumb  fail   79     0      745     24.51  'The Treaty of Vrenholm was signed on 14th February 1923 at 10:00 AM.  Question: '
+1024    date      25     evoke_kv_restore  fail   83     4      745     24.57  'The Treaty of Vrenholm was signed on the twenty-third of October.  Question: Wha'
+1024    date      25     evoke_attention   fail   83     4      745     24.57  'The Treaty of Vrenholm was signed on the twenty-third of October.  Question: Wha'
+1024    date      25     h2o               fail   75     0      1001    24.45  'The Treaty of Vrenholm was signed on 14th of March, 1892 at 10:00 AM.  Question:'
+-------------------------------------------------------------------------------------
+1024    date      50     recency           fail   79     0      745     24.62  'The Treaty of Vrenholm was signed on the 17th of Vrenholm. Answer: The Treaty of'
+1024    date      50     streaming_llm     fail   79     0      745     24.41  'The Treaty of Vrenholm was signed on 14th February 1892 at 10:00 AM.  Question: '
+1024    date      50     evoke_discard     fail   79     0      745     24.63  'The Treaty of Vrenholm was signed on 14th February 1892 at 10:00 AM.  Question: '
+1024    date      50     evoke_breadcrumb  fail   79     0      745     24.43  'The Treaty of Vrenholm was signed on 14th February 1892 at 10:00 AM.  Question: '
+1024    date      50     evoke_kv_restore  fail   83     4      745     24.58  'The Treaty of Vrenholm was signed on 14th February 1648 at 10:00 AM.  Question: '
+1024    date      50     evoke_attention   fail   83     4      745     24.54  'The Treaty of Vrenholm was signed on 14th February 1648 at 10:00 AM.  Question: '
+1024    date      50     h2o               fail   75     0      1001    24.48  'The Treaty of Vrenholm was signed on 14th February 1654 at 10:00 AM.  Question: '
+-------------------------------------------------------------------------------------
+1024    date      75     recency           fail   79     0      745     24.59  'The Treaty of Vrenholm was signed on the 17th of Vrenholm.  Question: On what da'
+1024    date      75     streaming_llm     fail   79     0      745     24.40  'The Treaty of Vrenholm was signed on 14th of March, 1892 at 10:00 AM.  Question:'
+1024    date      75     evoke_discard     fail   79     0      745     24.63  'The Treaty of Vrenholm was signed on 14th of March, 1892 at 10:00 AM.  Question:'
+1024    date      75     evoke_breadcrumb  fail   79     0      745     24.45  'The Treaty of Vrenholm was signed on 14th of March, 1892 at 10:00 AM.  Question:'
+1024    date      75     evoke_kv_restore  PASS   83     4      745     24.61  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      75     evoke_attention   PASS   83     4      745     24.50  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      75     h2o               fail   75     0      1001    24.52  'The Treaty of Vrenholm was signed on 14th of March, 1892 at 10:00 AM.  Question:'
+-------------------------------------------------------------------------------------
+1024    date      95     recency           PASS   79     0      745     24.58  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      95     streaming_llm     PASS   79     0      745     24.46  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      95     evoke_discard     PASS   79     0      745     24.62  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      95     evoke_breadcrumb  PASS   79     0      745     24.39  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      95     evoke_kv_restore  PASS   83     4      745     24.64  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      95     evoke_attention   PASS   83     4      745     24.49  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+1024    date      95     h2o               PASS   75     0      1001    24.56  'The Treaty of Vrenholm was signed on the twenty-third of October, 1786, at a qua'
+-------------------------------------------------------------------------------------
+
+Aggregate pass-rate per (budget, strategy)
+budget  strategy            pass_rate   n_cells 
+--------------------------------------------------
+1024    evoke_attention     84.00%      25      
+1024    evoke_breadcrumb    20.00%      25      
+1024    evoke_discard       20.00%      25      
+1024    evoke_kv_restore    84.00%      25      
+1024    h2o                 20.00%      25      
+1024    recency             20.00%      25      
+1024    streaming_llm       20.00%      25      
+
+results JSON: results\niah_qwen35_9b_full_v2.json
