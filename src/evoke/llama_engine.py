@@ -101,6 +101,30 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
 _kv_block_lib = _bind_kv_block_primitives()
 
 
+_GGML_KV_TYPES = {
+    "f32": 0,
+    "f16": 1,
+    "q4_0": 2,
+    "q4_1": 3,
+    "q5_0": 6,
+    "q5_1": 7,
+    "q8_0": 8,
+}
+
+
+def _resolve_kv_type(value: str | int | None, default: int = 1) -> int:
+    if value is None:
+        return default
+    if isinstance(value, int):
+        return value
+    key = value.lower().strip()
+    if key not in _GGML_KV_TYPES:
+        raise ValueError(
+            f"unknown kv cache type {value!r}; expected one of {sorted(_GGML_KV_TYPES)}"
+        )
+    return _GGML_KV_TYPES[key]
+
+
 class LlamaCppEngine:
     def __init__(
         self,
@@ -111,6 +135,8 @@ class LlamaCppEngine:
         n_batch: int = 512,
         verbose: bool = False,
         n_rs_seq: int = 0,
+        type_k: str | int | None = None,
+        type_v: str | int | None = None,
     ):
         # n_rs_seq: number of per-token snapshots the recurrent half keeps for
         # partial rollback. 0 disables (upstream default — recurrent seq_rm
@@ -148,6 +174,10 @@ class LlamaCppEngine:
         # recovery latency.
         ctx_params.flash_attn_type = 1
         ctx_params.no_perf = True
+        ctx_params.type_k = _resolve_kv_type(type_k, default=ctx_params.type_k)
+        ctx_params.type_v = _resolve_kv_type(type_v, default=ctx_params.type_v)
+        self._kv_type_k = ctx_params.type_k
+        self._kv_type_v = ctx_params.type_v
 
         self._ctx = llama_cpp.llama_init_from_model(self._model_ptr, ctx_params)
         if not self._ctx:

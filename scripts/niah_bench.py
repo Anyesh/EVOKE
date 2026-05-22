@@ -190,6 +190,20 @@ NEEDLES = [
 DEFAULT_DEPTHS = [5, 25, 50, 75, 95]
 
 STRATEGIES: dict[str, dict] = {
+    # Full-context baseline: eviction never fires because the budget cap is
+    # bigger than any document the bench can produce. Used as the apples-to-
+    # apples partner for kv_quant runs ("keep everything at quarter precision"
+    # vs evoke's "keep a quarter of tokens at full precision").
+    "no_eviction": dict(
+        w_recency=1.0,
+        w_coherence=0.0,
+        sink_count=0,
+        recovery_mode="discard",
+        max_active_tokens=131072,
+        eviction_policy="watermark",
+        high_watermark=1.0,
+        low_watermark=1.0,
+    ),
     "recency": dict(
         w_recency=1.0, w_coherence=0.0, sink_count=0, recovery_mode="discard"
     ),
@@ -539,8 +553,21 @@ def main() -> int:
     depths = _resolve_depths()
     out_json = os.environ.get("EVOKE_NIAH_JSON")
 
-    engine = LlamaCppEngine(model, n_ctx=16384, n_gpu_layers=-1, verbose=False)
+    kv_quant = os.environ.get("EVOKE_KV_QUANT", "").lower().strip()
+    engine_kwargs: dict = {}
+    if kv_quant and kv_quant not in ("f16", "none"):
+        # kv_block_save/load splice assumes F16 layout; quantized layouts
+        # break that invariant, so disable kv_restore-class strategies and
+        # only run the non-recovery baselines + the no_eviction comparator
+        # in this mode.
+        engine_kwargs["type_k"] = kv_quant
+        engine_kwargs["type_v"] = kv_quant
+    engine = LlamaCppEngine(
+        model, n_ctx=16384, n_gpu_layers=-1, verbose=False, **engine_kwargs
+    )
     print(f"niah eval | model={Path(model).stem}")
+    if kv_quant and kv_quant not in ("f16", "none"):
+        print(f"kv cache quantization: type_k=type_v={kv_quant}")
     print(f"kv_block primitives available: {engine.supports_kv_block}")
     print(
         f"haystack: {n_paragraphs} paragraphs, seed={seed}, "
@@ -575,6 +602,16 @@ def main() -> int:
                             print(
                                 f"{budget:<8}{needle['id']:<10}{depth_pct:<7}"
                                 f"{name:<18}SKIP (no LLAMA_CPP_LIB)"
+                            )
+                            continue
+                        if (
+                            needs_kv_block
+                            and kv_quant
+                            and kv_quant not in ("f16", "none")
+                        ):
+                            print(
+                                f"{budget:<8}{needle['id']:<10}{depth_pct:<7}"
+                                f"{name:<18}SKIP (kv_block splice unsafe under quantized KV cache)"
                             )
                             continue
                         try:

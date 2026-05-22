@@ -77,6 +77,20 @@ def build_session() -> list[ContextItem]:
 
 
 STRATEGIES: dict[str, dict] = {
+    # Full-context baseline: eviction never fires because the cap is bigger
+    # than any session this bench produces. Pairs with kv_quant runs to ask
+    # "keep everything at quarter precision" vs evoke's "keep a quarter at
+    # full precision".
+    "no_eviction": dict(
+        w_recency=1.0,
+        w_coherence=0.0,
+        sink_count=0,
+        recovery_mode="discard",
+        max_active_tokens=131072,
+        eviction_policy="watermark",
+        high_watermark=1.0,
+        low_watermark=1.0,
+    ),
     "recency": dict(
         w_recency=1.0, w_coherence=0.0, sink_count=0, recovery_mode="discard"
     ),
@@ -227,8 +241,17 @@ def main() -> int:
         int(b) for b in os.environ.get("EVOKE_BUDGETS", "512,1024,2048").split(",")
     ]
 
-    engine = LlamaCppEngine(model, n_ctx=16384, n_gpu_layers=-1, verbose=False)
+    kv_quant = os.environ.get("EVOKE_KV_QUANT", "").lower().strip()
+    engine_kwargs: dict = {}
+    if kv_quant and kv_quant not in ("f16", "none"):
+        engine_kwargs["type_k"] = kv_quant
+        engine_kwargs["type_v"] = kv_quant
+    engine = LlamaCppEngine(
+        model, n_ctx=16384, n_gpu_layers=-1, verbose=False, **engine_kwargs
+    )
     print(f"agentic eval | model={Path(model).stem}")
+    if kv_quant and kv_quant not in ("f16", "none"):
+        print(f"kv cache quantization: type_k=type_v={kv_quant}")
     print(f"kv_block primitives available: {engine.supports_kv_block}")
     header = (
         f"{'budget':<8}{'strategy':<18}{'probe':<7}{'evict':<7}"
@@ -239,16 +262,27 @@ def main() -> int:
     try:
         for budget in budgets:
             for name, overrides in STRATEGIES.items():
-                if name == "evoke_kv_restore" and not engine.supports_kv_block:
+                needs_kv_block = name in (
+                    "evoke_kv_restore",
+                    "evoke_attention",
+                    "h2o",
+                    "snapkv",
+                    "infllm",
+                )
+                if needs_kv_block and not engine.supports_kv_block:
+                    # These baselines all depend on the fork's attention capture
+                    # or kv_block splice primitives. Without LLAMA_CPP_LIB they
+                    # would silently fall back to recency, which would mislabel
+                    # the run as the named baseline.
                     print(f"{budget:<8}{name:<18}SKIP (no LLAMA_CPP_LIB)")
                     continue
-                if name in ("h2o", "snapkv", "infllm") and not engine.supports_kv_block:
-                    # H2O and SnapKV both depend on the fork's attention capture
-                    # primitive. Without it the scorer falls back to recency,
-                    # which would silently mislabel the run as the named baseline.
+                if needs_kv_block and kv_quant and kv_quant not in ("f16", "none"):
+                    # kv_block save/load assumes F16 K/V layout; under
+                    # quantized cache the splice would corrupt the residency
+                    # set. Skip rather than emit unreliable numbers.
                     print(
                         f"{budget:<8}{name:<18}SKIP "
-                        "(no LLAMA_CPP_LIB; attention capture unavailable)"
+                        "(kv_block splice unsafe under quantized KV cache)"
                     )
                     continue
                 try:

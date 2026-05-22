@@ -349,8 +349,17 @@ def main() -> int:
     n_paragraphs = int(os.environ.get("EVOKE_MFB_PARAGRAPHS", "40"))
     out_json = os.environ.get("EVOKE_MFB_JSON")
 
-    engine = LlamaCppEngine(model, n_ctx=16384, n_gpu_layers=-1, verbose=False)
+    kv_quant = os.environ.get("EVOKE_KV_QUANT", "").lower().strip()
+    engine_kwargs: dict = {}
+    if kv_quant and kv_quant not in ("f16", "none"):
+        engine_kwargs["type_k"] = kv_quant
+        engine_kwargs["type_v"] = kv_quant
+    engine = LlamaCppEngine(
+        model, n_ctx=16384, n_gpu_layers=-1, verbose=False, **engine_kwargs
+    )
     print(f"multifact eval | model={Path(model).stem}")
+    if kv_quant and kv_quant not in ("f16", "none"):
+        print(f"kv cache quantization: type_k=type_v={kv_quant}")
     print(f"kv_block primitives available: {engine.supports_kv_block}")
     print(
         f"haystack: {n_paragraphs} paragraphs, {seeds} seeds, "
@@ -378,6 +387,8 @@ def main() -> int:
                         "infllm",
                     )
                     if needs_kv_block and not engine.supports_kv_block:
+                        continue
+                    if needs_kv_block and kv_quant and kv_quant not in ("f16", "none"):
                         continue
                     try:
                         r = run_cell(
