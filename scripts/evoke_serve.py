@@ -63,6 +63,15 @@ def main() -> int:
     )
     smart_recover_k = int(os.environ.get("EVOKE_SMART_RECOVER_K", "4"))
     use_retrieval_embeddings = bool(os.environ.get("EVOKE_USE_RETRIEVAL_EMBEDDINGS"))
+    # Recovery-aware eviction knobs. w_recovery > 0 enables the scorer to
+    # weigh per-block recovery_strength, which fresh recovery sets to
+    # recovery_strength_init and tick_turn decays by recovery_decay each turn.
+    # See decision-recovery-aware-eviction in the wiki for the design.
+    w_recovery = float(os.environ.get("EVOKE_W_RECOVERY", "0.0"))
+    recovery_strength_init = float(
+        os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT", "1.0")
+    )
+    recovery_decay = float(os.environ.get("EVOKE_RECOVERY_DECAY", "0.7"))
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -112,6 +121,9 @@ def main() -> int:
                 smart_recover_k=smart_recover_k,
                 smart_recover_min_similarity=smart_recover_min_similarity,
                 use_retrieval_embeddings=use_retrieval_embeddings,
+                w_recovery=w_recovery,
+                recovery_strength_init=recovery_strength_init,
+                recovery_decay=recovery_decay,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
@@ -121,6 +133,9 @@ def main() -> int:
                 f" sr_k={smart_recover_k}"
                 f" sr_min_sim={smart_recover_min_similarity}"
                 f" use_retrieval={use_retrieval_embeddings}"
+                f" w_recovery={w_recovery}"
+                f" rec_init={recovery_strength_init}"
+                f" rec_decay={recovery_decay}"
             )
     else:
         raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")

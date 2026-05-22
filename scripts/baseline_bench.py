@@ -246,6 +246,16 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     use_retrieval = os.environ.get("EVOKE_USE_RETRIEVAL_EMBEDDINGS")
     if use_retrieval and policy == "evoke":
         extra_env += f"$env:EVOKE_USE_RETRIEVAL_EMBEDDINGS='{use_retrieval}'; "
+    # Recovery-aware eviction knobs (decision-recovery-aware-eviction).
+    w_recovery = os.environ.get("EVOKE_W_RECOVERY")
+    if w_recovery and policy == "evoke":
+        extra_env += f"$env:EVOKE_W_RECOVERY='{w_recovery}'; "
+    recovery_decay = os.environ.get("EVOKE_RECOVERY_DECAY")
+    if recovery_decay and policy == "evoke":
+        extra_env += f"$env:EVOKE_RECOVERY_DECAY='{recovery_decay}'; "
+    recovery_strength_init = os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT")
+    if recovery_strength_init and policy == "evoke":
+        extra_env += f"$env:EVOKE_RECOVERY_STRENGTH_INIT='{recovery_strength_init}'; "
     launch = (
         f"cd {REMOTE_DIR}; "
         f"$env:LLAMA_CPP_LIB='{LIB}'; "
