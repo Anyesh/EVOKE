@@ -1,0 +1,218 @@
+niah eval | model=Qwen3.6-35B-A3B-UD-IQ2_M
+kv_block primitives available: True
+haystack: 40 paragraphs, seed=0, 5 needles, 5 depths, 1 budgets
+budget  needle    depth  strategy          probe  evict  recov  active  sec    answer
+-------------------------------------------------------------------------------------
+1024    password  5      recency           fail   79     0      730     0.06   '<|im_end|>'
+1024    password  5      streaming_llm     fail   79     0      858     0.97   '<think>  </think>  The secret password for the laboratory vault is not mentioned'
+1024    password  5      evoke_discard     fail   79     0      858     0.95   '<think>  </think>  The secret password for the laboratory vault is not mentioned'
+1024    password  5      evoke_breadcrumb  fail   79     0      858     0.96   '<think>  </think>  The secret password for the laboratory vault is not mentioned'
+1024    password  5      evoke_kv_restore  PASS   83     4      858     0.97   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  5      evoke_attention   PASS   83     4      858     0.98   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  5      h2o               fail   77     0      986     0.97   '<think>  </think>  The provided text does not contain any information regarding '
+-------------------------------------------------------------------------------------
+1024    password  25     recency           fail   79     0      730     0.03   '<|im_end|>'
+1024    password  25     streaming_llm     fail   79     0      858     0.96   '<think>  </think>  The secret password for the laboratory vault is not provided '
+1024    password  25     evoke_discard     fail   79     0      858     0.96   '<think>  </think>  The secret password for the laboratory vault is not provided '
+1024    password  25     evoke_breadcrumb  fail   79     0      858     0.96   '<think>  </think>  The secret password for the laboratory vault is not provided '
+1024    password  25     evoke_kv_restore  fail   83     4      858     0.97   '<think>  </think>  icarus-pinwheel-4<|endoftext|><|im_start|><|im_start|><|im_st'
+1024    password  25     evoke_attention   fail   83     4      858     0.97   '<think>  </think>  icarus-pinwheel-4<|endoftext|><|im_start|><|im_start|><|im_st'
+1024    password  25     h2o               fail   77     0      986     0.97   '<think>  </think>  The secret password for the laboratory vault is not provided '
+-------------------------------------------------------------------------------------
+1024    password  50     recency           fail   79     0      730     0.35   'What is the secret password for the laboratory vault? Answer: What is the secret'
+1024    password  50     streaming_llm     fail   79     0      803     0.56   '<think>  </think>  The secret password for the laboratory vault is not provided '
+1024    password  50     evoke_discard     fail   79     0      803     0.56   '<think>  </think>  The secret password for the laboratory vault is not provided '
+1024    password  50     evoke_breadcrumb  fail   79     0      803     0.56   '<think>  </think>  The secret password for the laboratory vault is not provided '
+1024    password  50     evoke_kv_restore  PASS   83     4      747     0.19   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  50     evoke_attention   PASS   83     4      747     0.20   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  50     h2o               fail   76     0      989     0.52   '<think>  </think>  The secret password for the laboratory vault is not provided '
+-------------------------------------------------------------------------------------
+1024    password  75     recency           fail   79     0      730     0.03   '<|im_end|>'
+1024    password  75     streaming_llm     fail   79     0      831     0.77   '<think>  </think>  The secret password for the laboratory vault is not mentioned'
+1024    password  75     evoke_discard     fail   79     0      831     0.77   '<think>  </think>  The secret password for the laboratory vault is not mentioned'
+1024    password  75     evoke_breadcrumb  fail   79     0      831     0.76   '<think>  </think>  The secret password for the laboratory vault is not mentioned'
+1024    password  75     evoke_kv_restore  PASS   83     4      796     0.54   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  75     evoke_attention   PASS   83     4      796     0.54   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  75     h2o               fail   76     0      988     0.52   '<think>  </think>  The secret password for the laboratory vault is not provided '
+-------------------------------------------------------------------------------------
+1024    password  95     recency           PASS   79     0      858     0.96   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  95     streaming_llm     PASS   79     0      750     0.19   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  95     evoke_discard     PASS   79     0      750     0.19   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  95     evoke_breadcrumb  PASS   79     0      750     0.19   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  95     evoke_kv_restore  PASS   83     4      858     0.97   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  95     evoke_attention   PASS   83     4      858     0.97   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+1024    password  95     h2o               PASS   75     0      1006    0.19   '<think>  </think>  icarus-pinwheel-43<|endoftext|><|im_start|><|im_start|><|im_s'
+-------------------------------------------------------------------------------------
+1024    capital   5      recency           fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   5      streaming_llm     fail   79     0      734     0.04   '<|im_end|>'
+1024    capital   5      evoke_discard     fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   5      evoke_breadcrumb  fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   5      evoke_kv_restore  fail   84     4      722     0.05   '<|im_end|>'
+1024    capital   5      evoke_attention   fail   84     4      722     0.06   '<|im_end|>'
+1024    capital   5      h2o               fail   75     0      1018    0.25   '<think>  </think>  Polopia is a fictional country and does not exist in reality;'
+-------------------------------------------------------------------------------------
+1024    capital   25     recency           fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   25     streaming_llm     fail   79     0      821     0.67   '<think>  </think>  Polopia is not a real country; it is a fictional utopian soci'
+1024    capital   25     evoke_discard     fail   79     0      821     0.66   '<think>  </think>  Polopia is not a real country; it is a fictional utopian soci'
+1024    capital   25     evoke_breadcrumb  fail   79     0      821     0.67   '<think>  </think>  Polopia is not a real country; it is a fictional utopian soci'
+1024    capital   25     evoke_kv_restore  fail   84     4      722     0.05   '<|im_end|>'
+1024    capital   25     evoke_attention   fail   84     4      722     0.06   '<|im_end|>'
+1024    capital   25     h2o               fail   77     0      974     0.85   '<think>  </think>  Polopia is not a real country; it is a fictional nation featu'
+-------------------------------------------------------------------------------------
+1024    capital   50     recency           fail   79     0      734     0.04   '<|im_end|>'
+1024    capital   50     streaming_llm     fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   50     evoke_discard     fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   50     evoke_breadcrumb  fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   50     evoke_kv_restore  fail   84     4      722     0.05   '<|im_end|>'
+1024    capital   50     evoke_attention   fail   84     4      722     0.06   '<|im_end|>'
+1024    capital   50     h2o               fail   75     0      990     0.03   '<|im_end|>'
+-------------------------------------------------------------------------------------
+1024    capital   75     recency           fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   75     streaming_llm     fail   79     0      815     0.62   '<think>  </think>  Polopia is not a real country; it is a fictional utopian soci'
+1024    capital   75     evoke_discard     fail   79     0      815     0.63   '<think>  </think>  Polopia is not a real country; it is a fictional utopian soci'
+1024    capital   75     evoke_breadcrumb  fail   79     0      815     0.63   '<think>  </think>  Polopia is not a real country; it is a fictional utopian soci'
+1024    capital   75     evoke_kv_restore  fail   84     4      722     0.06   '<|im_end|>'
+1024    capital   75     evoke_attention   fail   84     4      722     0.05   '<|im_end|>'
+1024    capital   75     h2o               fail   75     0      990     0.04   '<|im_end|>'
+-------------------------------------------------------------------------------------
+1024    capital   95     recency           fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   95     streaming_llm     fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   95     evoke_discard     fail   79     0      734     0.04   '<|im_end|>'
+1024    capital   95     evoke_breadcrumb  fail   79     0      734     0.03   '<|im_end|>'
+1024    capital   95     evoke_kv_restore  fail   84     4      722     0.05   '<|im_end|>'
+1024    capital   95     evoke_attention   fail   84     4      722     0.06   '<|im_end|>'
+1024    capital   95     h2o               fail   75     0      990     0.03   '<|im_end|>'
+-------------------------------------------------------------------------------------
+1024    amount    5      recency           fail   79     0      875     1.65   'How many milligrams of cesium chloride did Dr. Halvorsen use in the calibration '
+1024    amount    5      streaming_llm     fail   79     0      875     7.21   '12.5 mg  Question: How many milligrams of cesium chloride did Dr. Halvorsen use '
+1024    amount    5      evoke_discard     fail   79     0      875     7.21   '12.5 mg  Question: How many milligrams of cesium chloride did Dr. Halvorsen use '
+1024    amount    5      evoke_breadcrumb  fail   79     0      875     7.25   '12.5 mg  Question: How many milligrams of cesium chloride did Dr. Halvorsen use '
+1024    amount    5      evoke_kv_restore  PASS   83     4      794     0.42   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    5      evoke_attention   PASS   83     4      794     0.42   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    5      h2o               fail   77     0      1003    1.89   '12.5 mg Question: What is the name of the researcher who discovered the anomalou'
+-------------------------------------------------------------------------------------
+1024    amount    25     recency           fail   79     0      747     15.50  'Question: How many milligrams of cesium chloride did Dr. Halvorsen use in the ca'
+1024    amount    25     streaming_llm     fail   79     0      747     15.39  '12.5 mg  Question: What is the name of the algorithm used for the simulation of '
+1024    amount    25     evoke_discard     fail   79     0      747     15.43  '12.5 mg  Question: What is the name of the algorithm used for the simulation of '
+1024    amount    25     evoke_breadcrumb  fail   79     0      747     15.48  '12.5 mg  Question: What is the name of the algorithm used for the simulation of '
+1024    amount    25     evoke_kv_restore  PASS   83     4      875     0.99   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    25     evoke_attention   PASS   83     4      875     0.99   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    25     h2o               fail   77     0      1003    6.42   '12.5 mg  Question: What is the name of the researcher who developed the new algo'
+-------------------------------------------------------------------------------------
+1024    amount    50     recency           fail   79     0      747     0.04   '<|im_end|>'
+1024    amount    50     streaming_llm     fail   79     0      780     1.58   '12.5 mg  Question: What is the name of the researcher who discovered the anomalo'
+1024    amount    50     evoke_discard     fail   79     0      780     1.58   '12.5 mg  Question: What is the name of the researcher who discovered the anomalo'
+1024    amount    50     evoke_breadcrumb  fail   79     0      780     1.58   '12.5 mg  Question: What is the name of the researcher who discovered the anomalo'
+1024    amount    50     evoke_kv_restore  PASS   83     4      845     0.77   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    50     evoke_attention   PASS   83     4      845     0.77   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    50     h2o               fail   75     0      1021    7.43   '12.5 mg  Question: What is the name of the researcher who discovered the anomalo'
+-------------------------------------------------------------------------------------
+1024    amount    75     recency           fail   79     0      747     0.05   '<|im_end|>'
+1024    amount    75     streaming_llm     fail   79     0      875     4.68   '150 mg  Question: What is the name of the instrument used to measure the absorba'
+1024    amount    75     evoke_discard     fail   79     0      875     4.68   '150 mg  Question: What is the name of the instrument used to measure the absorba'
+1024    amount    75     evoke_breadcrumb  fail   79     0      875     4.67   '150 mg  Question: What is the name of the instrument used to measure the absorba'
+1024    amount    75     evoke_kv_restore  PASS   83     4      871     0.96   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    75     evoke_attention   PASS   83     4      871     0.96   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    75     h2o               fail   77     0      1003    6.53   '12.5 mg  Question: What is the name of the algorithm used for the spectral analy'
+-------------------------------------------------------------------------------------
+1024    amount    95     recency           PASS   79     0      875     3.95   "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 "
+1024    amount    95     streaming_llm     PASS   79     0      875     0.96   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    95     evoke_discard     PASS   79     0      875     0.96   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    95     evoke_breadcrumb  PASS   79     0      875     0.96   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    95     evoke_kv_restore  PASS   83     4      840     0.73   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    95     evoke_attention   PASS   83     4      840     0.74   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+1024    amount    95     h2o               PASS   77     0      972     0.74   '<think>  </think>  47 milligrams<|endoftext|><|im_start|><|im_start|><|im_start|'
+-------------------------------------------------------------------------------------
+1024    code      5      recency           fail   79     0      734     15.49  'What is the activation code for the orbital relay station? Answer: What is the a'
+1024    code      5      streaming_llm     fail   79     0      829     0.72   '<think>  </think>  The provided text discusses the metallurgy of pattern-welded '
+1024    code      5      evoke_discard     fail   79     0      829     0.73   '<think>  </think>  The provided text discusses the metallurgy of pattern-welded '
+1024    code      5      evoke_breadcrumb  fail   79     0      829     0.73   '<think>  </think>  The provided text discusses the metallurgy of pattern-welded '
+1024    code      5      evoke_kv_restore  PASS   83     4      761     0.27   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      5      evoke_attention   PASS   83     4      761     0.26   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      5      h2o               fail   76     0      1009    0.64   '<think>  </think>  The provided text does not contain information about an orbit'
+-------------------------------------------------------------------------------------
+1024    code      25     recency           fail   79     0      862     1.20   'What is the activation code for the orbital relay station? Answer: What is the a'
+1024    code      25     streaming_llm     fail   79     0      806     0.56   '<think>  </think>  The provided text does not contain information regarding an o'
+1024    code      25     evoke_discard     fail   79     0      806     0.56   '<think>  </think>  The provided text does not contain information regarding an o'
+1024    code      25     evoke_breadcrumb  fail   79     0      806     0.56   '<think>  </think>  The provided text does not contain information regarding an o'
+1024    code      25     evoke_kv_restore  fail   83     4      841     0.83   '<think>  </think>  BLUE<|endoftext|><|im_start|><|im_start|><|im_start|><|im_sta'
+1024    code      25     evoke_attention   fail   83     4      841     0.82   '<think>  </think>  BLUE<|endoftext|><|im_start|><|im_start|><|im_start|><|im_sta'
+1024    code      25     h2o               fail   76     0      1005    0.61   '<think>  </think>  The provided text does not contain information about an orbit'
+-------------------------------------------------------------------------------------
+1024    code      50     recency           fail   79     0      862     10.81  'What is the activation code for the orbital relay station? Answer: What is the a'
+1024    code      50     streaming_llm     fail   79     0      808     0.59   '<think>  </think>  The provided text does not contain information about an orbit'
+1024    code      50     evoke_discard     fail   79     0      808     0.58   '<think>  </think>  The provided text does not contain information about an orbit'
+1024    code      50     evoke_breadcrumb  fail   79     0      808     0.58   '<think>  </think>  The provided text does not contain information about an orbit'
+1024    code      50     evoke_kv_restore  PASS   83     4      862     0.97   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      50     evoke_attention   PASS   83     4      862     0.98   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      50     h2o               fail   76     0      1009    0.64   '<think>  </think>  The provided text does not contain information about an orbit'
+-------------------------------------------------------------------------------------
+1024    code      75     recency           fail   79     0      734     0.28   'What is the activation code for the orbital relay station? Answer: What is the a'
+1024    code      75     streaming_llm     fail   79     0      824     0.70   '<think>  </think>  The provided text does not contain information regarding an "'
+1024    code      75     evoke_discard     fail   79     0      824     0.70   '<think>  </think>  The provided text does not contain information regarding an "'
+1024    code      75     evoke_breadcrumb  fail   79     0      824     0.70   '<think>  </think>  The provided text does not contain information regarding an "'
+1024    code      75     evoke_kv_restore  PASS   83     4      862     0.97   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      75     evoke_attention   PASS   83     4      862     0.98   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      75     h2o               fail   76     0      1024    0.75   '<think>  </think>  The provided text does not contain any information regarding '
+-------------------------------------------------------------------------------------
+1024    code      95     recency           PASS   79     0      862     0.95   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA. Confirm receipt before the next handov'
+1024    code      95     streaming_llm     PASS   79     0      862     0.95   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      95     evoke_discard     PASS   79     0      862     0.96   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      95     evoke_breadcrumb  PASS   79     0      862     0.96   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      95     evoke_kv_restore  PASS   83     4      759     0.25   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      95     evoke_attention   PASS   83     4      759     0.25   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+1024    code      95     h2o               PASS   75     0      1013    0.22   '<think>  </think>  BLUE-MOUNTAIN-7-DELTA<|endoftext|><|im_start|><|im_start|><|i'
+-------------------------------------------------------------------------------------
+1024    date      5      recency           fail   79     0      745     15.49  'On what date and time was the Treaty of Vrenholm signed? Answer: On what date an'
+1024    date      5      streaming_llm     fail   79     0      873     0.97   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      5      evoke_discard     fail   79     0      873     0.97   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      5      evoke_breadcrumb  fail   79     0      873     0.97   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      5      evoke_kv_restore  PASS   83     4      806     0.50   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      5      evoke_attention   PASS   83     4      806     0.51   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      5      h2o               fail   77     0      1001    0.96   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+-------------------------------------------------------------------------------------
+1024    date      25     recency           fail   79     0      745     15.33  'On what date and time was the Treaty of Vrenholm signed? Answer: On what date an'
+1024    date      25     streaming_llm     fail   79     0      850     0.79   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      25     evoke_discard     fail   79     0      850     0.79   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      25     evoke_breadcrumb  fail   79     0      850     0.79   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      25     evoke_kv_restore  fail   83     4      828     0.68   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      25     evoke_attention   fail   83     4      828     0.66   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      25     h2o               fail   77     0      1001    0.96   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+-------------------------------------------------------------------------------------
+1024    date      50     recency           fail   79     0      745     15.49  'On what date and time was the Treaty of Vrenholm signed? Answer: On what date an'
+1024    date      50     streaming_llm     fail   79     0      864     0.90   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      50     evoke_discard     fail   79     0      864     0.90   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      50     evoke_breadcrumb  fail   79     0      864     0.90   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      50     evoke_kv_restore  fail   83     4      873     0.98   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      50     evoke_attention   fail   83     4      873     0.98   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      50     h2o               fail   77     0      1001    0.96   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+-------------------------------------------------------------------------------------
+1024    date      75     recency           fail   79     0      745     15.40  'On what date and time was the Treaty of Vrenholm signed? Answer: On what date an'
+1024    date      75     streaming_llm     fail   79     0      873     0.96   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      75     evoke_discard     fail   79     0      873     0.97   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      75     evoke_breadcrumb  fail   79     0      873     0.96   '<think>  </think>  The Treaty of Vrenholm (also known as the Treaty of Fredriksh'
+1024    date      75     evoke_kv_restore  PASS   83     4      844     0.78   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      75     evoke_attention   PASS   83     4      844     0.78   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      75     h2o               fail   77     0      984     0.84   '<think>  </think>  The Treaty of Vrenholm was signed on **June 27, 1645**, at **'
+-------------------------------------------------------------------------------------
+1024    date      95     recency           PASS   79     0      745     15.46  'Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October'
+1024    date      95     streaming_llm     PASS   79     0      844     0.74   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      95     evoke_discard     PASS   79     0      844     0.75   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      95     evoke_breadcrumb  PASS   79     0      844     0.76   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      95     evoke_kv_restore  PASS   83     4      843     0.77   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      95     evoke_attention   PASS   83     4      843     0.77   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+1024    date      95     h2o               PASS   77     0      1001    0.95   '<think>  </think>  The Treaty of Vrenholm was signed on the twenty-third of Octo'
+-------------------------------------------------------------------------------------
+
+Aggregate pass-rate per (budget, strategy)
+budget  strategy            pass_rate   n_cells 
+--------------------------------------------------
+1024    evoke_attention     64.00%      25      
+1024    evoke_breadcrumb    16.00%      25      
+1024    evoke_discard       16.00%      25      
+1024    evoke_kv_restore    64.00%      25      
+1024    h2o                 16.00%      25      
+1024    recency             16.00%      25      
+1024    streaming_llm       16.00%      25      
+
+results JSON: results\niah_qwen36_35ba3b_full.json
