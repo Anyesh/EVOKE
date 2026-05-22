@@ -1,14 +1,16 @@
 """Head-to-head benchmark for EVOKE vs baseline policies.
 
-Drives the same 14-turn planted-fact session against the server under three
-policy configurations and prints a comparison table. Restarts the remote
-server between runs via SSH so each policy starts fresh.
+Drives an N-turn planted-fact session (default 14) against the server under
+three policy configurations and prints a comparison table. Restarts the
+remote server between runs via SSH so each policy starts fresh.
 
 Required env: EVOKE_SSH_HOST (e.g. user@gpu-host), EVOKE_LIB_PATH (path
 to llama.dll on the remote GPU host), EVOKE_MODEL_PATH (path to the GGUF
 on the remote GPU host), EVOKE_SERVER (http://host:port the bench drives).
 Optional: EVOKE_BUDGET (default 1024), EVOKE_N_CTX (default 16384),
-EVOKE_REMOTE_DIR (default C:\\projects\\unlearn).
+EVOKE_REMOTE_DIR (default C:\\projects\\unlearn),
+EVOKE_BENCH_TURNS (default 14: total user turns = 1 fact + (TURNS-2) fillers + 1 probe),
+EVOKE_BENCH_OUT (optional JSON output path with per-policy timing + state).
 """
 
 from __future__ import annotations
@@ -51,7 +53,7 @@ PROBE = (
     "Earlier in this conversation I told you my favorite number. "
     "What was it? Reply with just the number."
 )
-FILLERS = [
+_FILLER_SEEDS = [
     "Explain the concept of an algorithm in one short paragraph.",
     "Explain the difference between recursion and iteration in one paragraph.",
     "Describe polymorphism in object-oriented programming in one paragraph.",
@@ -64,7 +66,39 @@ FILLERS = [
     "Explain the model-view-controller pattern briefly.",
     "Describe what a binary search tree is.",
     "Explain how a relational database index works.",
+    "Describe what a futures or promises pattern accomplishes.",
+    "Explain how a write-ahead log preserves crash consistency.",
+    "Describe how a Bloom filter trades memory for false-positive rate.",
+    "Explain what a SAT solver does at a high level.",
+    "Describe the actor concurrency model in one paragraph.",
+    "Explain how DHT-style consistent hashing distributes keys.",
+    "Describe what a vector clock represents in distributed systems.",
+    "Explain the difference between optimistic and pessimistic locking.",
+    "Describe what an LSM tree is and where it is used.",
+    "Explain how copy-on-write filesystems handle snapshots.",
+    "Describe the difference between MVCC and 2PL.",
+    "Explain what a circuit breaker pattern protects against.",
+    "Describe how reservoir sampling picks a uniform sample.",
+    "Explain how rate limiting via leaky bucket differs from token bucket.",
 ]
+
+
+def _fillers_for(turns: int) -> list[str]:
+    n_fillers = max(0, turns - 2)
+    base = _FILLER_SEEDS
+    if n_fillers <= len(base):
+        return base[:n_fillers]
+    out = list(base)
+    while len(out) < n_fillers:
+        idx = len(out)
+        cycle = idx // len(base)
+        out.append(f"Variant {cycle + 1}. {base[idx % len(base)]}")
+    return out
+
+
+TURNS = int(os.environ.get("EVOKE_BENCH_TURNS", "14"))
+OUT_JSON = os.environ.get("EVOKE_BENCH_OUT")
+FILLERS = _fillers_for(TURNS)
 
 
 @dataclass
@@ -398,7 +432,7 @@ def main() -> int:
                 )
             )
 
-    print("\n## Baseline comparison\n")
+    print(f"\n## Baseline comparison (turns={TURNS})\n")
     print(f"| policy        | probe | evictions | recoveries | active | elapsed |")
     print(f"|---------------|-------|----------:|-----------:|-------:|--------:|")
     for r in results:
@@ -409,6 +443,30 @@ def main() -> int:
             f"{r.recoveries:>10} | {r.active_tokens:>6} | "
             f"{r.elapsed:>6.1f}s |{suffix}"
         )
+
+    if OUT_JSON:
+        payload = {
+            "turns": TURNS,
+            "budget": int(BUDGET),
+            "n_ctx": int(N_CTX),
+            "model": MODEL_NAME,
+            "results": [
+                {
+                    "policy": r.policy,
+                    "probe_ok": r.probe_ok,
+                    "evictions": r.evictions,
+                    "recoveries": r.recoveries,
+                    "active_tokens": r.active_tokens,
+                    "elapsed_s": r.elapsed,
+                    "answer": r.answer,
+                    "error": r.error,
+                }
+                for r in results
+            ],
+        }
+        Path(OUT_JSON).parent.mkdir(parents=True, exist_ok=True)
+        Path(OUT_JSON).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"\nresults JSON: {OUT_JSON}")
     return 0
 
 
