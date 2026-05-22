@@ -1,0 +1,110 @@
+[
+  {
+    "turns": 14,
+    "policy": "evoke",
+    "n": 5,
+    "mean_s": 21.578872474795208,
+    "ci95_lo_s": 21.166721970719227,
+    "ci95_hi_s": 21.99102297887119,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 90,
+    "recov_mean": 24,
+    "active_tokens_mean": 684
+  },
+  {
+    "turns": 14,
+    "policy": "no_eviction",
+    "n": 5,
+    "mean_s": 19.19210639820667,
+    "ci95_lo_s": 18.758201492976916,
+    "ci95_hi_s": 19.62601130343642,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 0,
+    "recov_mean": 0,
+    "active_tokens_mean": 2476
+  },
+  {
+    "turns": 14,
+    "policy": "truncate",
+    "n": 5,
+    "mean_s": 21.328463074401952,
+    "ci95_lo_s": 20.75868163233634,
+    "ci95_hi_s": 21.898244516467564,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 66,
+    "recov_mean": 0,
+    "active_tokens_mean": 685
+  },
+  {
+    "turns": 28,
+    "policy": "evoke",
+    "n": 5,
+    "mean_s": 68.06203115119133,
+    "ci95_lo_s": 67.23163077246912,
+    "ci95_hi_s": 68.89243152991355,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 566,
+    "recov_mean": 80,
+    "active_tokens_mean": 721
+  },
+  {
+    "turns": 28,
+    "policy": "no_eviction",
+    "n": 5,
+    "mean_s": 51.05277353019919,
+    "ci95_lo_s": 50.10382231103161,
+    "ci95_hi_s": 52.00172474936677,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 0,
+    "recov_mean": 0,
+    "active_tokens_mean": 6221
+  },
+  {
+    "turns": 28,
+    "policy": "truncate",
+    "n": 5,
+    "mean_s": 65.14489549139981,
+    "ci95_lo_s": 64.34856855361191,
+    "ci95_hi_s": 65.9412224291877,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 486,
+    "recov_mean": 0,
+    "active_tokens_mean": 717
+  },
+  {
+    "turns": 56,
+    "policy": "evoke",
+    "n": 5,
+    "mean_s": 182.36412863859442,
+    "ci95_lo_s": 180.6726143502141,
+    "ci95_hi_s": 184.05564292697474,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 2522,
+    "recov_mean": 192,
+    "active_tokens_mean": 664
+  },
+  {
+    "turns": 56,
+    "policy": "no_eviction",
+    "n": 5,
+    "mean_s": 106.10882101620082,
+    "ci95_lo_s": 105.19081810034945,
+    "ci95_hi_s": 107.0268239320522,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 0,
+    "recov_mean": 0,
+    "active_tokens_mean": 12607
+  },
+  {
+    "turns": 56,
+    "policy": "truncate",
+    "n": 5,
+    "mean_s": 170.40600248798728,
+    "ci95_lo_s": 169.27005834674085,
+    "ci95_hi_s": 171.5419466292337,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 2316,
+    "recov_mean": 0,
+    "active_tokens_mean": 674
+  }
+]

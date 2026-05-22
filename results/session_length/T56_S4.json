@@ -1,0 +1,38 @@
+{
+  "turns": 56,
+  "budget": 1024,
+  "n_ctx": 16384,
+  "model": "qwen25",
+  "results": [
+    {
+      "policy": "no_eviction",
+      "probe_ok": true,
+      "evictions": 0,
+      "recoveries": 0,
+      "active_tokens": 12607,
+      "elapsed_s": 106.7721491479897,
+      "answer": "4242",
+      "error": null
+    },
+    {
+      "policy": "truncate",
+      "probe_ok": true,
+      "evictions": 2316,
+      "recoveries": 0,
+      "active_tokens": 674,
+      "elapsed_s": 169.2755710199708,
+      "answer": "4242",
+      "error": null
+    },
+    {
+      "policy": "evoke",
+      "probe_ok": true,
+      "evictions": 2522,
+      "recoveries": 192,
+      "active_tokens": 664,
+      "elapsed_s": 180.59204717102693,
+      "answer": "4242",
+      "error": null
+    }
+  ]
+}

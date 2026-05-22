@@ -1,0 +1,18 @@
+{
+  "turns": 14,
+  "budget": 1024,
+  "n_ctx": 16384,
+  "model": "qwen25",
+  "results": [
+    {
+      "policy": "evoke",
+      "probe_ok": true,
+      "evictions": 230,
+      "recoveries": 40,
+      "active_tokens": 641,
+      "elapsed_s": 51.331941868993454,
+      "answer": "4242",
+      "error": null
+    }
+  ]
+}

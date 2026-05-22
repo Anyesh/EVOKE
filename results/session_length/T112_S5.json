@@ -1,0 +1,38 @@
+{
+  "turns": 112,
+  "budget": 1024,
+  "n_ctx": 16384,
+  "model": "qwen25",
+  "results": [
+    {
+      "policy": "no_eviction",
+      "probe_ok": false,
+      "evictions": 0,
+      "recoveries": 0,
+      "active_tokens": 0,
+      "elapsed_s": 0.0,
+      "answer": "",
+      "error": "[Errno 104] Connection reset by peer"
+    },
+    {
+      "policy": "truncate",
+      "probe_ok": false,
+      "evictions": 0,
+      "recoveries": 0,
+      "active_tokens": 0,
+      "elapsed_s": 0.0,
+      "answer": "",
+      "error": "[Errno 104] Connection reset by peer"
+    },
+    {
+      "policy": "evoke",
+      "probe_ok": false,
+      "evictions": 0,
+      "recoveries": 0,
+      "active_tokens": 0,
+      "elapsed_s": 0.0,
+      "answer": "",
+      "error": "[Errno 104] Connection reset by peer"
+    }
+  ]
+}

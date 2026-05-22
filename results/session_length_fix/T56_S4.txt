@@ -1,0 +1,70 @@
+
+>>> running policy=evoke
+  kill: python before=2 after=0
+  launch: cd C:\Users\gpu\projects\unlearn; $env:LLAMA_CPP_LIB='C:\Users\gpu\llama.cpp\build\bin\llama.dll'; $env:EVOKE_MODEL_PATH='C:\paths\llama-cpp\models\gguf\Qwen2.5-7B-Instruct-Q4_K_M.gguf'; $env:EVOKE_HOST='0.0.0.0'; $env:EVOKE_PORT='8000'; $env:EVOKE_N_CTX='16384'; $env:EVOKE_BUDGET='1024'; $env:EVOKE_USE_RETRIEVAL_EMBEDDINGS='1'; $env:EVOKE_W_RECOVERY='1.0'; $env:EVOKE_RECOVERY_DECAY='0.7'; $env:EVOKE_POLICY='evoke'; $env:EVOKE_MODEL_NAME='qwen25'; uv run python scripts/evoke_serve.py
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=913 ev=15 rec=4
+  q8:   active=848 ev=21 rec=4
+  q9:   active=867 ev=29 rec=4
+  q10:   active=885 ev=39 rec=4
+  q11:   active=903 ev=51 rec=4
+  q12:   active=923 ev=65 rec=4
+  q13:   active=688 ev=84 rec=5
+  q14:   active=710 ev=106 rec=7
+  q15:   active=860 ev=129 rec=9
+  q16:   active=776 ev=153 rec=10
+  q17:   active=924 ev=178 rec=11
+  q18:   active=688 ev=207 rec=12
+  q19:   active=709 ev=238 rec=13
+  q20:   active=859 ev=270 rec=14
+  q21:   active=880 ev=304 rec=15
+  q22:   active=901 ev=340 rec=16
+  q23:   active=921 ev=378 rec=17
+  q24:   active=940 ev=418 rec=18
+  q25:   active=708 ev=462 rec=19
+  q26:   active=674 ev=507 rec=20
+  q27:   active=835 ev=551 rec=20
+  q28:   active=705 ev=597 rec=20
+  q29:   active=697 ev=644 rec=20
+  q30:   active=707 ev=692 rec=20
+  q31:   active=720 ev=741 rec=20
+  q32:   active=734 ev=791 rec=20
+  q33:   active=877 ev=842 rec=20
+  q34:   active=898 ev=895 rec=20
+  q35:   active=920 ev=950 rec=20
+  q36:   active=942 ev=1007 rec=20
+  q37:   active=708 ev=1068 rec=20
+  q38:   active=859 ev=1130 rec=20
+  q39:   active=883 ev=1194 rec=20
+  q40:   active=909 ev=1260 rec=20
+  q41:   active=934 ev=1328 rec=20
+  q42:   active=830 ev=1398 rec=20
+  q43:   active=852 ev=1470 rec=20
+  q44:   active=875 ev=1544 rec=20
+  q45:   active=899 ev=1620 rec=20
+  q46:   active=925 ev=1698 rec=20
+  q47:   active=693 ev=1780 rec=20
+  q48:   active=846 ev=1863 rec=20
+  q49:   active=869 ev=1948 rec=20
+  q50:   active=892 ev=2035 rec=20
+  q51:   active=919 ev=2124 rec=20
+  q52:   active=756 ev=2215 rec=20
+  q53:   active=768 ev=2307 rec=20
+
+## Baseline comparison (turns=56)
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| evoke         | PASS  |      2400 |         20 |    675 |  186.2s |
+
+results JSON: results/session_length_fix/T56_S4.json

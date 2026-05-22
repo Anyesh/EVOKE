@@ -1,0 +1,14 @@
+[
+  {
+    "turns": 14,
+    "policy": "evoke",
+    "n": 5,
+    "mean_s": 21.354336938005872,
+    "ci95_lo_s": 21.073986242366832,
+    "ci95_hi_s": 21.634687633644912,
+    "probe_pass_rate": 1.0,
+    "evict_mean": 65,
+    "recov_mean": 4,
+    "active_tokens_mean": 683
+  }
+]

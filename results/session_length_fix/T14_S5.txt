@@ -1,0 +1,28 @@
+
+>>> running policy=evoke
+  kill: python before=2 after=0
+  launch: cd C:\Users\gpu\projects\unlearn; $env:LLAMA_CPP_LIB='C:\Users\gpu\llama.cpp\build\bin\llama.dll'; $env:EVOKE_MODEL_PATH='C:\paths\llama-cpp\models\gguf\Qwen2.5-7B-Instruct-Q4_K_M.gguf'; $env:EVOKE_HOST='0.0.0.0'; $env:EVOKE_PORT='8000'; $env:EVOKE_N_CTX='16384'; $env:EVOKE_BUDGET='1024'; $env:EVOKE_USE_RETRIEVAL_EMBEDDINGS='1'; $env:EVOKE_W_RECOVERY='1.0'; $env:EVOKE_RECOVERY_DECAY='0.7'; $env:EVOKE_POLICY='evoke'; $env:EVOKE_MODEL_NAME='qwen25'; uv run python scripts/evoke_serve.py
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=913 ev=15 rec=4
+  q8:   active=848 ev=21 rec=4
+  q9:   active=867 ev=29 rec=4
+  q10:   active=885 ev=39 rec=4
+  q11:   active=903 ev=51 rec=4
+
+## Baseline comparison (turns=14)
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| evoke         | PASS  |        65 |          4 |    683 |   21.6s |
+
+results JSON: results/session_length_fix/T14_S5.json
