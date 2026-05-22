@@ -475,11 +475,24 @@ class EvokeManager:
             self._scorer.update_recent_context(emb)
 
     def _last_token_embedding(self, start_pos: int, length: int) -> np.ndarray | None:
+        # Despite the legacy name this returns a block representative embedding
+        # whose strategy is configurable. "mean" pools over non-zero token
+        # embeddings, which is strictly better than last-token for retrieval
+        # similarity (the last token of a 64-token block typically lands in
+        # neighboring content rather than the block's defining terms). Kept
+        # as the original method name because it is referenced in 3+ call
+        # sites and renaming everywhere is noisy for a behavior-only change.
         if length <= 0:
             return None
         try:
             positions = list(range(start_pos, start_pos + length))
             embeddings = self._engine.get_embeddings(positions)
+            if self._config.block_embedding_strategy == "mean":
+                mask = (embeddings != 0).any(axis=1)
+                if not mask.any():
+                    return _normalize(embeddings[-1])
+                avg = embeddings[mask].mean(axis=0)
+                return _normalize(avg)
             return _normalize(embeddings[-1])
         except (NotImplementedError, RuntimeError):
             return None

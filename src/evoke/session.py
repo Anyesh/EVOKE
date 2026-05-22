@@ -331,11 +331,45 @@ class Session:
                 scored.append((float(np.dot(query_emb, block_emb)), crumb.key))
         scored.sort(key=lambda x: x[0], reverse=True)
 
+        # Resident-gate: only recover an evicted block if its similarity to
+        # the query beats the best resident block. The active cache already
+        # holds the strongest in-cache match; bringing back a weaker breadcrumb
+        # appends content AFTER the probe (the model's freshest context) and
+        # drowns out the resident match. NIAH at depth=90 exposed this: the
+        # needle was resident, recovery brought 4 weakly-matching haystack
+        # blocks to the cache tail, and the model regurgitated those instead
+        # of answering from the needle.
+        resident_max = self._max_resident_similarity(query_emb)
+        scored = [(s, key) for s, key in scored if s > resident_max]
+
+        threshold = self._config.smart_recover_min_similarity
+        if threshold > 0.0:
+            scored = [(s, key) for s, key in scored if s >= threshold]
+
         recovered = 0
         for _, key in scored[:k]:
             if self._manager.recover(key):
                 recovered += 1
         return recovered
+
+    def _max_resident_similarity(self, query_emb: np.ndarray) -> float:
+        # Max cosine between the query and any resident (non-sink) block's
+        # representative embedding. Sinks score 1.0 unconditionally and would
+        # mask out every breadcrumb, so they are skipped here. Blocks without
+        # an embedding (e.g., conversation blocks added before embeddings
+        # were computed) are skipped rather than treated as zero, so missing
+        # embeddings cannot accidentally open the gate.
+        best = -1.0
+        for block in self._manager._positions.active_blocks:
+            if block.is_sink:
+                continue
+            emb = block.representative_embedding
+            if emb is None:
+                continue
+            sim = float(np.dot(query_emb, emb))
+            if sim > best:
+                best = sim
+        return best
 
     def _compute_query_embedding(self, n_last: int = 32) -> np.ndarray | None:
         pos = self._engine.next_write_pos

@@ -306,6 +306,17 @@ def _smart_recover(mgr: EvokeManager, k: int = 4) -> int:
         else:
             scored.append((float(np.dot(query_emb, block_emb)), crumb.key))
     scored.sort(key=lambda x: x[0], reverse=True)
+    resident_max = -1.0
+    for block in mgr._positions.active_blocks:
+        if block.is_sink or block.representative_embedding is None:
+            continue
+        sim = float(np.dot(query_emb, block.representative_embedding))
+        if sim > resident_max:
+            resident_max = sim
+    scored = [(s, key) for s, key in scored if s > resident_max]
+    threshold = mgr._config.smart_recover_min_similarity
+    if threshold > 0.0:
+        scored = [(s, key) for s, key in scored if s >= threshold]
     recovered = 0
     for _, key in scored[:k]:
         if mgr.recover(key):

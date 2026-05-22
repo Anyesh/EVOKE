@@ -45,6 +45,25 @@ class EvokeConfig:
     # pruning of mid-cache blocks. Default 0.0 preserves existing EVOKE
     # behavior (no unconditional tail guard; recency is a soft signal only).
     recent_tail_protect_frac: float = 0.0
+    # How to derive the block's representative embedding for smart-recovery
+    # similarity scoring. "mean" averages all non-zero token embeddings in
+    # the block (the default because the block-defining topic terms dominate
+    # the average, giving real discriminative power on retrieval workloads).
+    # "last_token" reads only the last token's hidden state — cheap but the
+    # value reflects whatever happens to be at the block boundary, which is
+    # often a partial sentence from neighboring content; kept available as
+    # the ablation cell.
+    block_embedding_strategy: str = "mean"
+    # Minimum cosine similarity required to fire a smart-recovery for an
+    # evicted block. Default 0.0 means the policy always recovers top-k
+    # (existing behavior); setting > 0 gates recovery so weak matches don't
+    # pollute the cache with off-topic blocks. Tuned on NIAH at depth=90,
+    # where unconditional top-4 recovery brought back unrelated haystack
+    # blocks that drowned out the already-resident needle.
+    smart_recover_min_similarity: float = 0.0
+    # Top-K bound for smart-recovery. Default 4 matches the production
+    # Session policy; setting 0 disables recovery entirely.
+    smart_recover_k: int = 4
 
     eviction_policy: str = "watermark"
     high_watermark: float = 0.95
