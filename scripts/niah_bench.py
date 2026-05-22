@@ -38,6 +38,7 @@ import numpy as np
 
 from evoke.attention_scorer import AttentionScorer
 from evoke.config import EvokeConfig
+from evoke.embed import RetrievalEmbedder
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
 
@@ -197,9 +198,13 @@ STRATEGIES: dict[str, dict] = {
     ),
     "evoke_discard": dict(recovery_mode="discard"),
     "evoke_breadcrumb": dict(recovery_mode="breadcrumb"),
-    "evoke_kv_restore": dict(recovery_mode="kv_restore"),
+    "evoke_kv_restore": dict(recovery_mode="kv_restore", use_retrieval_embeddings=True),
     "evoke_attention": dict(
-        recovery_mode="kv_restore", w_attention=0.5, w_recency=0.2, w_coherence=0.3
+        recovery_mode="kv_restore",
+        w_attention=0.5,
+        w_recency=0.2,
+        w_coherence=0.3,
+        use_retrieval_embeddings=True,
     ),
     "h2o": dict(
         recovery_mode="discard",
@@ -255,6 +260,11 @@ class NiahResult:
     answer: str
 
 
+# Module-level retrieval embedder so the bge-small model loads once per
+# bench run rather than once per cell (~30 cells × ~5 s warm-up otherwise).
+_RETRIEVAL_EMBEDDER = RetrievalEmbedder()
+
+
 def _build_scorer(
     engine: LlamaCppEngine, config: EvokeConfig
 ) -> AttentionScorer | None:
@@ -279,25 +289,32 @@ def _smart_recover(mgr: EvokeManager, k: int = 4) -> int:
     crumbs = list(mgr.get_breadcrumbs())
     if not crumbs:
         return 0
-    pos = mgr._engine.next_write_pos
-    if pos == 0:
-        return 0
-    n_last = 32
-    start = max(0, pos - n_last)
-    try:
-        embs = mgr._engine.get_embeddings(list(range(start, pos)))
-    except (NotImplementedError, RuntimeError):
-        return 0
-    if embs is None or len(embs) == 0:
-        return 0
-    nonzero_mask = (embs != 0).any(axis=1)
-    if not nonzero_mask.any():
-        return 0
-    avg = embs[nonzero_mask].mean(axis=0)
-    norm = float(np.linalg.norm(avg))
-    if norm == 0.0:
-        return 0
-    query_emb = avg / norm
+    if mgr._retrieval_embedder is not None and mgr._last_user_text:
+        # Retrieval-embedder path: query embedding comes from the raw probe
+        # text and lives in the same 384-dim bge-small space as the block
+        # embeddings. Mixing this path with the LM-hidden-state path below
+        # would cross-dim-cosine-crash.
+        query_emb = mgr._retrieval_embedder.embed(mgr._last_user_text)
+    else:
+        pos = mgr._engine.next_write_pos
+        if pos == 0:
+            return 0
+        n_last = 32
+        start = max(0, pos - n_last)
+        try:
+            embs = mgr._engine.get_embeddings(list(range(start, pos)))
+        except (NotImplementedError, RuntimeError):
+            return 0
+        if embs is None or len(embs) == 0:
+            return 0
+        nonzero_mask = (embs != 0).any(axis=1)
+        if not nonzero_mask.any():
+            return 0
+        avg = embs[nonzero_mask].mean(axis=0)
+        norm = float(np.linalg.norm(avg))
+        if norm == 0.0:
+            return 0
+        query_emb = avg / norm
     scored: list[tuple[float, str]] = []
     for crumb in crumbs:
         block_emb = mgr._recovery.peek_embedding(crumb.key)
@@ -307,8 +324,11 @@ def _smart_recover(mgr: EvokeManager, k: int = 4) -> int:
             scored.append((float(np.dot(query_emb, block_emb)), crumb.key))
     scored.sort(key=lambda x: x[0], reverse=True)
     resident_max = -1.0
+    current_turn_start = mgr._current_turn_start_id
     for block in mgr._positions.active_blocks:
         if block.is_sink or block.representative_embedding is None:
+            continue
+        if block.block_id >= current_turn_start:
             continue
         sim = float(np.dot(query_emb, block.representative_embedding))
         if sim > resident_max:
@@ -317,8 +337,10 @@ def _smart_recover(mgr: EvokeManager, k: int = 4) -> int:
     threshold = mgr._config.smart_recover_min_similarity
     if threshold > 0.0:
         scored = [(s, key) for s, key in scored if s >= threshold]
+    ordered = list(scored[:k])
+    ordered.reverse()
     recovered = 0
-    for _, key in scored[:k]:
+    for _, key in ordered:
         if mgr.recover(key):
             recovered += 1
     return recovered
@@ -343,7 +365,13 @@ def run_cell(
         **overrides,
     )
     attn_scorer = _build_scorer(engine, config)
-    mgr = EvokeManager(engine, config, attention_scorer=attn_scorer)
+    retrieval = _RETRIEVAL_EMBEDDER if config.use_retrieval_embeddings else None
+    mgr = EvokeManager(
+        engine,
+        config,
+        attention_scorer=attn_scorer,
+        retrieval_embedder=retrieval,
+    )
 
     haystack = build_haystack(n_paragraphs, seed)
     document = make_document(haystack, needle, depth_pct)

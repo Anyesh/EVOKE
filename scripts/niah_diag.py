@@ -36,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from evoke.attention_scorer import AttentionScorer
 from evoke.config import EvokeConfig
+from evoke.embed import RetrievalEmbedder
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
 from evoke.types import ActiveBlock
@@ -161,7 +162,16 @@ def main() -> int:
             decay=config.attention_decay,
             score_mode=config.attention_score_mode,
         )
-    mgr = EvokeManager(engine, config, attention_scorer=attn_scorer)
+    retrieval = None
+    if config.use_retrieval_embeddings:
+        retrieval = RetrievalEmbedder()
+        print(f"  using retrieval embedder: {retrieval._model_name}")
+    mgr = EvokeManager(
+        engine,
+        config,
+        attention_scorer=attn_scorer,
+        retrieval_embedder=retrieval,
+    )
 
     haystack = build_haystack(n_paragraphs, seed)
     document = make_document(haystack, needle, depth_pct)
@@ -231,7 +241,14 @@ def main() -> int:
     print(f"\n[STEP 4] Smart-recovery similarity scoring ...")
     n_last = int(os.environ.get("EVOKE_NIAH_QUERY_NLAST", "8"))
     print(f"  (query embedding from last {n_last} tokens)")
-    query_emb = _query_embedding(engine, n_last=n_last)
+    if retrieval is not None:
+        # Use the retrieval embedder on the raw probe text (matches the
+        # Session._compute_query_embedding short-circuit). Bypasses the
+        # LM-hidden-state mean which collapses to common-mode similarity.
+        query_emb = retrieval.embed(needle["question"])
+        print("  (query embedding via RetrievalEmbedder on probe text)")
+    else:
+        query_emb = _query_embedding(engine, n_last=n_last)
     if query_emb is None:
         print("  query embedding unavailable (engine returned zeros)")
         return 1
@@ -282,8 +299,11 @@ def main() -> int:
     print(f"\n[STEP 5] Performing actual recovery (resident-gated top-4) ...")
     resident_max = -1.0
     resident_max_block = None
+    current_turn_start = mgr._current_turn_start_id
     for block in mgr._positions.active_blocks:
         if block.is_sink or block.representative_embedding is None:
+            continue
+        if block.block_id >= current_turn_start:
             continue
         sim = float(np.dot(query_emb, block.representative_embedding))
         if sim > resident_max:
@@ -315,7 +335,9 @@ def main() -> int:
             f"  candidates after resident-gate: {len(candidates)} "
             f"(of {len(scored_for_recover)} breadcrumbs)"
         )
-        for sim, key in candidates[:4]:
+        ordered = list(candidates[:4])
+        ordered.reverse()
+        for sim, key in ordered:
             ok = mgr.recover(key)
             if ok:
                 recovered_keys.append((key, sim))

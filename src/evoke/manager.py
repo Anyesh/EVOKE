@@ -17,10 +17,12 @@ class EvokeManager:
         config: EvokeConfig | None = None,
         *,
         attention_scorer=None,
+        retrieval_embedder=None,
     ):
         self._engine = engine
         self._config = config or EvokeConfig()
         self._attention_scorer = attention_scorer
+        self._retrieval_embedder = retrieval_embedder
         self._scorer = RelevanceScorer(self._config, attention_scorer=attention_scorer)
         self._recovery = make_recovery_backend(
             self._config.recovery_mode,
@@ -35,6 +37,11 @@ class EvokeManager:
         self._total_recoveries = 0
         self._next_block_id = 0
         self._current_turn_start_id = 0
+        # Last user-message text, captured so the retrieval embedder can
+        # produce the query embedding directly from text rather than averaging
+        # LM hidden states across the probe's KV positions (which carries the
+        # common-mode noise that defeats smart-recovery discrimination).
+        self._last_user_text: str | None = None
 
     def _absorb_attention(self) -> None:
         # Hook called after every engine decode (process_tokens or
@@ -110,6 +117,7 @@ class EvokeManager:
         self._engine.process_tokens(tokens)
 
         block_size = self._config.block_size
+        new_blocks: list[ActiveBlock] = []
         for i in range(0, len(tokens), block_size):
             chunk = tokens[i : i + block_size]
             bstart = start + i
@@ -126,9 +134,23 @@ class EvokeManager:
                 pinned=pinned,
             )
             self._positions.append_block(block, bstart)
+            new_blocks.append(block)
+        self._apply_retrieval_embeddings(new_blocks)
         self._absorb_attention()
 
         self._enforce_budget()
+
+    def _apply_retrieval_embeddings(self, blocks: list[ActiveBlock]) -> None:
+        # When a retrieval embedder is configured the block representative
+        # embedding is overridden from the LM-derived value to a retrieval-
+        # tuned embedding computed on the block's decoded text. Batched so
+        # the per-add_context cost is one model call, not one per block.
+        if self._retrieval_embedder is None or not blocks:
+            return
+        texts = [self._engine.detokenize(b.token_ids) for b in blocks]
+        embeddings = self._retrieval_embedder.embed_batch(texts)
+        for block, emb in zip(blocks, embeddings):
+            block.representative_embedding = emb
 
     def generate(
         self,
@@ -223,6 +245,7 @@ class EvokeManager:
 
     def process_user_message(self, text: str) -> None:
         self._current_turn_start_id = self._next_block_id
+        self._last_user_text = text
 
         msg_start = self._engine.next_write_pos
         tokens = self._engine.tokenize(text)
@@ -443,6 +466,11 @@ class EvokeManager:
         block.representative_embedding = self._last_token_embedding(
             start_pos, len(tokens)
         )
+        # Conversation blocks must use the same embedding space as document
+        # blocks; otherwise smart-recovery's cosine cross-dimensional explodes
+        # (LM hidden state is e.g. 3584-dim, bge-small is 384-dim) when
+        # the resident scan reaches the conversation block.
+        self._apply_retrieval_embeddings([block])
 
     def _track_generated_block(self, tokens: list[int], start_pos: int) -> None:
         bid = self._new_block_id()
@@ -470,7 +498,16 @@ class EvokeManager:
             pass
 
     def _update_recent_context_embedding(self, tokens: list[int], end_pos: int) -> None:
-        emb = self._last_token_embedding(end_pos - len(tokens), len(tokens))
+        # When retrieval embeddings are configured, the task_focus must live
+        # in the same embedding space as the block embeddings (RelevanceScorer
+        # compares them via cosine; cross-space cosine raises a dimension
+        # mismatch). Use the raw user-message text when available so the
+        # focus reflects topic intent rather than an LM-mean over the
+        # message's KV positions.
+        if self._retrieval_embedder is not None and self._last_user_text:
+            emb = self._retrieval_embedder.embed(self._last_user_text)
+        else:
+            emb = self._last_token_embedding(end_pos - len(tokens), len(tokens))
         if emb is not None:
             self._scorer.update_recent_context(emb)
 

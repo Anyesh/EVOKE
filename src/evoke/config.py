@@ -64,6 +64,16 @@ class EvokeConfig:
     # Top-K bound for smart-recovery. Default 4 matches the production
     # Session policy; setting 0 disables recovery entirely.
     smart_recover_k: int = 4
+    # Use a dedicated retrieval embedding model (bge-small-en-v1.5 via
+    # fastembed) for block representative embeddings and probe query
+    # embeddings, instead of the LM's intermediate hidden states. LM
+    # hidden states have a common-mode dominance that collapses cosine
+    # discrimination to ~0.85-0.93 on retrieval-style workloads (NIAH);
+    # retrieval-tuned embeddings widen the band to ~0.3-0.9 and let the
+    # resident-gate actually separate needle from noise. Cost: ~30 MB
+    # model loaded once, ~10 ms per text embedded. Off by default so
+    # builds without fastembed installed keep working.
+    use_retrieval_embeddings: bool = False
 
     eviction_policy: str = "watermark"
     high_watermark: float = 0.95

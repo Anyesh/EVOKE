@@ -346,22 +346,37 @@ class Session:
         if threshold > 0.0:
             scored = [(s, key) for s, key in scored if s >= threshold]
 
+        # Recovery appends blocks at the cache tail, so the LAST block loaded
+        # becomes the model's freshest pre-generation context. Reverse the
+        # top-K so the most-similar block lands last (freshest); without this
+        # the lowest-similarity recovery dominates attention during decode
+        # and the model regurgitates the weakest match. NIAH at depth=10
+        # exposed this: with k=4, the rank-1 needle block was recovered
+        # first (positionally earliest among the new tail) and ranks 2-4
+        # of unrelated blocks landed after it, capturing attention.
+        ordered = list(scored[:k])
+        ordered.reverse()
         recovered = 0
-        for _, key in scored[:k]:
+        for _, key in ordered:
             if self._manager.recover(key):
                 recovered += 1
         return recovered
 
     def _max_resident_similarity(self, query_emb: np.ndarray) -> float:
-        # Max cosine between the query and any resident (non-sink) block's
-        # representative embedding. Sinks score 1.0 unconditionally and would
-        # mask out every breadcrumb, so they are skipped here. Blocks without
-        # an embedding (e.g., conversation blocks added before embeddings
-        # were computed) are skipped rather than treated as zero, so missing
-        # embeddings cannot accidentally open the gate.
+        # Max cosine between the query and any resident (non-sink, non-current-
+        # turn) block's representative embedding. Current-turn blocks include
+        # the probe itself (whose embedding is essentially the query, scoring
+        # ~1.0 against itself) and any tokens just generated this turn; they
+        # would always saturate the gate and prevent any recovery from firing.
+        # Sinks score 1.0 unconditionally and would similarly saturate.
+        # Missing embeddings (None) skip rather than score zero so they cannot
+        # accidentally widen the gate.
         best = -1.0
+        current_turn_start = self._manager._current_turn_start_id
         for block in self._manager._positions.active_blocks:
             if block.is_sink:
+                continue
+            if block.block_id >= current_turn_start:
                 continue
             emb = block.representative_embedding
             if emb is None:
@@ -372,6 +387,18 @@ class Session:
         return best
 
     def _compute_query_embedding(self, n_last: int = 32) -> np.ndarray | None:
+        # Prefer a retrieval-tuned embedding of the raw user-message text
+        # when one is available. The LM-hidden-state path that follows
+        # carries the common-mode noise (cosine floor ~0.85 against any
+        # paragraph in the corpus) that prevented smart-recovery from
+        # distinguishing needle blocks from haystack noise on NIAH.
+        if (
+            self._manager._retrieval_embedder is not None
+            and self._manager._last_user_text
+        ):
+            return self._manager._retrieval_embedder.embed(
+                self._manager._last_user_text
+            )
         pos = self._engine.next_write_pos
         if pos == 0:
             return None
