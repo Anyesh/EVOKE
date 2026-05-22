@@ -1,0 +1,227 @@
+﻿multifact eval | model=Qwen2.5-7B-Instruct-Q4_K_M
+kv_block primitives available: True
+haystack: 40 paragraphs, 5 seeds, 5 facts per session
+seed budget  strategy          pass  evict  recov  sec    details
+------------------------------------------------------------------------------------------
+0    512     no_eviction       5/5  0      0      5.83   password:1,capital:1,amount:1,code:1,date:1
+0    512     recency           0/5  95     0      5.61   password:0,capital:0,amount:0,code:0,date:0
+0    512     streaming_llm     0/5  94     0      5.61   password:0,capital:0,amount:0,code:0,date:0
+0    512     evoke_discard     0/5  94     0      5.70   password:0,capital:0,amount:0,code:0,date:0
+0    512     evoke_breadcrumb  0/5  94     0      5.74   password:0,capital:0,amount:0,code:0,date:0
+0    512     evoke_kv_restore  3/5  99     6      5.64   password:1,capital:1,amount:1,code:0,date:0
+0    512     evoke_recovery_aware3/5  102    7      5.70   password:1,capital:1,amount:1,code:0,date:0
+0    512     evoke_attention   3/5  100    6      5.70   password:1,capital:1,amount:1,code:0,date:0
+0    512     h2o               0/5  94     0      5.65   password:0,capital:0,amount:0,code:0,date:0
+0    512     snapkv            0/5  94     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+0    512     infllm            5/5  139    40     5.97   password:1,capital:1,amount:1,code:1,date:1
+------------------------------------------------------------------------------------------
+0    1024    no_eviction       5/5  0      0      5.84   password:1,capital:1,amount:1,code:1,date:1
+0    1024    recency           0/5  89     0      5.83   password:0,capital:0,amount:0,code:0,date:0
+0    1024    streaming_llm     0/5  89     0      5.86   password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_discard     0/5  90     0      5.86   password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_breadcrumb  0/5  90     0      5.86   password:0,capital:0,amount:0,code:0,date:0
+0    1024    evoke_kv_restore  4/5  95     6      5.94   password:1,capital:1,amount:1,code:1,date:0
+0    1024    evoke_recovery_aware4/5  96     6      5.87   password:1,capital:1,amount:1,code:1,date:0
+0    1024    evoke_attention   3/5  98     6      6.00   password:1,capital:1,amount:1,code:0,date:0
+0    1024    h2o               0/5  87     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+0    1024    snapkv            0/5  87     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+0    1024    infllm            4/5  110    13     5.62   password:1,capital:1,amount:1,code:1,date:0
+------------------------------------------------------------------------------------------
+0    2048    no_eviction       5/5  0      0      5.90   password:1,capital:1,amount:1,code:1,date:1
+0    2048    recency           1/5  77     0      5.86   password:0,capital:0,amount:0,code:0,date:1
+0    2048    streaming_llm     0/5  77     0      5.86   password:0,capital:0,amount:0,code:0,date:0
+0    2048    evoke_discard     1/5  78     0      5.80   password:0,capital:0,amount:0,code:0,date:1
+0    2048    evoke_breadcrumb  1/5  78     0      5.80   password:0,capital:0,amount:0,code:0,date:1
+0    2048    evoke_kv_restore  5/5  84     6      5.98   password:1,capital:1,amount:1,code:1,date:1
+0    2048    evoke_recovery_aware5/5  84     6      5.94   password:1,capital:1,amount:1,code:1,date:1
+0    2048    evoke_attention   4/5  83     6      5.99   password:1,capital:1,amount:1,code:1,date:0
+0    2048    h2o               1/5  71     0      5.88   password:0,capital:0,amount:0,code:0,date:1
+0    2048    snapkv            1/5  71     0      5.88   password:0,capital:0,amount:0,code:0,date:1
+0    2048    infllm            4/5  103    10     5.78   password:1,capital:1,amount:1,code:1,date:0
+------------------------------------------------------------------------------------------
+1    512     no_eviction       5/5  0      0      5.83   password:1,capital:1,amount:1,code:1,date:1
+1    512     recency           0/5  91     0      5.61   password:0,capital:0,amount:0,code:0,date:0
+1    512     streaming_llm     0/5  90     0      5.52   password:0,capital:0,amount:0,code:0,date:0
+1    512     evoke_discard     0/5  89     0      5.78   password:0,capital:0,amount:0,code:0,date:0
+1    512     evoke_breadcrumb  0/5  89     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+1    512     evoke_kv_restore  3/5  94     5      5.67   password:1,capital:1,amount:0,code:1,date:0
+1    512     evoke_recovery_aware2/5  96     6      5.68   password:1,capital:1,amount:0,code:0,date:0
+1    512     evoke_attention   2/5  95     5      5.67   password:1,capital:1,amount:0,code:0,date:0
+1    512     h2o               0/5  90     0      5.66   password:0,capital:0,amount:0,code:0,date:0
+1    512     snapkv            0/5  90     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+1    512     infllm            5/5  135    40     6.04   password:1,capital:1,amount:1,code:1,date:1
+------------------------------------------------------------------------------------------
+1    1024    no_eviction       5/5  0      0      5.83   password:1,capital:1,amount:1,code:1,date:1
+1    1024    recency           0/5  86     0      5.80   password:0,capital:0,amount:0,code:0,date:0
+1    1024    streaming_llm     0/5  86     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_discard     0/5  86     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_breadcrumb  0/5  86     0      5.85   password:0,capital:0,amount:0,code:0,date:0
+1    1024    evoke_kv_restore  3/5  92     5      5.84   password:1,capital:1,amount:0,code:1,date:0
+1    1024    evoke_recovery_aware3/5  93     5      5.89   password:1,capital:1,amount:0,code:1,date:0
+1    1024    evoke_attention   3/5  93     5      6.00   password:1,capital:1,amount:0,code:1,date:0
+1    1024    h2o               0/5  84     0      5.80   password:0,capital:0,amount:0,code:0,date:0
+1    1024    snapkv            0/5  84     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+1    1024    infllm            3/5  111    17     5.76   password:1,capital:1,amount:0,code:1,date:0
+------------------------------------------------------------------------------------------
+1    2048    no_eviction       5/5  0      0      5.89   password:1,capital:1,amount:1,code:1,date:1
+1    2048    recency           1/5  71     0      5.84   password:0,capital:0,amount:0,code:0,date:1
+1    2048    streaming_llm     1/5  71     0      5.84   password:0,capital:0,amount:0,code:0,date:1
+1    2048    evoke_discard     1/5  71     0      5.80   password:0,capital:0,amount:0,code:0,date:1
+1    2048    evoke_breadcrumb  1/5  71     0      5.79   password:0,capital:0,amount:0,code:0,date:1
+1    2048    evoke_kv_restore  3/5  79     5      5.95   password:1,capital:1,amount:0,code:1,date:0
+1    2048    evoke_recovery_aware3/5  79     5      5.95   password:1,capital:1,amount:0,code:1,date:0
+1    2048    evoke_attention   3/5  79     5      6.00   password:1,capital:1,amount:0,code:1,date:0
+1    2048    h2o               1/5  68     0      5.86   password:0,capital:0,amount:0,code:0,date:1
+1    2048    snapkv            2/5  68     0      5.88   password:0,capital:0,amount:0,code:1,date:1
+1    2048    infllm            3/5  99     9      5.72   password:1,capital:1,amount:0,code:1,date:0
+------------------------------------------------------------------------------------------
+2    512     no_eviction       5/5  0      0      5.91   password:1,capital:1,amount:1,code:1,date:1
+2    512     recency           0/5  97     0      5.63   password:0,capital:0,amount:0,code:0,date:0
+2    512     streaming_llm     0/5  96     0      5.54   password:0,capital:0,amount:0,code:0,date:0
+2    512     evoke_discard     0/5  96     0      5.83   password:0,capital:0,amount:0,code:0,date:0
+2    512     evoke_breadcrumb  0/5  96     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+2    512     evoke_kv_restore  2/5  103    7      5.67   password:0,capital:1,amount:1,code:0,date:0
+2    512     evoke_recovery_aware2/5  105    8      5.70   password:0,capital:1,amount:1,code:0,date:0
+2    512     evoke_attention   2/5  103    7      5.71   password:0,capital:1,amount:1,code:0,date:0
+2    512     h2o               0/5  96     0      5.70   password:0,capital:0,amount:0,code:0,date:0
+2    512     snapkv            0/5  96     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+2    512     infllm            4/5  141    40     6.08   password:0,capital:1,amount:1,code:1,date:1
+------------------------------------------------------------------------------------------
+2    1024    no_eviction       5/5  0      0      5.86   password:1,capital:1,amount:1,code:1,date:1
+2    1024    recency           0/5  91     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+2    1024    streaming_llm     0/5  91     0      5.88   password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_discard     0/5  90     0      5.87   password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_breadcrumb  0/5  90     0      5.88   password:0,capital:0,amount:0,code:0,date:0
+2    1024    evoke_kv_restore  2/5  100    7      5.84   password:0,capital:1,amount:1,code:0,date:0
+2    1024    evoke_recovery_aware2/5  101    7      5.83   password:0,capital:1,amount:1,code:0,date:0
+2    1024    evoke_attention   2/5  101    7      6.00   password:0,capital:1,amount:1,code:0,date:0
+2    1024    h2o               0/5  90     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+2    1024    snapkv            0/5  90     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+2    1024    infllm            2/5  116    19     5.66   password:0,capital:1,amount:1,code:0,date:0
+------------------------------------------------------------------------------------------
+2    2048    no_eviction       5/5  0      0      5.92   password:1,capital:1,amount:1,code:1,date:1
+2    2048    recency           1/5  77     0      5.88   password:0,capital:0,amount:0,code:0,date:1
+2    2048    streaming_llm     0/5  77     0      5.88   password:0,capital:0,amount:0,code:0,date:0
+2    2048    evoke_discard     1/5  77     0      5.85   password:0,capital:0,amount:0,code:0,date:1
+2    2048    evoke_breadcrumb  1/5  77     0      5.82   password:0,capital:0,amount:0,code:0,date:1
+2    2048    evoke_kv_restore  2/5  85     6      5.94   password:0,capital:1,amount:1,code:0,date:0
+2    2048    evoke_recovery_aware2/5  85     6      5.97   password:0,capital:1,amount:1,code:0,date:0
+2    2048    evoke_attention   3/5  85     6      6.05   password:0,capital:1,amount:1,code:0,date:1
+2    2048    h2o               2/5  74     0      5.90   password:0,capital:0,amount:0,code:1,date:1
+2    2048    snapkv            2/5  74     0      5.90   password:0,capital:0,amount:0,code:1,date:1
+2    2048    infllm            2/5  106    11     5.80   password:0,capital:1,amount:1,code:0,date:0
+------------------------------------------------------------------------------------------
+3    512     no_eviction       5/5  0      0      5.87   password:1,capital:1,amount:1,code:1,date:1
+3    512     recency           0/5  93     0      5.62   password:0,capital:0,amount:0,code:0,date:0
+3    512     streaming_llm     0/5  92     0      5.53   password:0,capital:0,amount:0,code:0,date:0
+3    512     evoke_discard     0/5  91     0      5.81   password:0,capital:0,amount:0,code:0,date:0
+3    512     evoke_breadcrumb  0/5  91     0      5.81   password:0,capital:0,amount:0,code:0,date:0
+3    512     evoke_kv_restore  2/5  99     8      5.70   password:1,capital:1,amount:0,code:0,date:0
+3    512     evoke_recovery_aware2/5  100    8      5.73   password:1,capital:1,amount:0,code:0,date:0
+3    512     evoke_attention   2/5  100    8      5.66   password:1,capital:1,amount:0,code:0,date:0
+3    512     h2o               0/5  92     0      5.69   password:0,capital:0,amount:0,code:0,date:0
+3    512     snapkv            0/5  92     0      5.81   password:0,capital:0,amount:0,code:0,date:0
+3    512     infllm            4/5  137    40     6.03   password:1,capital:1,amount:1,code:1,date:0
+------------------------------------------------------------------------------------------
+3    1024    no_eviction       5/5  0      0      5.84   password:1,capital:1,amount:1,code:1,date:1
+3    1024    recency           1/5  88     0      5.80   password:0,capital:0,amount:0,code:0,date:1
+3    1024    streaming_llm     0/5  88     0      5.85   password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_discard     0/5  86     0      5.86   password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_breadcrumb  0/5  86     0      5.86   password:0,capital:0,amount:0,code:0,date:0
+3    1024    evoke_kv_restore  3/5  95     7      5.87   password:1,capital:1,amount:0,code:1,date:0
+3    1024    evoke_recovery_aware2/5  97     7      5.79   password:1,capital:1,amount:0,code:0,date:0
+3    1024    evoke_attention   2/5  97     7      6.02   password:1,capital:1,amount:0,code:0,date:0
+3    1024    h2o               0/5  86     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+3    1024    snapkv            1/5  86     0      5.83   password:0,capital:0,amount:0,code:0,date:1
+3    1024    infllm            3/5  117    24     5.71   password:1,capital:1,amount:1,code:0,date:0
+------------------------------------------------------------------------------------------
+3    2048    no_eviction       5/5  0      0      5.90   password:1,capital:1,amount:1,code:1,date:1
+3    2048    recency           2/5  73     0      5.85   password:0,capital:0,amount:1,code:0,date:1
+3    2048    streaming_llm     1/5  73     0      5.85   password:0,capital:0,amount:0,code:0,date:1
+3    2048    evoke_discard     1/5  73     0      5.84   password:0,capital:0,amount:0,code:0,date:1
+3    2048    evoke_breadcrumb  1/5  73     0      5.80   password:0,capital:0,amount:0,code:0,date:1
+3    2048    evoke_kv_restore  3/5  83     7      5.99   password:1,capital:1,amount:0,code:1,date:0
+3    2048    evoke_recovery_aware3/5  83     7      5.98   password:1,capital:1,amount:0,code:1,date:0
+3    2048    evoke_attention   3/5  83     7      6.01   password:1,capital:1,amount:0,code:1,date:0
+3    2048    h2o               1/5  70     0      5.88   password:0,capital:0,amount:0,code:0,date:1
+3    2048    snapkv            1/5  70     0      5.88   password:0,capital:0,amount:0,code:0,date:1
+3    2048    infllm            3/5  100    11     5.75   password:1,capital:1,amount:0,code:1,date:0
+------------------------------------------------------------------------------------------
+4    512     no_eviction       5/5  0      0      5.88   password:1,capital:1,amount:1,code:1,date:1
+4    512     recency           0/5  93     0      5.62   password:0,capital:0,amount:0,code:0,date:0
+4    512     streaming_llm     0/5  92     0      5.63   password:0,capital:0,amount:0,code:0,date:0
+4    512     evoke_discard     0/5  93     0      5.81   password:0,capital:0,amount:0,code:0,date:0
+4    512     evoke_breadcrumb  0/5  93     0      5.81   password:0,capital:0,amount:0,code:0,date:0
+4    512     evoke_kv_restore  3/5  101    9      5.73   password:1,capital:1,amount:1,code:0,date:0
+4    512     evoke_recovery_aware3/5  102    9      5.70   password:1,capital:1,amount:1,code:0,date:0
+4    512     evoke_attention   3/5  101    9      5.69   password:1,capital:1,amount:1,code:0,date:0
+4    512     h2o               0/5  92     0      5.69   password:0,capital:0,amount:0,code:0,date:0
+4    512     snapkv            0/5  92     0      5.83   password:0,capital:0,amount:0,code:0,date:0
+4    512     infllm            4/5  137    40     5.95   password:1,capital:1,amount:1,code:0,date:1
+------------------------------------------------------------------------------------------
+4    1024    no_eviction       5/5  0      0      5.84   password:1,capital:1,amount:1,code:1,date:1
+4    1024    recency           0/5  87     0      5.80   password:0,capital:0,amount:0,code:0,date:0
+4    1024    streaming_llm     0/5  87     0      5.84   password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_discard     0/5  88     0      5.85   password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_breadcrumb  0/5  88     0      5.85   password:0,capital:0,amount:0,code:0,date:0
+4    1024    evoke_kv_restore  3/5  97     9      5.80   password:1,capital:1,amount:1,code:0,date:0
+4    1024    evoke_recovery_aware3/5  97     9      5.82   password:1,capital:1,amount:1,code:0,date:0
+4    1024    evoke_attention   3/5  99     9      6.04   password:1,capital:1,amount:1,code:0,date:0
+4    1024    h2o               0/5  85     0      5.82   password:0,capital:0,amount:0,code:0,date:0
+4    1024    snapkv            0/5  85     0      5.83   password:0,capital:0,amount:0,code:0,date:0
+4    1024    infllm            4/5  117    26     5.74   password:1,capital:1,amount:1,code:0,date:1
+------------------------------------------------------------------------------------------
+4    2048    no_eviction       5/5  0      0      5.89   password:1,capital:1,amount:1,code:1,date:1
+4    2048    recency           1/5  73     0      5.86   password:0,capital:0,amount:0,code:0,date:1
+4    2048    streaming_llm     1/5  73     0      5.86   password:0,capital:0,amount:0,code:0,date:1
+4    2048    evoke_discard     1/5  73     0      5.86   password:0,capital:0,amount:0,code:0,date:1
+4    2048    evoke_breadcrumb  1/5  73     0      5.80   password:0,capital:0,amount:0,code:0,date:1
+4    2048    evoke_kv_restore  3/5  82     9      6.03   password:1,capital:1,amount:1,code:0,date:0
+4    2048    evoke_recovery_aware3/5  82     9      6.01   password:1,capital:1,amount:1,code:0,date:0
+4    2048    evoke_attention   4/5  82     9      6.03   password:1,capital:1,amount:1,code:0,date:1
+4    2048    h2o               1/5  69     0      5.87   password:0,capital:0,amount:0,code:0,date:1
+4    2048    snapkv            0/5  69     0      5.88   password:0,capital:0,amount:0,code:0,date:0
+4    2048    infllm            3/5  103    12     5.84   password:1,capital:1,amount:1,code:0,date:0
+------------------------------------------------------------------------------------------
+
+Loading judge to break 533 ambiguous cases (string-match failed, semantic keywords present)...
+Judge pass complete.
+
+Aggregate per (budget, strategy) over seeds
+budget  strategy            pass_rate  95% CI                n_facts   
+---------------------------------------------------------------------------
+512     evoke_attention     48.00%     [30.03%, 66.50%]      12/25
+512     evoke_breadcrumb    0.00%      [0.00%, 13.32%]      0/25
+512     evoke_discard       0.00%      [0.00%, 13.32%]      0/25
+512     evoke_kv_restore    52.00%     [33.50%, 69.97%]      13/25
+512     evoke_recovery_aware48.00%     [30.03%, 66.50%]      12/25
+512     h2o                 0.00%      [0.00%, 13.32%]      0/25
+512     infllm              88.00%     [70.04%, 95.83%]      22/25
+512     no_eviction         100.00%    [86.68%, 100.00%]      25/25
+512     recency             0.00%      [0.00%, 13.32%]      0/25
+512     snapkv              0.00%      [0.00%, 13.32%]      0/25
+512     streaming_llm       0.00%      [0.00%, 13.32%]      0/25
+1024    evoke_attention     52.00%     [33.50%, 69.97%]      13/25
+1024    evoke_breadcrumb    0.00%      [0.00%, 13.32%]      0/25
+1024    evoke_discard       0.00%      [0.00%, 13.32%]      0/25
+1024    evoke_kv_restore    60.00%     [40.74%, 76.60%]      15/25
+1024    evoke_recovery_aware56.00%     [37.07%, 73.33%]      14/25
+1024    h2o                 0.00%      [0.00%, 13.32%]      0/25
+1024    infllm              64.00%     [44.52%, 79.75%]      16/25
+1024    no_eviction         100.00%    [86.68%, 100.00%]      25/25
+1024    recency             4.00%      [0.71%, 19.54%]      1/25
+1024    snapkv              4.00%      [0.71%, 19.54%]      1/25
+1024    streaming_llm       0.00%      [0.00%, 13.32%]      0/25
+2048    evoke_attention     68.00%     [48.41%, 82.80%]      17/25
+2048    evoke_breadcrumb    20.00%     [8.86%, 39.13%]      5/25
+2048    evoke_discard       20.00%     [8.86%, 39.13%]      5/25
+2048    evoke_kv_restore    64.00%     [44.52%, 79.75%]      16/25
+2048    evoke_recovery_aware64.00%     [44.52%, 79.75%]      16/25
+2048    h2o                 24.00%     [11.50%, 43.43%]      6/25
+2048    infllm              60.00%     [40.74%, 76.60%]      15/25
+2048    no_eviction         100.00%    [86.68%, 100.00%]      25/25
+2048    recency             24.00%     [11.50%, 43.43%]      6/25
+2048    snapkv              24.00%     [11.50%, 43.43%]      6/25
+2048    streaming_llm       12.00%     [4.17%, 29.96%]      3/25
+
+results JSON: results\mfb_qwen25_7b_recoveryaware.json
