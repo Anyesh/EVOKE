@@ -47,6 +47,19 @@ Measured on Qwen 2.5 7B, RTX 4070 Ti SUPER, Flash Attention enabled. `kv_block_l
 
 The gap widens linearly with block size: re-prefill is `O(tokens × model_FLOPs)`, load is `O(tokens × bytes)`.
 
+## Intuition: why eviction is non-destructive
+
+Take a 20-token sentence (one token per word, periods folded into the preceding word):
+
+```
+pos:  0   1   2  3   4   5   6   7   8   9  10     11   12   13    14    15     16  17   18   19
+tok: Cat sat in  a  mat and mat is  red in  color. house is  green in    color. cat is   very pretty
+```
+
+Suppose the scorer marks `house is green in color.` (positions 11–15) as low-relevance. EVOKE evicts in two engine calls. `seq_rm(seq=0, p0=11, p1=16)` frees those five cells in the unified KV buffer (no dangling reference: `Q` is never cached, only `K` and `V` are). `seq_add(seq=0, p0=16, p1=20, delta=-5)` then re-labels the survivors `cat is very pretty` from positions 16–19 to 11–14 and queues a deferred RoPE shift of `Δ = -5` on their `K` rows. K and V bytes never move in memory; only positions change.
+
+llama.cpp applies the queued shift lazily at the next attention compute, multiplying each survivor's `K` by `R(Δ · θ_i)` per dimension pair. `V` is positional-free and untouched. After the shift, `Q_new · K_survivor` returns the same relative-position dot product the model would compute if `house is green in color.` had never been decoded. The model behaves identically to one that read the truncated sentence directly: information loss, never corruption.
+
 ## Live opencode integration
 
 A live opencode session against Qwen 3.5 9B (hybrid Mamba/Attention + thinking, budget=2048) ran 250 cumulative evictions and 4 smart-recoveries with `active_tokens` held near 1414 (within budget) while `cached_tokens` grew to 32902, so the agent's conversation was 23x larger than what was held in GPU at any moment. Every paper §7 number is reproducible from `scripts/` per Appendix A, with raw output for the agentic eval (`results/agent_bench_qwen25_7b.txt`), the attention scorer ablation, and the keepalive workload checked into the repo.
