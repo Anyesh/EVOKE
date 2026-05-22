@@ -231,6 +231,21 @@ def restart_server(policy: str) -> subprocess.Popen[bytes]:
     suppress_thinking_strip = os.environ.get("EVOKE_SUPPRESS_THINKING_STRIP")
     if suppress_thinking_strip:
         extra_env += f"$env:EVOKE_SUPPRESS_THINKING_STRIP='{suppress_thinking_strip}'; "
+    # Smart-recovery knobs (forwarded only for the evoke policy; truncate and
+    # no_eviction have no recovery step). Setting min_similarity > 0 plus
+    # use_retrieval_embeddings=1 closes the recover-then-re-evict thrash that
+    # the session-length sweep exposed at T=28: bge-small widens the cosine
+    # band so the floor blocks weak recoveries that would just get evicted
+    # again on the next turn.
+    sr_min_sim = os.environ.get("EVOKE_SMART_RECOVER_MIN_SIMILARITY")
+    if sr_min_sim and policy == "evoke":
+        extra_env += f"$env:EVOKE_SMART_RECOVER_MIN_SIMILARITY='{sr_min_sim}'; "
+    sr_k = os.environ.get("EVOKE_SMART_RECOVER_K")
+    if sr_k and policy == "evoke":
+        extra_env += f"$env:EVOKE_SMART_RECOVER_K='{sr_k}'; "
+    use_retrieval = os.environ.get("EVOKE_USE_RETRIEVAL_EMBEDDINGS")
+    if use_retrieval and policy == "evoke":
+        extra_env += f"$env:EVOKE_USE_RETRIEVAL_EMBEDDINGS='{use_retrieval}'; "
     launch = (
         f"cd {REMOTE_DIR}; "
         f"$env:LLAMA_CPP_LIB='{LIB}'; "

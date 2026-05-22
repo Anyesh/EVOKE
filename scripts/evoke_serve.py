@@ -48,6 +48,21 @@ def main() -> int:
     kv_restore_ram_budget_bytes = int(ram_budget_env) if ram_budget_env else None
     kv_restore_spill_path = os.environ.get("EVOKE_KV_RESTORE_SPILL_PATH") or None
     suppress_thinking_strip = bool(os.environ.get("EVOKE_SUPPRESS_THINKING_STRIP"))
+    # Smart-recovery knobs. min_similarity sets an absolute cosine floor on
+    # which evicted blocks are eligible for top-K recovery, on top of the
+    # resident-gate that compares against the strongest already-resident
+    # block. Without a floor the gate alone lets weak matches through once
+    # the resident set thins out, causing recover-then-re-evict thrash at
+    # long sessions (T=28 sweep diagnosed 80 extra evictions = 2.4s of pure
+    # thrash). use_retrieval is off by default because earlier deployments
+    # ran without fastembed; turning it on widens the cosine band so the
+    # floor is meaningful (LM hidden states crowd similarities into the
+    # 0.85-0.93 band where no useful threshold lives).
+    smart_recover_min_similarity = float(
+        os.environ.get("EVOKE_SMART_RECOVER_MIN_SIMILARITY", "0.0")
+    )
+    smart_recover_k = int(os.environ.get("EVOKE_SMART_RECOVER_K", "4"))
+    use_retrieval_embeddings = bool(os.environ.get("EVOKE_USE_RETRIEVAL_EMBEDDINGS"))
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -94,12 +109,18 @@ def main() -> int:
                 kv_restore_ram_budget_bytes=kv_restore_ram_budget_bytes,
                 kv_restore_spill_path=kv_restore_spill_path,
                 suppress_thinking_strip=suppress_thinking_strip,
+                smart_recover_k=smart_recover_k,
+                smart_recover_min_similarity=smart_recover_min_similarity,
+                use_retrieval_embeddings=use_retrieval_embeddings,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
                 f" w_attention={w_attention} attn_layer={attention_capture_layer}"
                 f" kv_ram_budget={kv_restore_ram_budget_bytes}"
                 f" kv_spill={kv_restore_spill_path}"
+                f" sr_k={smart_recover_k}"
+                f" sr_min_sim={smart_recover_min_similarity}"
+                f" use_retrieval={use_retrieval_embeddings}"
             )
     else:
         raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")
