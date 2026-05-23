@@ -33,6 +33,7 @@ BASE = os.environ.get("EVOKE_SERVER") or sys.exit("set EVOKE_SERVER")
 MODEL = os.environ.get("EVOKE_MODEL_NAME", "qwen25")
 LEVELS = [int(x) for x in os.environ.get("EVOKE_CONCURRENCY", "1,4,8,16").split(",")]
 TURNS = int(os.environ.get("EVOKE_TURNS", "14"))
+ROUNDS = int(os.environ.get("EVOKE_ROUNDS", "1"))
 OUT_JSON = os.environ.get("EVOKE_CONCURRENCY_JSON")
 
 PLANT_TURN = (
@@ -108,14 +109,31 @@ def session_run(session_id: str) -> dict:
     }
 
 
+def _pct(samples: list[float], p: float) -> float:
+    if not samples:
+        return float("nan")
+    s = sorted(samples)
+    idx = min(len(s) - 1, int(p * (len(s) - 1)))
+    return s[idx]
+
+
 def run_level(n: int) -> dict:
-    print(f"=== concurrency N={n} ===", flush=True)
+    print(f"=== concurrency N={n} (rounds={ROUNDS}) ===", flush=True)
     t0 = time.perf_counter()
-    with ThreadPoolExecutor(max_workers=n) as ex:
-        futures = {ex.submit(session_run, f"cb_{n}_{i}"): i for i in range(n)}
-        results = []
-        for fut in as_completed(futures):
-            results.append(fut.result())
+    results: list[dict] = []
+    round_walls: list[float] = []
+    for r_idx in range(ROUNDS):
+        r_t0 = time.perf_counter()
+        with ThreadPoolExecutor(max_workers=n) as ex:
+            futures = {
+                ex.submit(session_run, f"cb_{n}_r{r_idx}_{i}"): i for i in range(n)
+            }
+            for fut in as_completed(futures):
+                rec = fut.result()
+                rec["round"] = r_idx
+                results.append(rec)
+        round_walls.append(time.perf_counter() - r_t0)
+        print(f"  round {r_idx + 1}/{ROUNDS}: {round_walls[-1]:.2f}s", flush=True)
     wall = time.perf_counter() - t0
 
     successful = [r for r in results if "error" not in r]
@@ -129,14 +147,14 @@ def run_level(n: int) -> dict:
         wc_max = max(wallclocks)
     else:
         wc_p50 = wc_min = wc_max = float("nan")
-    if all_turns:
-        turn_p50 = statistics.median(all_turns)
-        turn_p99 = sorted(all_turns)[int(0.99 * (len(all_turns) - 1))]
-    else:
-        turn_p50 = turn_p99 = float("nan")
+    turn_p50 = _pct(all_turns, 0.50)
+    turn_p95 = _pct(all_turns, 0.95)
+    turn_p99 = _pct(all_turns, 0.99)
+    turn_p999 = _pct(all_turns, 0.999)
+    turn_max = max(all_turns) if all_turns else float("nan")
 
     print(
-        f"  sessions ok: {len(successful)}/{n}; "
+        f"  sessions ok: {len(successful)}/{n * ROUNDS}; "
         f"probe_ok: {probes_ok}/{len(successful)}; "
         f"total wall: {wall:.2f}s",
         flush=True,
@@ -146,17 +164,28 @@ def run_level(n: int) -> dict:
         f"{wc_min:.2f}s / {wc_p50:.2f}s / {wc_max:.2f}s",
         flush=True,
     )
-    print(f"  per-turn latency p50/p99: {turn_p50:.3f}s / {turn_p99:.3f}s", flush=True)
+    print(
+        f"  per-turn latency n={len(all_turns)} p50/p95/p99/p999/max: "
+        f"{turn_p50:.3f}s / {turn_p95:.3f}s / {turn_p99:.3f}s / "
+        f"{turn_p999:.3f}s / {turn_max:.3f}s",
+        flush=True,
+    )
     return {
         "N": n,
+        "rounds": ROUNDS,
         "total_wall_s": wall,
+        "round_walls_s": round_walls,
         "n_successful": len(successful),
+        "n_turn_samples": len(all_turns),
         "probes_ok": probes_ok,
         "wallclock_min_s": wc_min,
         "wallclock_p50_s": wc_p50,
         "wallclock_max_s": wc_max,
         "turn_p50_s": turn_p50,
+        "turn_p95_s": turn_p95,
         "turn_p99_s": turn_p99,
+        "turn_p999_s": turn_p999,
+        "turn_max_s": turn_max,
         "sessions": results,
     }
 

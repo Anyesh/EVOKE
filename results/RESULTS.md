@@ -292,7 +292,7 @@ Story: every recovery-less policy fails at every budget; SnapKV and H2O join rec
 | truncate      |  1024 |        683 |        40 |          0 | PASS  |   19.8s |
 | evoke         |  1024 |        747 |        40 |         24 | PASS  | **12.9s** |
 
-Both truncate and evoke contain the active footprint inside the budget. evoke runs the same conversation 35% faster than truncate with the same eviction count — recoveries via `kv_block_load` (~3 ms) replace truncate's per-turn re-decode of missing history (~150-250 ms).
+Both truncate and evoke contain the active footprint inside the budget. The single-run "35% faster than truncate" framing here did not reproduce: the n=15 rerun (top of file, 2026-05-22) shows wall-clock parity within ~10% once smart-recovery's bge-small per-block embeddings and per-turn similarity scoring are charged. The honest pitch is identical active-token footprint plus a recovery primitive that `truncate` lacks; the `~3 ms kv_block_load` cost is real and the per-turn re-decode it replaces is real, but they roughly offset the embedding+scoring overhead at this session length.
 
 ### Agentic eval (`scripts/agent_bench.py`, planted-config-file probe after 10 unrelated file reads)
 

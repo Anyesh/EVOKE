@@ -298,6 +298,24 @@ STRATEGIES: dict[str, dict] = {
 }
 
 
+def _factorial_cells() -> dict[str, dict]:
+    cells: dict[str, dict] = {}
+    for k1 in (False, True):
+        for k2 in (False, True):
+            for k3 in (False, True):
+                code = f"{int(k1)}{int(k2)}{int(k3)}"
+                cells[f"evoke_fact_{code}"] = dict(
+                    recovery_mode="kv_restore",
+                    use_retrieval_embeddings=k1,
+                    smart_recover_before_decode=k2,
+                    smart_recover_resident_gate=k3,
+                )
+    return cells
+
+
+STRATEGIES.update(_factorial_cells())
+
+
 def build_haystack(n_paragraphs: int, seed: int) -> list[str]:
     rng = random.Random(seed)
     paragraphs: list[str] = []
@@ -411,17 +429,18 @@ def _smart_recover(mgr: EvokeManager, k: int = 4) -> int:
         else:
             scored.append((float(np.dot(query_emb, block_emb)), crumb.key))
     scored.sort(key=lambda x: x[0], reverse=True)
-    resident_max = -1.0
-    current_turn_start = mgr._current_turn_start_id
-    for block in mgr._positions.active_blocks:
-        if block.is_sink or block.representative_embedding is None:
-            continue
-        if block.block_id >= current_turn_start:
-            continue
-        sim = float(np.dot(query_emb, block.representative_embedding))
-        if sim > resident_max:
-            resident_max = sim
-    scored = [(s, key) for s, key in scored if s > resident_max]
+    if mgr._config.smart_recover_resident_gate:
+        resident_max = -1.0
+        current_turn_start = mgr._current_turn_start_id
+        for block in mgr._positions.active_blocks:
+            if block.is_sink or block.representative_embedding is None:
+                continue
+            if block.block_id >= current_turn_start:
+                continue
+            sim = float(np.dot(query_emb, block.representative_embedding))
+            if sim > resident_max:
+                resident_max = sim
+        scored = [(s, key) for s, key in scored if s > resident_max]
     threshold = mgr._config.smart_recover_min_similarity
     if threshold > 0.0:
         scored = [(s, key) for s, key in scored if s >= threshold]
@@ -474,22 +493,14 @@ def run_cell(
 
     probe = f"\n\nQuestion: {needle['question']}\nAnswer:"
     t0 = time.perf_counter()
-    if overrides.get("recovery_mode") != "discard":
-        # Recover BEFORE decoding the probe so recovered blocks land earlier
-        # in the cache than the probe. With the old "recover after probe"
-        # order, the probe got buried mid-cache while recovered blocks held
-        # the model's freshest attention slot — and since each 64-token
-        # recovered block ends in post-needle haystack content, the model
-        # continued from haystack noise instead of looking back at the
-        # needle. Recovering first puts the probe as the freshest context
-        # and recovered blocks become earlier context the model attends
-        # back to. _last_user_text is set manually here because
-        # process_user_message hasn't run yet. K is read from the config so
-        # baselines that tune K differently (InfLLM at K=8 vs EVOKE at K=4)
-        # exercise their own retrieval breadth.
+    do_recover = overrides.get("recovery_mode") != "discard"
+    if do_recover and config.smart_recover_before_decode:
         mgr._last_user_text = probe
         _smart_recover(mgr, k=config.smart_recover_k)
     mgr.process_user_message(probe)
+    if do_recover and not config.smart_recover_before_decode:
+        mgr._last_user_text = probe
+        _smart_recover(mgr, k=config.smart_recover_k)
     # Thinking models (Qwen 3.x and similar) emit <think>...</think> before
     # the actual answer; without think_close the 128-token budget gets
     # consumed by the thinking trace and no answer reaches the scorer.
@@ -597,12 +608,21 @@ def main() -> int:
     print(header)
     print("-" * len(header))
 
+    strategy_filter = os.environ.get("EVOKE_NIAH_STRATEGIES")
+    if strategy_filter:
+        allowed = set(s.strip() for s in strategy_filter.split(","))
+        active_strategies = {k: v for k, v in STRATEGIES.items() if k in allowed}
+    else:
+        active_strategies = {
+            k: v for k, v in STRATEGIES.items() if not k.startswith("evoke_fact_")
+        }
+
     results: list[NiahResult] = []
     try:
         for budget in budgets:
             for needle in needles:
                 for depth_pct in depths:
-                    for name, overrides in STRATEGIES.items():
+                    for name, overrides in active_strategies.items():
                         # h2o and evoke_attention need the EVOKE fork for
                         # attention capture; evoke_kv_restore needs the fork
                         # for the K/V splice primitive. Skipping the cell
