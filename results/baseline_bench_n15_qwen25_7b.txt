@@ -1,0 +1,355 @@
+=== Run 11 ===
+
+>>> running policy=no_eviction
+  kill: python before=2 after=0
+  launch: policy=no_eviction budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=16384
+  budget=16384 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=1068 ev=0 rec=0
+  q7:   active=1342 ev=0 rec=0
+  q8:   active=1616 ev=0 rec=0
+  q9:   active=1891 ev=0 rec=0
+  q10:   active=2165 ev=0 rec=0
+  q11:   active=2440 ev=0 rec=0
+
+>>> running policy=truncate
+  kill: python before=2 after=0
+  launch: policy=truncate budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=16 rec=0
+  q8:   active=849 ev=22 rec=0
+  q9:   active=868 ev=30 rec=0
+  q10:   active=886 ev=40 rec=0
+  q11:   active=905 ev=52 rec=0
+
+>>> running policy=evoke
+  kill: python before=2 after=0
+  launch: policy=evoke budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=20 rec=4
+  q8:   active=848 ev=30 rec=8
+  q9:   active=867 ev=42 rec=12
+  q10:   active=885 ev=56 rec=16
+  q11:   active=904 ev=72 rec=20
+
+## Baseline comparison (turns=14)
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   18.8s |
+| truncate      | PASS  |        66 |          0 |    685 |   20.9s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.1s |
+
+results JSON: results/baseline_n15/run_11.json
+=== Run 12 ===
+
+>>> running policy=no_eviction
+  kill: python before=2 after=0
+  launch: policy=no_eviction budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=16384
+  budget=16384 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=1068 ev=0 rec=0
+  q7:   active=1342 ev=0 rec=0
+  q8:   active=1616 ev=0 rec=0
+  q9:   active=1891 ev=0 rec=0
+  q10:   active=2165 ev=0 rec=0
+  q11:   active=2440 ev=0 rec=0
+
+>>> running policy=truncate
+  kill: python before=2 after=0
+  launch: policy=truncate budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=16 rec=0
+  q8:   active=849 ev=22 rec=0
+  q9:   active=868 ev=30 rec=0
+  q10:   active=886 ev=40 rec=0
+  q11:   active=905 ev=52 rec=0
+
+>>> running policy=evoke
+  kill: python before=2 after=0
+  launch: policy=evoke budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=20 rec=4
+  q8:   active=848 ev=30 rec=8
+  q9:   active=867 ev=42 rec=12
+  q10:   active=885 ev=56 rec=16
+  q11:   active=904 ev=72 rec=20
+
+## Baseline comparison (turns=14)
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   18.8s |
+| truncate      | PASS  |        66 |          0 |    685 |   20.8s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.7s |
+
+results JSON: results/baseline_n15/run_12.json
+=== Run 13 ===
+
+>>> running policy=no_eviction
+  kill: python before=2 after=0
+  launch: policy=no_eviction budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=16384
+  budget=16384 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=1068 ev=0 rec=0
+  q7:   active=1342 ev=0 rec=0
+  q8:   active=1616 ev=0 rec=0
+  q9:   active=1891 ev=0 rec=0
+  q10:   active=2165 ev=0 rec=0
+  q11:   active=2440 ev=0 rec=0
+
+>>> running policy=truncate
+  kill: python before=2 after=0
+  launch: policy=truncate budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=16 rec=0
+  q8:   active=849 ev=22 rec=0
+  q9:   active=868 ev=30 rec=0
+  q10:   active=886 ev=40 rec=0
+  q11:   active=905 ev=52 rec=0
+
+>>> running policy=evoke
+  kill: python before=2 after=0
+  launch: policy=evoke budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=20 rec=4
+  q8:   active=848 ev=30 rec=8
+  q9:   active=867 ev=42 rec=12
+  q10:   active=885 ev=56 rec=16
+  q11:   active=904 ev=72 rec=20
+
+## Baseline comparison (turns=14)
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   19.4s |
+| truncate      | PASS  |        66 |          0 |    685 |   20.8s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.2s |
+
+results JSON: results/baseline_n15/run_13.json
+=== Run 14 ===
+
+>>> running policy=no_eviction
+  kill: python before=2 after=0
+  launch: policy=no_eviction budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=16384
+  budget=16384 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=1068 ev=0 rec=0
+  q7:   active=1342 ev=0 rec=0
+  q8:   active=1616 ev=0 rec=0
+  q9:   active=1891 ev=0 rec=0
+  q10:   active=2165 ev=0 rec=0
+  q11:   active=2440 ev=0 rec=0
+
+>>> running policy=truncate
+  kill: python before=2 after=0
+  launch: policy=truncate budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=16 rec=0
+  q8:   active=849 ev=22 rec=0
+  q9:   active=868 ev=30 rec=0
+  q10:   active=886 ev=40 rec=0
+  q11:   active=905 ev=52 rec=0
+
+>>> running policy=evoke
+  kill: python before=2 after=0
+  launch: policy=evoke budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=20 rec=4
+  q8:   active=848 ev=30 rec=8
+  q9:   active=867 ev=42 rec=12
+  q10:   active=885 ev=56 rec=16
+  q11:   active=904 ev=72 rec=20
+
+## Baseline comparison (turns=14)
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   18.6s |
+| truncate      | PASS  |        66 |          0 |    685 |   20.9s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.0s |
+
+results JSON: results/baseline_n15/run_14.json
+=== Run 15 ===
+
+>>> running policy=no_eviction
+  kill: python before=2 after=0
+  launch: policy=no_eviction budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=16384
+  budget=16384 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=1068 ev=0 rec=0
+  q7:   active=1342 ev=0 rec=0
+  q8:   active=1616 ev=0 rec=0
+  q9:   active=1891 ev=0 rec=0
+  q10:   active=2165 ev=0 rec=0
+  q11:   active=2440 ev=0 rec=0
+
+>>> running policy=truncate
+  kill: python before=2 after=0
+  launch: policy=truncate budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=16 rec=0
+  q8:   active=849 ev=22 rec=0
+  q9:   active=868 ev=30 rec=0
+  q10:   active=886 ev=40 rec=0
+  q11:   active=905 ev=52 rec=0
+
+>>> running policy=evoke
+  kill: python before=2 after=0
+  launch: policy=evoke budget=1024 n_ctx=16384
+  poll #1: /health not up yet (URLError)
+  poll #2: /health budget=1024
+  budget=1024 n_ctx=16384
+  fact: active=66 ev=0 rec=0
+  q0:   active=154 ev=0 rec=0
+  q1:   active=300 ev=0 rec=0
+  q2:   active=422 ev=0 rec=0
+  q3:   active=549 ev=0 rec=0
+  q4:   active=706 ev=0 rec=0
+  q5:   active=844 ev=0 rec=0
+  q6:   active=621 ev=11 rec=0
+  q7:   active=702 ev=20 rec=4
+  q8:   active=848 ev=30 rec=8
+  q9:   active=867 ev=42 rec=12
+  q10:   active=885 ev=56 rec=16
+  q11:   active=904 ev=72 rec=20
+
+## Baseline comparison (turns=14)
+
+| policy        | probe | evictions | recoveries | active | elapsed |
+|---------------|-------|----------:|-----------:|-------:|--------:|
+| no_eviction   | PASS  |         0 |          0 |   2476 |   18.8s |
+| truncate      | PASS  |        66 |          0 |    685 |   20.6s |
+| evoke         | PASS  |        90 |         24 |    684 |   21.1s |
+
+results JSON: results/baseline_n15/run_15.json

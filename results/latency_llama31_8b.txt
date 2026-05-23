@@ -1,0 +1,18 @@
+kv_block primitives: True
+
+--- warmup (5 cycles at 40 tokens) ---
+  cycle 0: save=   3.94ms  load=   1.99ms  bytes=5244140
+  cycle 1: save=   3.89ms  load=   1.95ms  bytes=5244140
+  cycle 2: save=   3.80ms  load=   1.93ms  bytes=5244140
+  cycle 3: save=   3.82ms  load=   1.93ms  bytes=5244140
+  cycle 4: save=   3.90ms  load=   1.93ms  bytes=5244140
+
+--- block-size sweep (3 trials each, post-warmup) ---
+  n_tok save(ms)   load(ms)   reprefill(ms)  bytes     
+  20    2.65       1.78       12.58          2622460   
+  40    3.82       1.94       14.62          5244140   
+  80    5.82       2.46       19.94          10487500  
+  160   10.30      3.60       32.55          20974220  
+  320   19.82      5.77       61.23          41947660  
+  640   39.05      8.87       121.83         83894540  
+  1280  74.35      15.66      236.89         167788300 

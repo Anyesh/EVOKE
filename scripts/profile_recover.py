@@ -8,7 +8,11 @@ find the crossover where kv_restore beats a re-prefill.
 from __future__ import annotations
 
 import os
+import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from evoke.llama_engine import LlamaCppEngine
 
