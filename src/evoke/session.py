@@ -340,8 +340,9 @@ class Session:
         # needle was resident, recovery brought 4 weakly-matching haystack
         # blocks to the cache tail, and the model regurgitated those instead
         # of answering from the needle.
-        resident_max = self._max_resident_similarity(query_emb)
-        scored = [(s, key) for s, key in scored if s > resident_max]
+        if self._config.smart_recover_resident_gate:
+            resident_max = self._max_resident_similarity(query_emb)
+            scored = [(s, key) for s, key in scored if s > resident_max]
 
         threshold = self._config.smart_recover_min_similarity
         if threshold > 0.0:
@@ -480,6 +481,7 @@ class Session:
             tail_text = self._engine.detokenize(tail)
             if tail_text:
                 self._manager._last_user_text = tail_text
+            if tail_text and self._config.smart_recover_before_decode:
                 recovered = self._smart_recover(k=self._recovery_k)
             self._manager.add_context_tokens(
                 tail,
@@ -489,6 +491,8 @@ class Session:
             )
             self._turn_id += 1
             self._cached_tokens.extend(tail)
+            if tail_text and not self._config.smart_recover_before_decode:
+                recovered = self._smart_recover(k=self._recovery_k)
 
         stats = self._manager.get_stats()
         return SyncStats(

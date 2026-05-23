@@ -88,6 +88,9 @@ class EvokeConfig:
     # builds without fastembed installed keep working.
     use_retrieval_embeddings: bool = False
 
+    smart_recover_before_decode: bool = True
+    smart_recover_resident_gate: bool = True
+
     eviction_policy: str = "watermark"
     high_watermark: float = 0.95
     low_watermark: float = 0.75
