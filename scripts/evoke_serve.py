@@ -148,7 +148,8 @@ def main() -> int:
     )
     print(f"  ready (n_embd={engine.n_embd}, kv_block={engine.supports_kv_block})")
 
-    app = create_app(engine, model_name, config=config)
+    max_sessions = int(os.environ.get("EVOKE_MAX_SESSIONS", "8"))
+    app = create_app(engine, model_name, config=config, max_sessions=max_sessions)
     print(f"serving on http://{host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info")
     return 0

@@ -455,6 +455,9 @@ def run_cell(
         low_watermark=0.75,
     )
     config_kwargs.update(overrides)
+    attn_layer_env = os.environ.get("EVOKE_ATTN_LAYER")
+    if attn_layer_env is not None and "w_attention" in config_kwargs:
+        config_kwargs["attention_capture_layer"] = int(attn_layer_env)
     config = EvokeConfig(**config_kwargs)
     attn_scorer = _build_scorer(engine, config)
     retrieval = _RETRIEVAL_EMBEDDER if config.use_retrieval_embeddings else None

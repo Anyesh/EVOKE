@@ -1,0 +1,17 @@
+=== concurrency N=1 ===
+  sessions ok: 1/1; probe_ok: 1/1; total wall: 8.64s
+  per-session wallclock min/p50/max: 8.63s / 8.63s / 8.63s
+  per-turn latency p50/p99: 0.556s / 0.822s
+=== concurrency N=4 ===
+  sessions ok: 4/4; probe_ok: 4/4; total wall: 48.73s
+  per-session wallclock min/p50/max: 45.81s / 47.27s / 48.73s
+  per-turn latency p50/p99: 3.432s / 4.553s
+=== concurrency N=8 ===
+  sessions ok: 8/8; probe_ok: 8/8; total wall: 97.54s
+  per-session wallclock min/p50/max: 90.83s / 94.18s / 97.53s
+  per-turn latency p50/p99: 6.837s / 9.260s
+=== concurrency N=16 ===
+  sessions ok: 16/16; probe_ok: 16/16; total wall: 203.16s
+  per-session wallclock min/p50/max: 190.12s / 196.60s / 203.15s
+  per-turn latency p50/p99: 14.906s / 17.894s
+results JSON: results/concurrency_qwen25_7b.json
