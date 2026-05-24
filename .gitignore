@@ -34,6 +34,7 @@ results/*launch_log
 
 # Docs
 docs/
+archive/
 
 # LaTeX build artifacts
 paper/*.aux
