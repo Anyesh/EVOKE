@@ -4,7 +4,7 @@
 
 Long-running LLM agent sessions outgrow the KV cache within a few turns. When that happens, production servers either truncate the oldest history (and lose information that may still matter) or re-prefill the full conversation on every call (and pay full forward-pass compute regardless of whether the prior context turned out to be needed).
 
-EVOKE adds a third option: evict cold blocks to host RAM at metadata cost, and when a future turn needs them, splice the original K and V tensors back into the unified cache at a new logical position with one RoPE phase shift, with **no model forward pass**. The mechanism lives in a forked llama.cpp (three new C primitives) plus a Python policy layer and an OpenAI-compatible server.
+EVOKE makes eviction reversible. Cold blocks leave to host RAM at metadata cost; when a future turn needs an evicted block, a recompute-free splice writes the saved K and V tensors back into the active cache through a single RoPE rotation. The cost is the tensor transfer. The recovered bytes are byte-identical to what the model originally attended, addressed by block identity rather than retrieved as a similar substitute (where RAG would substitute re-encoded text). The mechanism lives in a forked llama.cpp (three new C primitives) plus a Python policy layer and an OpenAI-compatible server.
 
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
@@ -27,7 +27,7 @@ EVOKE adds a third option: evict cold blocks to host RAM at metadata cost, and w
 
 All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER, 16 GB VRAM, CUDA 13.1, Flash Attention enabled). Server-class hardware (A100/H100) is not measured. See `paper/paper.pdf` §7 for full tables.
 
-**Primitive latency.** `kv_block_load` runs in 0.48–7.25 ms across block sizes 20–1280 on Qwen 2.5 7B, 1.78–15.66 ms on Llama 3.1 8B. Full save+load lifecycle is **5.9–7.5× faster than re-prefilling the same tokens** on Qwen, **2.6–2.8× on Llama**.
+**Primitive latency.** `kv_block_load` runs in 0.48 to 7.25 ms across block sizes 20 to 1280 on Qwen 2.5 7B, 1.78 to 15.66 ms on Llama 3.1 8B. Full save+load lifecycle is **5.9 to 7.5× faster than re-prefilling the same tokens** on Qwen, **2.6 to 2.8× on Llama**.
 
 | Block (tokens) | save (ms) | load (ms) | re-prefill (ms) | speedup |
 |---:|---:|---:|---:|---:|
@@ -39,11 +39,11 @@ All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER,
 
 **Integrated system, 14-turn planted-fact head-to-head (n=15, budget 1024 vs n\_ctx=16384, ~3.6× compression).** EVOKE matches the unconstrained `no_eviction` baseline's recall (15/15 probe-correct) at `truncate`-parity wall-clock (21.20 s [21.07, 21.33] vs 22.11 s [19.46, 24.76]; `truncate`'s SSH-launch jitter dominates its CI). The honest framing is **identical footprint to truncation plus a recovery capability truncation fundamentally lacks**, not a speed win.
 
-**Multi-fact n=15 sweep, budget 1024, Qwen 2.5 7B (75 facts per cell).** Recovery-bearing policies cluster at **48–64%** absolute pass rate; every recovery-less baseline (recency, StreamingLLM, EVOKE-discard/breadcrumb, H2O, SnapKV) lands at **0–4%**.
+**Multi-fact n=15 sweep, budget 1024, Qwen 2.5 7B (75 facts per cell).** Recovery-bearing policies cluster at **48 to 64%** absolute pass rate; every recovery-less baseline (recency, StreamingLLM, EVOKE-discard/breadcrumb, H2O, SnapKV) lands at **0 to 4%**.
 
-**NIAH at 3.6× compression.** Recovery-bearing reaches **96–100% on Qwen 2.5 7B** and **76–88% on Llama 3.1 8B**. Recovery-less baselines flatten at 0–44% at the tightest budget. (SnapKV climbs to 68–84% on Llama NIAH at looser budgets as a documented single-needle exception driven by heavy-hitter retention.)
+**NIAH at 3.6× compression.** Recovery-bearing reaches **96 to 100% on Qwen 2.5 7B** and **76 to 88% on Llama 3.1 8B**. Recovery-less baselines flatten at 0 to 44% at the tightest budget. (SnapKV climbs to 68 to 84% on Llama NIAH at looser budgets as a documented single-needle exception driven by heavy-hitter retention.)
 
-**Cross-architecture multifact at b=1024 (n=5).** The recovery-bearing-vs-recovery-less divide reproduces on architecturally diverse substrates: **Qwen 3.5 9B** (hybrid Mamba/Attention + thinking) reaches **68% [48.41, 82.80]** EVOKE vs 0–8% recovery-less (H2O 8% best comparator); **Qwen 3.6 35B-A3B** (MoE + thinking, IQ2_M) reaches **52% [33.50, 69.97]** EVOKE vs 0% every baseline including H2O. Absolute pass-rate falls with quantization aggressiveness but the relative advantage (5×+ over best baseline) holds across all three architectures.
+**Cross-architecture multifact at b=1024 (n=5).** The recovery-bearing-versus-recovery-less divide reproduces on architecturally diverse substrates: **Qwen 3.5 9B** (hybrid Mamba/Attention + thinking) reaches **68% [48.41, 82.80]** EVOKE versus 0 to 8% recovery-less (H2O 8% best comparator); **Qwen 3.6 35B-A3B** (MoE + thinking, IQ2_M) reaches **52% [33.50, 69.97]** EVOKE versus 0% every baseline including H2O. Absolute pass-rate falls with quantization aggressiveness but the relative advantage (5× or more over best baseline) holds across all three architectures.
 
 **Eviction-scoring winner is budget-regime-dependent.** A same-substrate InfLLM adaptation at K=8 statistically separates from EVOKE at the tightest budget on both fully-swept architectures (Llama b=512: InfLLM **81.3% [71.1, 88.5]** vs evoke\_attention **60.0% [48.7, 70.3]**, non-overlapping Wilson CIs; Qwen b=512: InfLLM 81.3% [71.1, 88.5] vs evoke\_kv\_restore 50.7% [39.6, 61.7], also non-overlapping). EVOKE pulls ahead only at the loosest budget where headroom lets the scorer pay off. Both policies use the same recompute-free recovery primitive; the load-bearing contribution is the primitive itself, with the attention scorer as a regime-targeted improvement on top.
 
@@ -51,7 +51,7 @@ All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER,
 
 Per-block score in [0, 1]; lowest scores get evicted under watermark pressure. Per the Appendix A.4 factorial in the paper, one decision drives the bulk of the gain:
 
-- **(load-bearing) Retrieval-tuned embedding (`bge-small-en-v1.5`)** scoring blocks against the raw user-message text. Marginal +72pp on NIAH at b=512. LM-hidden-state cosines crowd into a 0.85–0.93 band on retrieval-style workloads; bge-small widens it to 0.4–0.9, which is what lets top-k selection actually pick the needle block over haystack noise.
+- **(load-bearing) Retrieval-tuned embedding (`bge-small-en-v1.5`)** scoring blocks against the raw user-message text. Marginal +72pp on NIAH at b=512. LM-hidden-state cosines crowd into a 0.85 to 0.93 band on retrieval-style workloads; bge-small widens it to 0.4 to 0.9, which is what lets top-k selection actually pick the needle block over haystack noise.
 - **(conditional)** Running the recovery splice *before* the new user-message tail is decoded. Adds +20pp when the retrieval embedder is on; actively hurts when it's off.
 - **(zero measurable effect on the benchmark we ran the factorial against)** Resident-gate that excludes breadcrumbs whose similarity doesn't beat the best non-current-turn resident block.
 - **The model's own attention** (`evoke_attention` policy). A second softmax for one or more chosen transformer layers runs alongside the main attention path. Regime-targeted: pays off on single-needle workloads where attention concentrates on one recoverable target; on multi-fact at tight budget, a larger-K pure-retrieval recovery can outperform it.
@@ -66,7 +66,7 @@ See `paper/paper.pdf` §4 for the scoring equation, Appendix A.4 for the factori
 - **Quantized KV cache.** 4-bit symmetric KV (`type_k=type_v=q4_0`) collapses generation to incoherent token salad on Qwen 2.5 7B (paper Appendix A.8). KIVI-style per-channel-per-token asymmetric quantization is **not** in stock llama.cpp and is the open comparison we have *not* run.
 - **Memory cost.** Saved blocks live in host RAM. Qwen 2.5 7B at `block_size=128` costs 7 MiB per block, ~7 GiB per 1000-block session. Multi-tenant deployments pay N × that. `kv_restore_ram_budget_bytes` + `kv_restore_spill_path` (disk-spill tier) bound this; both off by default.
 
-## Intuition: why eviction is non-destructive
+## Why eviction doesn't corrupt the cache
 
 Take a 20-token sentence (one token per word):
 
@@ -75,7 +75,7 @@ pos:  0   1   2  3   4   5   6   7   8   9  10     11   12   13    14    15     
 tok: Cat sat in  a  mat and mat is  red in  color. house is  green in    color. cat is   very pretty
 ```
 
-Suppose the scorer marks `house is green in color.` (positions 11–15) as low-relevance. EVOKE evicts in two engine calls. `seq_rm(seq=0, p0=11, p1=16)` frees those five cells in the unified KV buffer (no dangling reference: `Q` is never cached, only `K` and `V` are). `seq_add(seq=0, p0=16, p1=20, delta=-5)` then re-labels the survivors `cat is very pretty` from positions 16–19 to 11–14 and queues a deferred RoPE shift of `Δ = -5` on their `K` rows. K and V bytes never move in memory; only positions change.
+Suppose the scorer marks `house is green in color.` (positions 11 to 15) as low-relevance. EVOKE evicts in two engine calls. `seq_rm(seq=0, p0=11, p1=16)` frees those five cells in the unified KV buffer (no dangling reference: `Q` is never cached, only `K` and `V` are). `seq_add(seq=0, p0=16, p1=20, delta=-5)` then re-labels the survivors `cat is very pretty` from positions 16 to 19 down to 11 to 14 and queues a deferred RoPE shift of `Δ = -5` on their `K` rows. K and V bytes never move in memory; only positions change.
 
 llama.cpp applies the queued shift lazily at the next attention compute, multiplying each survivor's `K` by `R(Δ · θ_i)` per dimension pair. `V` is positional-free and untouched. After the shift, `Q_new · K_survivor` returns the same relative-position dot product the model would compute if `house is green in color.` had never been decoded. The model behaves identically to one that read the truncated sentence directly: information loss, never corruption.
 
@@ -140,14 +140,6 @@ cd ~/your-project && opencode
 ## Live opencode integration
 
 A live opencode session against Qwen 3.5 9B (hybrid Mamba/Attention + thinking, budget=2048) ran 250 cumulative evictions and 4 smart-recoveries with `active_tokens` held near 1414 (within budget) while `cached_tokens` grew to 32902. The agent's conversation was 23× larger than what was held in GPU at any moment.
-
-## Status
-
-Research prototype targeting both a working system and a paper (`paper/paper.pdf`). Honest about what it is and isn't:
-
-- **What it is.** A recompute-free K/V block save/restore primitive in a forked llama.cpp, a Python policy layer on top of it, and an OpenAI-compatible server that exposes both. End-to-end working with full budget sweeps on Qwen 2.5 7B and Llama 3.1 8B, plus full NIAH and multifact grids at b=1024 on Qwen 3.5 9B (hybrid Mamba/Attention + thinking) and Qwen 3.6 35B-A3B (MoE + thinking, IQ2_M). All numbers from a single RTX 4070 Ti SUPER.
-- **What it isn't.** Not a paper that beats all baselines (InfLLM wins tight-budget multifact with non-overlapping CIs). Not a port that works on vLLM v1 (the primitive composes, the policy layer doesn't). Not a benchmark on real-agent traces (SWE-bench, τ-bench, recorded Claude Code sessions are future work). Not a comparison against KIVI (out-of-scope for stock llama.cpp).
-- **Open follow-ups tracked in paper §8/§9.** Session abstraction for paged substrates; iSWA end-to-end on Gemma; no-shift eviction mode for hybrid+thinking; KIVI head-to-head; real-agent traces; multi-layer scorer.
 
 ## License
 
