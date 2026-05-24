@@ -1,5 +1,7 @@
 # EVOKE
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20361982.svg)](https://doi.org/10.5281/zenodo.20361982)
+
 **A KV-cache memory hierarchy with recompute-free block recovery for LLM serving.**
 
 Long-running LLM agent sessions outgrow the KV cache within a few turns. When that happens, production servers either truncate the oldest history (and lose information that may still matter) or re-prefill the full conversation on every call (and pay full forward-pass compute regardless of whether the prior context turned out to be needed).
