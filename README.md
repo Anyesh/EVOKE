@@ -18,7 +18,7 @@ EVOKE makes eviction reversible. Cold blocks leave to host RAM at metadata cost;
 
 *Same demo on a hybrid architecture. `<think>...</think>` traces handled via `EVOKE_SUPPRESS_THINKING_STRIP=1`. **26 evictions, 4 recoveries**, fact recalled.*
 
-## What it actually is
+## What it is
 
 - **Three C primitives in a [forked llama.cpp](https://github.com/Anyesh/llama.cpp).** `llama_kv_block_save` and `llama_kv_block_load` serialise a position range's K/V tensors to a host buffer and splice them back with per-cell RoPE re-anchoring; `llama_attn_capture_*` taps per-head softmax attention weights from up to 16 chosen transformer layers once per decode.
 - **A Python policy layer** (`evoke/manager.py`, `evoke/scorer.py`, `evoke/attention_scorer.py`) that drives watermark-triggered eviction via a multi-signal scorer and routes recovery through three backends: `discard`, `breadcrumb`, or `kv_restore` (the recompute-free splice).
@@ -39,7 +39,7 @@ All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER,
 |  640 | 16.37 | 4.34 | 118.36 | 27× |
 | 1280 | 31.90 | 7.25 | 232.18 | 32× |
 
-**Integrated system, 14-turn planted-fact head-to-head (n=15, budget 1024 vs n\_ctx=16384, ~3.6× compression).** EVOKE matches the unconstrained `no_eviction` baseline's recall (15/15 probe-correct) at `truncate`-parity wall-clock (21.20 s [21.07, 21.33] vs 22.11 s [19.46, 24.76]; `truncate`'s SSH-launch jitter dominates its CI). The honest framing is **identical footprint to truncation plus a recovery capability truncation fundamentally lacks**, not a speed win.
+**Integrated system, 14-turn planted-fact head-to-head (n=15, budget 1024 vs n\_ctx=16384, ~3.6× compression).** EVOKE matches the unconstrained `no_eviction` baseline's recall (15/15 probe-correct) at `truncate`-parity wall-clock (21.20 s [21.07, 21.33] vs 22.11 s [19.46, 24.76]; `truncate`'s SSH-launch jitter dominates its CI). The result: **identical footprint to truncation, plus a recovery capability truncation does not have**. Not a speed win.
 
 **Multi-fact n=15 sweep, budget 1024, Qwen 2.5 7B (75 facts per cell).** Recovery-bearing policies cluster at **48 to 64%** absolute pass rate; every recovery-less baseline (recency, StreamingLLM, EVOKE-discard/breadcrumb, H2O, SnapKV) lands at **0 to 4%**.
 
@@ -47,13 +47,13 @@ All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER,
 
 **Cross-architecture multifact at b=1024 (n=5).** The recovery-bearing-versus-recovery-less divide reproduces on architecturally diverse substrates: **Qwen 3.5 9B** (hybrid Mamba/Attention + thinking) reaches **68% [48.41, 82.80]** EVOKE versus 0 to 8% recovery-less (H2O 8% best comparator); **Qwen 3.6 35B-A3B** (MoE + thinking, IQ2_M) reaches **52% [33.50, 69.97]** EVOKE versus 0% every baseline including H2O. Absolute pass-rate falls with quantization aggressiveness but the relative advantage (5× or more over best baseline) holds across all three architectures.
 
-**Eviction-scoring winner is budget-regime-dependent.** A same-substrate InfLLM adaptation at K=8 statistically separates from EVOKE at the tightest budget on both fully-swept architectures (Llama b=512: InfLLM **81.3% [71.1, 88.5]** vs evoke\_attention **60.0% [48.7, 70.3]**, non-overlapping Wilson CIs; Qwen b=512: InfLLM 81.3% [71.1, 88.5] vs evoke\_kv\_restore 50.7% [39.6, 61.7], also non-overlapping). EVOKE pulls ahead only at the loosest budget where headroom lets the scorer pay off. Both policies use the same recompute-free recovery primitive; the load-bearing contribution is the primitive itself, with the attention scorer as a regime-targeted improvement on top.
+**Eviction-scoring winner is budget-regime-dependent.** A same-substrate InfLLM adaptation at K=8 statistically separates from EVOKE at the tightest budget on both fully-swept architectures (Llama b=512: InfLLM **81.3% [71.1, 88.5]** vs evoke\_attention **60.0% [48.7, 70.3]**, non-overlapping Wilson CIs; Qwen b=512: InfLLM 81.3% [71.1, 88.5] vs evoke\_kv\_restore 50.7% [39.6, 61.7], also non-overlapping). EVOKE pulls ahead only at the loosest budget where headroom lets the scorer pay off. Both policies use the same recompute-free recovery primitive; the core contribution is the primitive itself, with the attention scorer as a regime-targeted improvement on top.
 
 ## How relevance scoring works
 
 Per-block score in [0, 1]; lowest scores get evicted under watermark pressure. Per the Appendix A.4 factorial in the paper, one decision drives the bulk of the gain:
 
-- **(load-bearing) Retrieval-tuned embedding (`bge-small-en-v1.5`)** scoring blocks against the raw user-message text. Marginal +72pp on NIAH at b=512. LM-hidden-state cosines crowd into a 0.85 to 0.93 band on retrieval-style workloads; bge-small widens it to 0.4 to 0.9, which is what lets top-k selection actually pick the needle block over haystack noise.
+- **(decisive) Retrieval-tuned embedding (`bge-small-en-v1.5`)** scoring blocks against the raw user-message text. Marginal +72pp on NIAH at b=512. LM-hidden-state cosines crowd into a 0.85 to 0.93 band on retrieval-style workloads; bge-small widens it to 0.4 to 0.9, so top-k selection can pick the needle block over haystack noise.
 - **(conditional)** Running the recovery splice *before* the new user-message tail is decoded. Adds +20pp when the retrieval embedder is on; actively hurts when it's off.
 - **(zero measurable effect on the benchmark we ran the factorial against)** Resident-gate that excludes breadcrumbs whose similarity doesn't beat the best non-current-turn resident block.
 - **The model's own attention** (`evoke_attention` policy). A second softmax for one or more chosen transformer layers runs alongside the main attention path. Regime-targeted: pays off on single-needle workloads where attention concentrates on one recoverable target; on multi-fact at tight budget, a larger-K pure-retrieval recovery can outperform it.
@@ -142,6 +142,9 @@ cd ~/your-project && opencode
 ## Live opencode integration
 
 A live opencode session against Qwen 3.5 9B (hybrid Mamba/Attention + thinking, budget=2048) ran 250 cumulative evictions and 4 smart-recoveries with `active_tokens` held near 1414 (within budget) while `cached_tokens` grew to 32902. The agent's conversation was 23× larger than what was held in GPU at any moment.
+
+## Disclaimer
+All the scripts for experiments in this repository has been created with the help of AI.
 
 ## License
 
