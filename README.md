@@ -143,7 +143,7 @@ cd ~/your-project && opencode
 
 A live opencode session against Qwen 3.5 9B (hybrid Mamba/Attention + thinking, budget=2048) ran 250 cumulative evictions and 4 smart-recoveries with `active_tokens` held near 1414 (within budget) while `cached_tokens` grew to 32902. The agent's conversation was 23× larger than what was held in GPU at any moment.
 
-## Disclaimer
+## Acknowledgements
 All the scripts for experiments in this repository has been created with the help of AI.
 
 ## License
