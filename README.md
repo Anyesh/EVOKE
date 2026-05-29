@@ -6,7 +6,7 @@
 
 Long-running LLM agent sessions outgrow the KV cache within a few turns. When that happens, production servers either truncate the oldest history (and lose information that may still matter) or re-prefill the full conversation on every call (and pay full forward-pass compute regardless of whether the prior context turned out to be needed).
 
-EVOKE makes eviction reversible. Cold blocks leave to host RAM at metadata cost; when a future turn needs an evicted block, a recompute-free splice writes the saved K and V tensors back into the active cache through a single RoPE rotation. The cost is the tensor transfer. The recovered bytes are byte-identical to what the model originally attended, addressed by block identity rather than retrieved as a similar substitute (where RAG would substitute re-encoded text). The mechanism lives in a forked llama.cpp (three new C primitives) plus a Python policy layer and an OpenAI-compatible server.
+EVOKE makes eviction reversible. Cold blocks leave to host RAM at metadata cost; when a future turn needs an evicted block, a recompute-free splice writes the saved K and V tensors back into the active cache through a single RoPE rotation. The cost is the tensor transfer. The recovered bytes are the same K and V the model first computed (re-anchored in position, not recomputed against the new context), addressed by block identity rather than retrieved as a similar substitute (where RAG would substitute re-encoded text). The mechanism lives in a forked llama.cpp (three new C primitives) plus a Python policy layer and an OpenAI-compatible server.
 
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
