@@ -27,6 +27,11 @@ class SavedBlock:
     source: BlockSource
     representative_embedding: np.ndarray | None
     saved_at_step: int
+    # The block's logical start position at eviction time. In sparse mode this
+    # is the true absolute index the block must be spliced back into on
+    # recovery (no re-anchoring); in compact mode it is informational
+    # (recovery targets the tail instead).
+    original_start: int = 0
 
 
 class RecoveryBackend(Protocol):
@@ -126,6 +131,7 @@ class KVRestoreBackend:
                 source=block.source,
                 representative_embedding=block.representative_embedding,
                 saved_at_step=step,
+                original_start=block.logical_start,
             )
             self._total_bytes += len(kv_bytes)
             self._breadcrumbs[block.key] = Breadcrumb(
@@ -172,6 +178,7 @@ class KVRestoreBackend:
             source=block.source,
             representative_embedding=block.representative_embedding,
             saved_at_step=block.saved_at_step,
+            original_start=block.original_start,
         )
         self._spilled[key] = (fname, meta)
 
@@ -211,6 +218,7 @@ class KVRestoreBackend:
             source=meta.source,
             representative_embedding=meta.representative_embedding,
             saved_at_step=meta.saved_at_step,
+            original_start=meta.original_start,
         )
 
     def peek_embedding(self, key: str) -> np.ndarray | None:

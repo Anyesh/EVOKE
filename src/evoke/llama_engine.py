@@ -360,7 +360,7 @@ class LlamaCppEngine:
     def get_kv_cache_token_count(self) -> int:
         return self._token_count
 
-    def evict_ranges(self, ranges: list[tuple[int, int]]) -> bool:
+    def evict_ranges(self, ranges: list[tuple[int, int]], compact: bool = True) -> bool:
         # Returns True if the eviction was applied. Hybrid (Mamba+Attention)
         # memories reject partial tail rollback in llama_memory_seq_rm (the
         # recurrent half cannot slice its state) and return false WITHOUT
@@ -370,25 +370,37 @@ class LlamaCppEngine:
         # using it would desync the recurrent position state from the attention
         # one and break decode on subsequent turns, so we accept that tail
         # eviction is a no-op on hybrid models.
+        #
+        # compact=True re-indexes survivors so positions stay contiguous
+        # (seq_rm + seq_add). compact=False (sparse mode) drops the cells
+        # with seq_rm only: survivors keep their true absolute positions, the
+        # axis grows a hole, and the tail (_next_write_pos) is unchanged so new
+        # tokens keep decoding at their genuine index. The hole is later filled
+        # in place by kv_block_load at the original position.
         if not ranges:
             return True
         ranges = sorted(ranges)
         n = self._next_write_pos
+        removed = 0
         for pos_start, pos_end in ranges:
             ok = llama_cpp.llama_memory_seq_rm(self._memory, 0, pos_start, pos_end)
             if not ok:
                 return False
-        removed = 0
-        cursor = 0
-        for pos_start, pos_end in ranges:
-            if removed > 0 and pos_start > cursor:
-                llama_cpp.llama_memory_seq_add(
-                    self._memory, 0, cursor, pos_start, -removed
-                )
             removed += pos_end - pos_start
+        if not compact:
+            self._token_count -= removed
+            return True
+        cursor = 0
+        shifted = 0
+        for pos_start, pos_end in ranges:
+            if shifted > 0 and pos_start > cursor:
+                llama_cpp.llama_memory_seq_add(
+                    self._memory, 0, cursor, pos_start, -shifted
+                )
+            shifted += pos_end - pos_start
             cursor = pos_end
-        if removed > 0 and cursor < n:
-            llama_cpp.llama_memory_seq_add(self._memory, 0, cursor, n, -removed)
+        if shifted > 0 and cursor < n:
+            llama_cpp.llama_memory_seq_add(self._memory, 0, cursor, n, -shifted)
         self._next_write_pos = n - removed
         self._token_count = n - removed
 
@@ -438,7 +450,9 @@ class LlamaCppEngine:
             # the first 4 bytes of the buffer are the cell count (uint32) written
             # by block_write; advance our position tracking past the spliced span
             n_cells = int.from_bytes(data[:4], "little")
-            self._next_write_pos = new_p0 + n_cells
+            # max(): in sparse mode a block is spliced into a mid-cache
+            # hole at new_p0 < tail, so the tail must not move backwards.
+            self._next_write_pos = max(self._next_write_pos, new_p0 + n_cells)
             self._token_count += n_cells
         return ok
 

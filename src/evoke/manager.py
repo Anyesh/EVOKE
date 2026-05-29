@@ -371,7 +371,13 @@ class EvokeManager:
         if saved is None:
             return False
 
-        new_p0 = self._engine.next_write_pos
+        # Sparse mode restores the block at its original absolute position
+        # (the hole left by seq_rm), so the C splice computes a zero RoPE shift.
+        # Compact mode appends at the contiguous tail and re-anchors.
+        if self._config.position_mode == "sparse":
+            new_p0 = saved.original_start
+        else:
+            new_p0 = self._engine.next_write_pos
         if not self._engine.kv_block_load(saved.kv_bytes, new_p0):
             return False
 
@@ -485,9 +491,13 @@ class EvokeManager:
 
         self._recovery.on_evict(blocks, self._step)
         ranges = sorted((b.logical_start, b.logical_end) for b in blocks)
-        self._engine.evict_ranges(ranges)
+        compact = self._config.position_mode == "compact"
+        self._engine.evict_ranges(ranges, compact=compact)
         self._positions.remove_blocks(block_ids)
-        self._positions.recompact()
+        if compact:
+            # Sparse mode must keep survivors at their true absolute positions,
+            # so it skips the contiguous re-index that recompact() performs.
+            self._positions.recompact()
 
         # Drop attention windows for evicted blocks so the scorer's map
         # doesn't grow unbounded over long-running sessions. Block IDs are

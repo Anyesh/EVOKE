@@ -50,17 +50,31 @@ class MockEngine:
     def get_kv_cache_token_count(self) -> int:
         return len(self._kv_positions)
 
-    def evict_ranges(self, ranges: list[tuple[int, int]]) -> bool:
+    def evict_ranges(self, ranges: list[tuple[int, int]], compact: bool = True) -> bool:
         # Return True/False matching the LlamaCppEngine contract: True means
         # the eviction was applied. The original MockEngine returned None
         # implicitly, which Session.sync_prefix interpreted as falsy and so
         # fell through to session.reset() on every divergent turn. That
         # masked all session-path eviction tests against the mock.
+        #
+        # compact=True re-indexes survivors contiguously and shrinks the tail.
+        # compact=False (sparse mode) drops the evicted positions but leaves
+        # survivors at their absolute index and the tail unchanged, mirroring
+        # seq_rm-without-seq_add on the real engine.
         if not ranges:
             return True
         removed: set[int] = set()
         for pos_start, pos_end in ranges:
             removed.update(range(pos_start, pos_end))
+        if not compact:
+            self._kv_positions = {p for p in self._kv_positions if p not in removed}
+            self._token_at_pos = {
+                p: t for p, t in self._token_at_pos.items() if p not in removed
+            }
+            self._embeddings = {
+                p: e for p, e in self._embeddings.items() if p not in removed
+            }
+            return True
         survivors = [p for p in range(self._next_write_pos) if p not in removed]
         remap = {p: i for i, p in enumerate(survivors)}
         self._kv_positions = set(remap.values())
@@ -71,31 +85,6 @@ class MockEngine:
             remap[p]: e for p, e in self._embeddings.items() if p in remap
         }
         self._next_write_pos = len(survivors)
-        return True
-
-    def kv_block_save(self, p0: int, p1: int, seq_id: int = 0) -> bytes:
-        n = p1 - p0
-        payload = {
-            "tokens": [self._token_at_pos.get(p) for p in range(p0, p1)],
-            "embeddings": [self._embeddings.get(p) for p in range(p0, p1)],
-        }
-        return n.to_bytes(4, "little") + pickle.dumps(payload)
-
-    def kv_block_load(self, data: bytes, new_p0: int, seq_id: int = 0) -> bool:
-        if len(data) < 4:
-            return False
-        n = int.from_bytes(data[:4], "little")
-        payload = pickle.loads(data[4:])
-        for i in range(n):
-            pos = new_p0 + i
-            self._kv_positions.add(pos)
-            token = payload["tokens"][i]
-            if token is not None:
-                self._token_at_pos[pos] = token
-            emb = payload["embeddings"][i]
-            if emb is not None:
-                self._embeddings[pos] = emb
-        self._next_write_pos = new_p0 + n
         return True
 
     def kv_block_save(self, p0: int, p1: int, seq_id: int = 0) -> bytes:
@@ -115,7 +104,7 @@ class MockEngine:
             self._kv_positions.add(pos)
             self._token_at_pos[pos] = tok
             self._embeddings[pos] = self._rng.randn(self._n_embd).astype(np.float32)
-        self._next_write_pos = new_p0 + n
+        self._next_write_pos = max(self._next_write_pos, new_p0 + n)
         return True
 
     def reset(self) -> None:

@@ -89,6 +89,24 @@ class TestKVRestoreBackend:
         assert saved.saved_at_step == 4
         assert backend.take("doc#0") is None
 
+    def test_on_evict_records_original_start(self):
+        engine = MockEngine()
+        engine.process_tokens(list(range(200)))
+        backend = KVRestoreBackend(engine)
+
+        block = ActiveBlock(
+            block_id=0,
+            logical_start=64,
+            logical_end=128,
+            token_ids=list(range(64)),
+            key="doc#0",
+        )
+        backend.on_evict([block], step=1)
+
+        saved = backend.take("doc#0")
+        assert saved is not None
+        assert saved.original_start == 64
+
 
 class TestKVRestoreRamBudget:
     def _engine_with_payload_size(self, payload_bytes: int):
@@ -215,6 +233,7 @@ class TestKVRestoreDiskSpill:
         recovered = backend.take("old")
         assert recovered is not None
         assert recovered.kv_bytes == payload
+        assert recovered.original_start == 0
 
     def test_take_removes_spill_file(self, tmp_path):
         spill_dir = tmp_path / "spill"

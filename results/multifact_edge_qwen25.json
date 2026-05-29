@@ -1,0 +1,1333 @@
+{
+  "engine": "llama",
+  "distances": [
+    65536,
+    81920,
+    98304,
+    114688
+  ],
+  "n_facts": 12,
+  "seeds": 16,
+  "block_size": 64,
+  "elapsed_s": 6836.2,
+  "summary": {
+    "compact": {
+      "65536": {
+        "n": 16,
+        "mean_accuracy": 0.921875
+      },
+      "81920": {
+        "n": 16,
+        "mean_accuracy": 0.9739583333333334
+      },
+      "98304": {
+        "n": 16,
+        "mean_accuracy": 0.8385416666666666
+      },
+      "114688": {
+        "n": 16,
+        "mean_accuracy": 0.7604166666666666
+      }
+    },
+    "sparse": {
+      "65536": {
+        "n": 16,
+        "mean_accuracy": 0.9375
+      },
+      "81920": {
+        "n": 16,
+        "mean_accuracy": 0.75
+      },
+      "98304": {
+        "n": 16,
+        "mean_accuracy": 0.734375
+      },
+      "114688": {
+        "n": 16,
+        "mean_accuracy": 0.6354166666666666
+      }
+    }
+  },
+  "rows": [
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 660487\nProject: Cedar 647593\nProject: Marble 824219\nProject: Quartz 489241\nProject: Ember 157815\nProject: Willow 659387\nProject: Cobalt 351393\nProject: Saffron 160975\nProject: Onyx 5"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " \nProject: Falcon 291417\nProject: Cedar 776317\nProject: Marble 066907\nProject: Quartz 439150\nProject: Ember 008063\nProject: Willow 608377\nProject: Cobalt 690736\nProject: Saffron 406812\nProject: Onyx 6"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon: 011524\nProject: Cedar: 493909\nProject: Marble: 266858\nProject: Quartz: 784005\nProject: Ember: 756682\nProject: Willow: 823302\nProject: Cobalt: 522885\nProject: Saffron: 882768\nProject"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 398259\nProject: Cedar 791907\nProject: Marble 483378\nProject: Quartz 876232\nProject: Ember 860129\nProject: Willow 040479\nProject: Cobalt 666972\nProject: Saffron 510273\nProject: Onyx 46"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 341672\nProject: Cedar 110684\nProject: Marble 038854\nProject: Quartz 214304\nProject: Ember 432445\nProject: Willow 195683\nProject: Cobalt 237418\nProject: Saffron 404948\nProject: Onyx 10"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 945807\nProject: Cedar 302157\nProject: Marble 368193\nProject: Quartz 036426\nProject: Ember 212997\nProject: Willow 220033\nProject: Cobalt 224538\nProject: Saffron 323640\nProject: Onyx 56"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 917400\nProject: Cedar 297550\nProject: Marble 473688\nProject: Quartz 139849\nProject: Ember 165156\nProject: Willow 471341\nProject: Cobalt 093573\nProject: Saffron 898053\nProject: Onyx 9"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 526018\nProject: Cedar 159083\nProject: Marble 016613\nProject: Quartz 186091\nProject: Ember 390996\nProject: Willow 030824\nProject: Cobalt 628194\nProject: Saffron 821993\nProject: Onyx 2"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 356230\nProject: Cedar 123836\nProject: Marble 077767\nProject: Quartz 936173\nProject: Ember 048676\nProject: Willow 979748\nProject: Cobalt 610531\nProject: Saffron 783929\nProject: Onyx 1"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 795422\nProject: Cedar 058791\nProject: Marble 589062\nProject: Quartz 762230\nProject: Ember 128916\nProject: Willow 143361\nProject: Cobalt 203619\nProject: Saffron 306067\nProject: Onyx 1"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 906790\nProject: Cedar 377420\nProject: Marble 875135\nProject: Quartz 062956\nProject: Ember 644724\nProject: Willow 527379\nProject: Cobalt 609032\nProject: Saffron 348535\nProject: Onyx 00"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon: 787789\nProject: Cedar: 328792\nProject: Marble: 174218\nProject: Quartz: 096792\nProject: Ember: 908100\nProject: Willow: 339075\nProject: Cobalt: 793834\nProject: Saffron: 701746\nProject"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 748526\nProject: Cedar 057479\nProject: Marble 380927\nProject: Quartz 525309\nProject: Ember 318561\nProject: Willow 008316\nProject: Cobalt 716285\nProject: Saffron 982082\nProject: Onyx 13"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon: 442323\nProject: Cedar: 221834\nProject: Marble: 062904\nProject: Quartz: 214762\nProject: Ember: 453789\nProject: Willow: 656515\nProject: Cobalt: 285457\nProject: Saffron: 778243\nProject"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 198344\nProject: Cedar 417476\nProject: Marble 614355\nProject: Quartz 458228\nProject: Ember 420119\nProject: Willow 501436\nProject: Cobalt 697911\nProject: Saffron 995217\nProject: Onyx 14"
+    },
+    {
+      "mode": "compact",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " \nProject: Falcon 308023\nProject: Cedar 002531\nProject: Marble 575464\nProject: Quartz 533553\nProject: Ember 486397\nProject: Willow 671795\nProject: Cobalt 795761\nProject: Saffron 703282\nProject: Onyx 8"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 660487\nProject: Cedar 647593\nProject: Marble 824219\nProject: Quartz 489241\nProject: Ember 157815\nProject: Willow 659387\nProject: Cobalt 351393\nProject: Saffron 160975\nProject: Onyx 5"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon: 291417\nProject: Cedar: 776317\nProject: Marble: 066907\nProject: Quartz: 439150\nProject: Ember: 008063\nProject: Willow: 608377\nProject: Cobalt: 835337\nProject: Saffron: 406812\nProject"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 011524\nProject: Cedar 493909\nProject: Marble 266858\nProject: Quartz 784005\nProject: Ember 756682\nProject: Willow 823302\nProject: Cobalt 522885\nProject: Saffron 882768\nProject: Onyx 59"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 398259\nProject: Cedar 791907\nProject: Marble 483378\nProject: Quartz 876232\nProject: Ember 860129\nProject: Willow 040479\nProject: Cobalt 666972\nProject: Saffron 510273\nProject: Onyx 46"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 341672\nProject: Cedar 110684\nProject: Marble 038854\nProject: Quartz 214304\nProject: Ember 432445\nProject: Willow 195683\nProject: Cobalt 237418\nProject: Saffron 404948\nProject: Onyx 7"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon 945807\nProject: Cedar 302157\nProject: Marble 368193\nProject: Quartz 036426\nProject: Ember 212997\nProject: Willow 220033\nProject: Cobalt 224538\nProject: Saffron 323640\nProject: Onyx 5"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon 917400\nProject: Cedar 297550\nProject: Marble 473688\nProject: Quartz 139849\nProject: Ember 165156\nProject: Willow 471341\nProject: Cobalt 093573\nProject: Saffron 898053\nProject: Onyx 9"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 526018\nProject: Cedar 159083\nProject: Marble 016613\nProject: Quartz 186091\nProject: Ember 390996\nProject: Willow 030824\nProject: Cobalt 628194\nProject: Saffron 821993\nProject: Onyx 51"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " \nProject: Falcon 356230\nProject: Cedar 123836\nProject: Marble 077767\nProject: Quartz 936173\nProject: Ember 048676\nProject: Willow 979748\nProject: Cobalt 610531\nProject: Saffron 783929\nProject: Onyx 1"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 795422\nProject: Cedar 058791\nProject: Marble 589062\nProject: Quartz 762230\nProject: Ember 128916\nProject: Willow 143361\nProject: Cobalt 203619\nProject: Saffron 306067\nProject: Onyx 01"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon 906790\nProject: Cedar 377420\nProject: Marble 875135\nProject: Quartz 062956\nProject: Ember 644724\nProject: Willow 527379\nProject: Cobalt 609032\nProject: Saffron 348535\nProject: Onyx 8"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 787789\nProject: Cedar 328792\nProject: Marble 174218\nProject: Quartz 096792\nProject: Ember 908100\nProject: Willow 339075\nProject: Cobalt 793834\nProject: Saffron 701746\nProject: Onyx 81"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon: 748526\nProject: Cedar: 057479\nProject: Marble: 380927\nProject: Quartz: 525309\nProject: Ember: 318561\nProject: Willow: 008316\nProject: Cobalt: 716285\nProject: Saffron: 982082\nProject"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon: 442323\nProject: Cedar: 221834\nProject: Marble: 062904\nProject: Quartz: 214762\nProject: Ember: 453789\nProject: Willow: 656515\nProject: Cobalt: 285457\nProject: Saffron: 778243\nProject"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon: 198344\nProject: Cedar: 417476\nProject: Marble: 614355\nProject: Quartz: 458228\nProject: Ember: 420119\nProject: Willow: 501436\nProject: Cobalt: 697911\nProject: Saffron: 995217\nProject"
+    },
+    {
+      "mode": "compact",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " \nProject: Falcon 308023\nProject: Cedar 002531\nProject: Marble 575464\nProject: Quartz 533553\nProject: Ember 486397\nProject: Willow 671795\nProject: Cobalt 795761\nProject: Saffron 703282\nProject: Onyx 9"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project Falcon: 660487\nProject Cedar: 647593\nProject Marble: 824219\nProject Quartz: 489241\nProject Ember: 157815\nProject Willow: 659387\nProject Cobalt: 351393\nProject Saffron: 328711\nProject Onyx: 58"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 291417\nProject Cedar: 776317\nProject Marble: 066907\nProject Quartz: 439150\nProject Ember: 008063\nProject Willow: 608377\nProject Cobalt: 415868\nProject Saffron: 406812\nProject Onyx: 69"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project Falcon: 011524\nProject Cedar: 493909\nProject Marble: 266858\nProject Quartz: 784005\nProject Ember: 756682\nProject Willow: 823302\nProject Cobalt: 522885\nProject Saffron: 882768\nProject Onyx: 59"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project Falcon: 398259\nProject Cedar: 791907\nProject Marble: 483378\nProject Quartz: 876232\nProject Ember: 860129\nProject Willow: 040479\nProject Cobalt: 666972\nProject Saffron: 510273\nProject Onyx: 35"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 341672\nProject Cedar: 110684\nProject Marble: 038854\nProject Quartz: 214304\nProject Ember: 432445\nProject Willow: 195683\nProject Cobalt: 237418\nProject Saffron: 404948\nProject Onyx: 72"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 945807\nProject Cedar: 302157\nProject Marble: 368193\nProject Quartz: 036426\nProject Ember: 212997\nProject Willow: 562241\nProject Cobalt: 224538\nProject Saffron: 323640\nProject Onyx: 54"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project Falcon: 917400\nProject Cedar: 297550\nProject Marble: 473688\nProject Quartz: 139849\nProject Ember: 165156\nProject Willow: 471349\nProject Cobalt: 093573\nProject Saffron: 898053\nProject Onyx: 96"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 526018\nProject Cedar: 159083\nProject Marble: 016613\nProject Quartz: 186091\nProject Ember: 390996\nProject Willow: 030824\nProject Cobalt: 628194\nProject Saffron: 821993\nProject Onyx: 23"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 356230\nProject Cedar: 123836\nProject Marble: 077767\nProject Quartz: 936173\nProject Ember: 048676\nProject Willow: 141169\nProject Cobalt: 610531\nProject Saffron: 783929\nProject Onyx: 56"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 795422\nProject Cedar: 058791\nProject Marble: 589062\nProject Quartz: 762230\nProject Ember: 128916\nProject Willow: 019335\nProject Cobalt: 203619\nProject Saffron: 306067\nProject Onyx: 01"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 906790\nProject Cedar: 377420\nProject Marble: 875135\nProject Quartz: 062956\nProject Ember: 644724\nProject Willow: 527379\nProject Cobalt: 609032\nProject Saffron: 348535\nProject Onyx: 87"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 787789\nProject Cedar: 328792\nProject Marble: 174218\nProject Quartz: 096792\nProject Ember: 908100\nProject Willow: 339075\nProject Cobalt: 793834\nProject Saffron: 401916\nProject Onyx: 81"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project Falcon: 748526\nProject Cedar: 057479\nProject Marble: 380927\nProject Quartz: 525309\nProject Ember: 318561\nProject Willow: 008316\nProject Cobalt: 716285\nProject Saffron: 982082\nProject Onyx: 81"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project Falcon: 442323\nProject Cedar: 221834\nProject Marble: 062904\nProject Quartz: 214762\nProject Ember: 453789\nProject Willow: 656515\nProject Cobalt: 285457\nProject Saffron: 778243\nProject Onyx: 52"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project Falcon: 198344\nProject Cedar: 417476\nProject Marble: 614355\nProject Quartz: 458228\nProject Ember: 420119\nProject Willow: 501436\nProject Cobalt: 697911\nProject Saffron: 995217\nProject Onyx: 83"
+    },
+    {
+      "mode": "compact",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project Falcon: 308023\nProject Cedar: 002531\nProject Marble: 575464\nProject Quartz: 533553\nProject Ember: 486397\nProject Willow: 671795\nProject Cobalt: 795761\nProject Saffron: 703282\nProject Onyx: 84"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon: 660487\nProject: Cedar: 647593\nProject: Marble: 824219\nProject: Quartz: 489241\nProject: Ember: 157815\nProject: Willow: 659387\nProject: Cobalt: 351393\nProject: Saffron: 328715\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon: 291417\nProject: Cedar: 776317\nProject: Marble: 066907\nProject: Quartz: 439150\nProject: Ember: 008063\nProject: Willow: 608377\nProject: Cobalt: 835337\nProject: Saffron: 406812\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon: 011524\nProject: Cedar: 493909\nProject: Marble: 266858\nProject: Quartz: 784005\nProject: Ember: 756682\nProject: Willow: 823302\nProject: Cobalt: 522885\nProject: Saffron: 882768\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon: 398259\nProject: Cedar: 791907\nProject: Marble: 483378\nProject: Quartz: 876232\nProject: Ember: 860129\nProject: Willow: 040479\nProject: Cobalt: 666972\nProject: Saffron: 510273\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon: 341672\nProject: Cedar: 110684\nProject: Marble: 038854\nProject: Quartz: 214304\nProject: Ember: 432445\nProject: Willow: 195683\nProject: Cobalt: 237418\nProject: Saffron: 404948\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon: 945807\nProject: Cedar: 302157\nProject: Marble: 368193\nProject: Quartz: 036426\nProject: Ember: 212997\nProject: Willow: 562241\nProject: Cobalt: 224538\nProject: Saffron: 549909\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon: 917400\nProject: Cedar: 297550\nProject: Marble: 473688\nProject: Quartz: 139849\nProject: Ember: 165156\nProject: Willow: 471341\nProject: Cobalt: 093573\nProject: Saffron: 898053\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, code: 526018\nProject: Cedar, code: 159083\nProject: Marble, code: 016613\nProject: Quartz, code: 186091\nProject: Ember, code: 030824\nProject: Willow, code: 937865\nProject: Cobalt, code"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon: 356230\nProject: Cedar: 123836\nProject: Marble: 077767\nProject: Quartz: 936173\nProject: Ember: 048676\nProject: Willow: 141169\nProject: Cobalt: 610531\nProject: Saffron: 783929\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon: 795422\nProject: Cedar: 058791\nProject: Marble: 589062\nProject: Quartz: 762230\nProject: Ember: 128916\nProject: Willow: 019335\nProject: Cobalt: 436450\nProject: Saffron: 306067\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon: 906790\nProject: Cedar: 377420\nProject: Marble: 875135\nProject: Quartz: 062956\nProject: Ember: 644724\nProject: Willow: 527379\nProject: Cobalt: 609032\nProject: Saffron: 876719\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, access code: 787789\nProject: Cedar, access code: 328792\nProject: Marble, access code: 174218\nProject: Quartz, access code: 096792\nProject: Ember, access code: 908100\nProject: Willow,"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon: 748526\nProject: Cedar: 057479\nProject: Marble: 380927\nProject: Quartz: 525309\nProject: Ember: 318561\nProject: Willow: 008316\nProject: Cobalt: 716285\nProject: Saffron: 982082\nProject:"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, access code: 442323\nProject: Cedar, access code: 221834\nProject: Marble, access code: 062904\nProject: Quartz, access code: 214762\nProject: Ember, access code: 453789\nProject: Willow,"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, access code: 198344\nProject: Cedar, access code: 417476\nProject: Marble, access code: 614355\nProject: Quartz, access code: 458228\nProject: Ember, access code: 420119\nProject: Willow,"
+    },
+    {
+      "mode": "compact",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon: 308023\nProject: Cedar: 002531\nProject: Marble: 575464\nProject: Quartz: 533553\nProject: Ember: 486397\nProject: Willow: 671795\nProject: Cobalt: 795761\nProject: Saffron: 703282\nProject:"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 660487\nProject: Cedar 647593\nProject: Marble 824219\nProject: Quartz 489241\nProject: Ember 157815\nProject: Willow 659387\nProject: Cobalt 784080\nProject: Saffron 160975\nProject: Onyx 35"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 291417\nProject: Cedar 776317\nProject: Marble 068377\nProject: Quartz 439150\nProject: Ember 008063\nProject: Willow 608377\nProject: Cobalt 835337\nProject: Saffron 406812\nProject: Onyx 41"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon: 011524\nProject: Cedar: 493909\nProject: Marble: 823302\nProject: Quartz: 784005\nProject: Ember: 756682\nProject: Willow: 823302\nProject: Cobalt: 522885\nProject: Saffron: 882768\nProject:"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 398259\nProject: Cedar 791907\nProject: Marble 876232\nProject: Quartz 866972\nProject: Ember 666972\nProject: Willow 040479\nProject: Cobalt 666972\nProject: Saffron 510273\nProject: Onyx 46"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 341672\nProject: Cedar 110684\nProject: Marble 214304\nProject: Quartz 237418\nProject: Ember 432445\nProject: Willow 195683\nProject: Cobalt 237418\nProject: Saffron 404948\nProject: Onyx 36"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 945807\nProject: Cedar 302157\nProject: Marble 368193\nProject: Quartz 036426\nProject: Ember 212997\nProject: Willow 220033\nProject: Cobalt 224538\nProject: Saffron 323640\nProject: Onyx 56"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 917400\nProject: Cedar 297550\nProject: Marble 471341\nProject: Quartz 139849\nProject: Ember 165156\nProject: Willow 471341\nProject: Cobalt 093573\nProject: Saffron 898053\nProject: Onyx 96"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 526018\nProject: Cedar 159083\nProject: Marble 030824\nProject: Quartz 186091\nProject: Ember 390996\nProject: Willow 030824\nProject: Cobalt 628194\nProject: Saffron 821993\nProject: Onyx 51"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 356230\nProject: Cedar 123836\nProject: Marble 936173\nProject: Quartz 936173\nProject: Ember 048676\nProject: Willow 141169\nProject: Cobalt 610531\nProject: Saffron 783929\nProject: Onyx 18"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 795422\nProject: Cedar 058791\nProject: Marble 762230\nProject: Quartz 795422\nProject: Ember 128916\nProject: Willow 143361\nProject: Cobalt 436450\nProject: Saffron 306067\nProject: Onyx 20"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 906790\nProject: Cedar 377420\nProject: Marble 527379\nProject: Quartz 062956\nProject: Ember 644724\nProject: Willow 527379\nProject: Cobalt 609032\nProject: Saffron 348535\nProject: Onyx 87"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 787789\nProject: Cedar 328792\nProject: Marble 096792\nProject: Quartz 339075\nProject: Ember 908100\nProject: Willow 339075\nProject: Cobalt 793834\nProject: Saffron 701746\nProject: Onyx 81"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 748526\nProject: Cedar 057479\nProject: Marble 380927\nProject: Quartz 525309\nProject: Ember 318561\nProject: Willow 008316\nProject: Cobalt 716285\nProject: Saffron 982082\nProject: Onyx 81"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon: 442323\nProject: Cedar: 221834\nProject: Marble: 656515\nProject: Quartz: 214762\nProject: Ember: 453789\nProject: Willow: 947892\nProject: Cobalt: 778243\nProject: Saffron: 285457\nProject:"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 198344\nProject: Cedar 417476\nProject: Marble 614355\nProject: Quartz 458228\nProject: Ember 420119\nProject: Willow 501436\nProject: Cobalt 697911\nProject: Saffron 995217\nProject: Onyx 83"
+    },
+    {
+      "mode": "sparse",
+      "distance": 65536,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 12,
+      "accuracy": 1.0,
+      "answer": " Project: Falcon 308023\nProject: Cedar 002531\nProject: Marble 575464\nProject: Quartz 533553\nProject: Ember 486397\nProject: Willow 671795\nProject: Cobalt 795761\nProject: Saffron 703282\nProject: Onyx 90"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 660487\nProject: Cedar 647593\nProject: Marble 824219\nProject: Quartz 489241\nProject: Ember 784080\nProject: Willow 160975\nProject: Cobalt 351393\nProject: Saffron 160975\nProject: Onyx 35"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Cedar - 776317\nProject: Falcon - 291417\nProject: Marble - 066907\nProject: Quartz - 439150\nProject: Ember - 835337\nProject: Willow - 406812\nProject: Cobalt - 625851\nProject: Saffron - 415868\n"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Cedar - 493909\nProject: Falcon - 011524\nProject: Marble - 266858\nProject: Quartz - 522885\nProject: Ember - 882768\nProject: Willow - 823302\nProject: Cobalt - 595572\nProject: Saffron - 882768\n"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 398259\nProject: Cedar 791907\nProject: Marble 876232\nProject: Quartz 666972\nProject: Ember 510273\nProject: Willow 464686\nProject: Cobalt 666972\nProject: Saffron 510273\nProject: Onyx 46"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Cedar - 110684\nProject: Falcon - 341672\nProject: Marble - 214304\nProject: Quartz - 404948\nProject: Ember - 237418\nProject: Willow - 195683\nProject: Cobalt - 237418\nProject: Saffron - 404948\n"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 945807\nProject: Cedar 302157\nProject: Marble 212997\nProject: Quartz 368193\nProject: Ember 224538\nProject: Willow 323640\nProject: Cobalt 562241\nProject: Saffron 549909\nProject: Onyx 51"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 4,
+      "accuracy": 0.3333333333333333,
+      "answer": " Project: Cedar - 297550\nProject: Ember - 093573\nProject: Maple - 188319\nProject: Basalt - 293803\nThe access codes for the other projects are not provided in the given text. Here are the codes for the"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 4,
+      "accuracy": 0.3333333333333333,
+      "answer": " Project: Cedar - 159083\nProject: Ember - 628194\nProject: Maple - 937865\nProject: Basalt - 231948\nThe access codes for the other projects are not provided in the given text. Here are the codes for the"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Cedar - 123836\nProject: Falcon - 356230\nProject: Marble - 077769\nProject: Quartz - 610531\nProject: Ember - 783929\nProject: Willow - 180732\nProject: Cobalt - 610531\nProject: Saffron - 783929\n"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Cedar - 058916\nProject: Falcon - 795422\nProject: Marble - 589062\nProject: Quartz - 436450\nProject: Ember - 306067\nProject: Willow - 143361\nProject: Cobalt - 203619\nProject: Saffron - 019335\n"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 11,
+      "accuracy": 0.9166666666666666,
+      "answer": " Project: Falcon 906790\nProject: Cedar 377420\nProject: Marble 875135\nProject: Quartz 644724\nProject: Ember 348535\nProject: Willow 527379\nProject: Cobalt 609032\nProject: Saffron 348535\nProject: Onyx 87"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Cedar: 328792\nProject: Falcon: 787789\nProject: Marble: 908100\nProject: Quartz: 793834\nProject: Ember: 701746\nProject: Willow: 339075\nProject: Cobalt: 793834\nProject: Saffron: 701746\nProject:"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 748526\nProject: Cedar 057479\nProject: Marble 380927\nProject: Quartz 525309\nProject: Ember 716285\nProject: Willow 982082\nProject: Cobalt 816969\nProject: Saffron 134556\nProject: Onyx 41"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: 442323\nProject: 221834\nProject: 656515\nProject: 214762\nProject: 947892\nProject: 778243\nProject: 285457\nProject: 494629\nProject: 783933\nProject: 521676\n\nThe access codes for the projects are "
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 198344\nProject: Cedar 417476\nProject: Marble 614355\nProject: Quartz 458228\nProject: Ember 697911\nProject: Willow 995217\nProject: Cobalt 834793\nProject: Saffron 748411\nProject: Onyx 14"
+    },
+    {
+      "mode": "sparse",
+      "distance": 81920,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Cedar - 002531\nProject: Falcon - 308023\nProject: Marble - 575795\nProject: Quartz - 703282\nProject: Ember - 795761\nProject: Willow - 671795\nProject: Cobalt - 795761\nProject: Saffron - 703282\n"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 660487\nProject: Cedar 647593\nProject: Marble 824219\nProject: Quartz 489241\nProject: Ember 157815\nProject: Willow 160975\nProject: Cobalt 351393\nProject: Saffron 328711\nProject: Onyx 58"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 291417\nProject: Cedar 776317\nProject: Marble 066907\nProject: Quartz 439150\nProject: Ember 835337\nProject: Willow 406812\nProject: Cobalt 415868\nProject: Saffron 416812\nProject: Onyx 69"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon 011524\nProject: Cedar 756685\nProject: Marble 266858\nProject: Quartz 784005\nProject: Ember 882768\nProject: Willow 882768\nProject: Cobalt 595572\nProject: Saffron 882768\nProject: Onyx 59"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon 398259\nProject: Cedar 791907\nProject: Marble 876232\nProject: Quartz 666972\nProject: Ember 510273\nProject: Willow 464686\nProject: Cobalt 666972\nProject: Saffron 510273\nProject: Onyx 46"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 341672\nProject: Cedar 110684\nProject: Marble 038854\nProject: Quartz 214304\nProject: Ember 432418\nProject: Willow 404948\nProject: Cobalt 237418\nProject: Saffron 404948\nProject: Onyx 36"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon 945807\nProject: Cedar 212997\nProject: Marble 224538\nProject: Quartz 323640\nProject: Ember 220036\nProject: Willow 323640\nProject: Cobalt 562241\nProject: Saffron 549909\nProject: Onyx 51"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 917400\nProject: Cedar 473688\nProject: Marble 471349\nProject: Quartz 139849\nProject: Ember 898053\nProject: Willow 898053\nProject: Cobalt 093573\nProject: Saffron 898053\nProject: Onyx 96"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 526018\nProject: Cedar 159083\nProject: Marble 016613\nProject: Quartz 186091\nProject: Ember 628194\nProject: Willow 821993\nProject: Cobalt 628190\nProject: Saffron 8937865\nProject: Onyx 7"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 6,
+      "accuracy": 0.5,
+      "answer": " Project: Falcon 356230\nProject: Cedar 123836\nProject: Marble 936173\nProject: Quartz 610532\nProject: Ember 783929\nProject: Willow 783929\nProject: Cobalt 610532\nProject: Saffron 783929\nProject: Onyx 56"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 795422\nProject: Cedar 589062\nProject: Marble 143361\nProject: Quartz 762230\nProject: Ember 306067\nProject: Willow 306067\nProject: Cobalt 436450\nProject: Saffron 203619\nProject: Onyx 01"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 906790\nProject: Cedar 377420\nProject: Marble 875135\nProject: Quartz 609032\nProject: Ember 644724\nProject: Willow 348535\nProject: Cobalt 876719\nProject: Saffron 348535\nProject: Onyx 87"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon 787789\nProject: Cedar 328792\nProject: Marble 967921\nProject: Quartz 339075\nProject: Ember 701746\nProject: Willow 701746\nProject: Cobalt 793838\nProject: Saffron 701746\nProject: Onyx 81"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 748526\nProject: Cedar 057469\nProject: Marble 380927\nProject: Quartz 525309\nProject: Ember 716285\nProject: Willow 982082\nProject: Cobalt 816969\nProject: Saffron 318556\nProject: Onyx 13"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 442323\nProject: Cedar 221834\nProject: Marble 629047\nProject: Quartz 214762\nProject: Ember 947892\nProject: Willow 778243\nProject: Cobalt 947892\nProject: Saffron 778243\nProject: Onyx 28"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon 198344\nProject: Cedar 417436\nProject: Marble 614355\nProject: Quartz 458228\nProject: Ember 995217\nProject: Willow 995217\nProject: Cobalt 697911\nProject: Saffron 995217\nProject: Onyx 83"
+    },
+    {
+      "mode": "sparse",
+      "distance": 98304,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 10,
+      "accuracy": 0.8333333333333334,
+      "answer": " Project: Falcon 308023\nProject: Cedar 671795\nProject: Marble 575464\nProject: Quartz 533553\nProject: Ember 703282\nProject: Willow 795761\nProject: Cobalt 795761\nProject: Saffron 703282\nProject: Onyx 90"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 0,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon, access code: 660487\nProject: Cedar, access code: 824219\nProject: Marble, access code: 784080\nProject: Quartz, access code: 489241\nProject: Ember, access code: 157815\nProject: Willow,"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 1,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon, code: 066907\nProject: Cedar, code: 776083\nProject: Marble, code: 835337\nProject: Quartz, code: 439150\nProject: Ember, code: 008063\nProject: Willow, code: 608377\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 2,
+      "recovered": 12,
+      "found": 6,
+      "accuracy": 0.5,
+      "answer": " Project: Falcon, code: 266858\nProject: Cedar, code: 856682\nProject: Marble, code: 784005\nProject: Quartz, code: 522885\nProject: Ember, code: 756685\nProject: Willow, code: 823302\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 3,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, code: 791907\nProject: Cedar, code: 483378\nProject: Marble, code: 876232\nProject: Quartz, code: 666973\nProject: Ember, code: 860273\nProject: Willow, code: 510273\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 4,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon, code: 341672\nProject: Cedar, code: 110684\nProject: Marble, code: 214304\nProject: Quartz, code: 237448\nProject: Ember, code: 432445\nProject: Willow, code: 195683\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 5,
+      "recovered": 12,
+      "found": 6,
+      "accuracy": 0.5,
+      "answer": " Project: Falcon, code: 302936\nProject: Cedar, code: 212997\nProject: Marble, code: 224538\nProject: Quartz, code: 562241\nProject: Ember, code: 220038\nProject: Willow, code: 549909\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 6,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, access code: 473688\nProject: Cedar, access code: 165156\nProject: Marble, access code: 093573\nProject: Quartz, access code: 898053\nProject: Ember, access code: 139849\nProject: Willow,"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 7,
+      "recovered": 12,
+      "found": 7,
+      "accuracy": 0.5833333333333334,
+      "answer": " Project: Falcon, code: 016613\nProject: Cedar, code: 390996\nProject: Marble, code: 821990\nProject: Quartz, code: 518190\nProject: Ember, code: 390993\nProject: Willow, code: 030824\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 8,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, code: 936173\nProject: Cedar, code: 077767\nProject: Marble, code: 610532\nProject: Quartz, code: 180732\nProject: Ember, code: 141169\nProject: Willow, code: 783929\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 9,
+      "recovered": 12,
+      "found": 9,
+      "accuracy": 0.75,
+      "answer": " Project: Falcon, access code: 795422\nProject: Cedar, access code: 589062\nProject: Marble, access code: 306067\nProject: Quartz, access code: 762230\nProject: Ember, access code: 143361\nProject: Willow,"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 10,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, code: 875135\nProject: Cedar, code: 644724\nProject: Marble, code: 527379\nProject: Quartz, code: 609035\nProject: Ember, code: 348535\nProject: Willow, code: 582363\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 11,
+      "recovered": 12,
+      "found": 4,
+      "accuracy": 0.3333333333333333,
+      "answer": " Project: Falcon, code: 78792\nProject: Cedar, code: 32181\nProject: Marble, code: 96792\nProject: Quartz, code: 09679\nProject: Ember, code: 90810\nProject: Willow, code: 33900\nProject: Cobalt, code: 8145"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 12,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, code: 380927\nProject: Cedar, code: 057461\nProject: Marble, code: 525309\nProject: Quartz, code: 318561\nProject: Ember, code: 008316\nProject: Willow, code: 982080\nProject: Cobalt, code"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 13,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon, access code: 221804\nProject: Cedar, access code: 629894\nProject: Marble, access code: 947892\nProject: Quartz, access code: 214762\nProject: Ember, access code: 453789\nProject: Willow,"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 14,
+      "recovered": 12,
+      "found": 8,
+      "accuracy": 0.6666666666666666,
+      "answer": " Project: Falcon: 614355\nProject: Cedar: 458228\nProject: Marble: 417436\nProject: Quartz: 458217\nProject: Ember: 420119\nProject: Willow: 995217\nProject: Cobalt: 834793\nProject: Saffron: 748411\nProject:"
+    },
+    {
+      "mode": "sparse",
+      "distance": 114688,
+      "n_facts": 12,
+      "seed": 15,
+      "recovered": 12,
+      "found": 7,
+      "accuracy": 0.5833333333333334,
+      "answer": " Project: Ember: 704872\nProject: Maple: 116017\nProject: Cobalt: 904872\nProject: Saffron: 904872\nProject: Willow: 904872\nProject: Onyx: 904872\nProject: Indigo: 846832\nProject: Basalt: 885134\nProject: C"
+    }
+  ]
+}

@@ -129,6 +129,19 @@ class EvokeConfig:
     task_boundary_threshold: float = 0.3
     task_focus_ema_alpha: float = 0.7
 
+    # Position handling across eviction and recovery. "compact" (default, the
+    # EVOKE design): eviction re-indexes survivors to stay contiguous
+    # (seq_rm + seq_add) and recovery re-anchors a recalled block to a new
+    # contiguous tail position via a per-cell RoPE shift. "sparse" (ArkVale-
+    # like): eviction drops cells with seq_rm only, survivors keep their true
+    # absolute positions (the axis grows holes), and recovery splices a block
+    # back at its original index with zero RoPE re-anchoring. This is the one
+    # axis that distinguishes EVOKE from ArkVale, so it must be switchable to
+    # measure whether re-anchoring earns its place. Sparse is an experimental
+    # measurement mode: it is not wired to the prefix-matching server path
+    # (get_token_view assumes contiguous block order).
+    position_mode: str = "compact"
+
     recovery_mode: str = "discard"
     # On hybrid (Mamba + Attention) memory models, mid-cache eviction of the
     # <think>...</think> range is impossible (the recurrent half rejects
