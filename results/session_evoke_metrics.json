@@ -1,0 +1,30 @@
+{
+  "_note": "Measured on a single 16GB consumer GPU. recovery_usability and churn_fidelity are greedy controlled probes (recall = answer contains the value); scale_demo is the context-wall demonstration.",
+  "recovery_usability": {
+    "n_facts": 24,
+    "setting": "one eviction, no churn",
+    "Qwen3-14B": {"resident": 1.0, "redecode": 1.0, "recovered_compact": 1.0, "recovered_sparse": 1.0, "discard": 0.0},
+    "Qwen3.5-9B-hybrid": {"resident": 1.0, "redecode": 1.0, "recovered_compact": 1.0, "recovered_sparse": 1.0, "discard": 0.042}
+  },
+  "churn_fidelity": {
+    "n_facts": 20,
+    "churn_blocks": 128,
+    "setting": "target accumulates ~128 blocks of compact-eviction churn, then evicted and restored",
+    "Qwen3-14B": {"ref": 1.0, "redecode": 1.0, "recovered": 1.0, "discard": 0.05},
+    "Qwen3.5-9B-hybrid": {"ref": 1.0, "redecode": 1.0, "recovered": 1.0, "discard": 0.05}
+  },
+  "scale_demo": {
+    "model": "Qwen3-14B",
+    "corpus_tokens": 66147,
+    "sections": 150,
+    "budget": 8192,
+    "n_ctx": 32768,
+    "arms": {
+      "evoke": {"completed": true, "wall_section": null, "peak_kv": 7944, "decoded": 66147, "recoveries": 64},
+      "no_eviction": {"completed": false, "wall_section": 74, "peak_kv": 32631, "decoded": 32631, "recoveries": 0},
+      "no_recovery": {"completed": true, "wall_section": null, "peak_kv": 7955, "decoded": 73197, "recoveries": 0}
+    },
+    "peak_kv_ratio_noevict_over_evoke": 4.1,
+    "decode_ratio_norecovery_over_evoke": 1.11
+  }
+}
