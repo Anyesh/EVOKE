@@ -18,6 +18,7 @@ models/
 .scope.md
 .scope-turn-count
 CLAUDE.md
+NORTH_STAR.md
 .fastembed_cache/
 .ruff_cache/
 .mypy_cache/
@@ -27,6 +28,11 @@ evoke_drift.log
 scripts/*.ps1
 scripts/*.cmd
 scripts/sdk_response.json
+
+# Throwaway debugging repros / diagnostics from bug investigations
+scripts/diag_*.py
+scripts/repro_*.py
+*.log
 
 # Transient bench dispatcher stdout, not canonical result data
 results/*launch.log
