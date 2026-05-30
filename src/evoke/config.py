@@ -113,6 +113,15 @@ class EvokeConfig:
     w_recovery: float = 0.0
     recovery_strength_init: float = 1.0
     recovery_decay: float = 0.7
+    # Hard eviction-exclusion for freshly recovered blocks. When > 0, a block
+    # whose recovery_strength is at or above this threshold is never an eviction
+    # candidate, so a just-recovered block (the active working set the agent
+    # re-referenced) survives the eviction pass(es) of the turn it is used in
+    # rather than being re-evicted at its old, low-recency position before the
+    # model can attend to it. recovery_strength decays via tick_turn, so the
+    # protection lifts after the block goes cold again. Default 0.0 keeps the
+    # prior behavior (recovery contributes only through w_recovery's weighted sum).
+    recovery_protect_threshold: float = 0.0
 
     conversation_score_floor: float = 0.6
     assistant_score_floor: float = 0.5
@@ -141,6 +150,14 @@ class EvokeConfig:
     # measurement mode: it is not wired to the prefix-matching server path
     # (get_token_view assumes contiguous block order).
     position_mode: str = "compact"
+
+    # Recovery trigger in the live server path (Session.sync_prefix). "identity"
+    # (the north-star design) splices a saved block back in place when the client
+    # re-sends its exact tokens at its original position: recompute-free, keyed on
+    # content identity, never similarity. Requires position_mode="sparse" (holes
+    # at original positions); it falls back to the "similarity" path otherwise.
+    # "similarity" is the legacy _smart_recover cosine path, kept for ablation.
+    recovery_match: str = "identity"
 
     recovery_mode: str = "discard"
     # On hybrid (Mamba + Attention) memory models, mid-cache eviction of the

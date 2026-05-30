@@ -35,6 +35,7 @@ class EvokeManager:
         self._step = 0
         self._total_evictions = 0
         self._total_recoveries = 0
+        self._peak_active_tokens = 0
         self._next_block_id = 0
         self._current_turn_start_id = 0
         # Last user-message text, captured so the retrieval embedder can
@@ -205,8 +206,14 @@ class EvokeManager:
         answer_tokens_generated = 0
         answer_start_idx: int | None = None
         close_tokens = self._engine.tokenize(think_close)
+        n_ctx = self._engine.n_ctx
 
         for _ in range(thinking_budget + answer_budget):
+            # The thinking path lacked the slot guard the plain generate() has;
+            # a long <think> trace would run next_write_pos into n_ctx and crash
+            # generate_next with "no KV slot". Stop before that boundary.
+            if self._engine.next_write_pos + 1 >= n_ctx:
+                break
             token = self._engine.generate_next()
             output_tokens.append(token)
             self._step += 1
@@ -308,6 +315,10 @@ class EvokeManager:
             total_recoveries=self._total_recoveries,
         )
 
+    @property
+    def peak_active_tokens(self) -> int:
+        return self._peak_active_tokens
+
     def get_event_log(self) -> list[EvokeEvent]:
         return list(self._events)
 
@@ -330,8 +341,14 @@ class EvokeManager:
         # the authoritative view of what the engine actually has cached. Used
         # by Session.sync_prefix so prefix-match compares the new prompt
         # against the real engine state rather than a stale extends-only list.
+        # Position order, not block_id order: a block recovered in place (sparse
+        # mode) gets a fresh high block_id but lives at an old logical_start, so
+        # iterating block_id order would misorder the view and break the server's
+        # prefix-match. In compact mode the two orders coincide.
         tokens: list[int] = []
-        for block in self._positions.active_blocks:
+        for block in sorted(
+            self._positions.active_blocks, key=lambda b: (b.logical_start, b.block_id)
+        ):
             tokens.extend(block.token_ids)
         return tokens
 
@@ -366,7 +383,7 @@ class EvokeManager:
     def force_evict(self, block_ids: list[int]) -> None:
         self._evict_blocks(set(block_ids))
 
-    def recover(self, key: str) -> bool:
+    def recover(self, key: str, *, defer_budget: bool = False) -> bool:
         saved = self._recovery.take(key)
         if saved is None:
             return False
@@ -397,7 +414,8 @@ class EvokeManager:
         self._events.append(
             EvokeEvent(step=self._step, event_type="recovery", block_ids=[bid])
         )
-        self._enforce_budget()
+        if not defer_budget:
+            self._enforce_budget()
         return True
 
     def _enforce_budget(self) -> None:
@@ -415,6 +433,11 @@ class EvokeManager:
             if not self._attention_scorer.is_eviction_ready():
                 return
         active_tokens = self._positions.active_token_count
+        # Record the high-water mark before any trim, so callers can see whether
+        # the cache transiently held the full working set (the peak right after a
+        # gap-fill rebuild) even when end-of-turn enforcement brings it back down.
+        if active_tokens > self._peak_active_tokens:
+            self._peak_active_tokens = active_tokens
 
         if cfg.eviction_policy == "watermark":
             threshold = int(cfg.max_active_tokens * cfg.high_watermark)
@@ -461,6 +484,27 @@ class EvokeManager:
             if block.is_sink or block.pinned:
                 continue
             if scores.get(block.block_id, 0.0) >= 1.0:
+                continue
+            # Hard-protect a freshly recovered block: the agent just re-referenced
+            # it, so it is the active working set and must not be re-evicted before
+            # the model uses it this turn (its old low-recency position would
+            # otherwise make the scorer drop it first). Decays via tick_turn.
+            if (
+                self._config.recovery_protect_threshold > 0.0
+                and block.recovery_strength >= self._config.recovery_protect_threshold
+            ):
+                continue
+            # Sparse mode leaves holes and does NOT lower next_write_pos, so
+            # evicting the topmost (highest-position) block would leave the decode
+            # head past the max cached position; llama_decode then rejects the
+            # next, non-consecutive batch ("inconsistent sequence positions").
+            # Protect the contiguous decode head so max_cached stays
+            # next_write_pos-1; internal holes below it decode fine. Compact mode
+            # recompacts positions, so it does not need this.
+            if (
+                self._config.position_mode == "sparse"
+                and block.logical_end >= current_pos
+            ):
                 continue
             if (
                 recent_protect_n > 0

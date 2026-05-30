@@ -1,0 +1,17 @@
+{
+  "_note": "Transcribed from the validated multi-fact benches (results/mfb_*.json) and paper Table tab:multifact-n15 / tab:multifact-pilot. Wilson 95% CIs.",
+  "multifact_n15": {
+    "budgets": [512, 1024, 2048],
+    "Qwen2.5-7B": {
+      "infllm":           {"mean": [81.3, 58.7, 56.0], "lo": [71.1, 47.4, 44.7], "hi": [88.5, 69.1, 66.7]},
+      "evoke_kv_restore": {"mean": [50.7, 57.3, 65.3], "lo": [39.6, 46.1, 54.1], "hi": [61.7, 67.9, 75.1]}
+    },
+    "recovery_less_b2048": {"snapkv": 42.7, "h2o": 29.3, "streaming_llm": 13.3, "recency": 0.0}
+  },
+  "crossarch_multifact": {
+    "_note": "n=5 grid, b=1024. EVOKE (kv_restore) vs the best recovery-less baseline per architecture.",
+    "order": ["Qwen2.5-7B\n(attention)", "Qwen3.5-9B\n(hybrid)", "Qwen3.6-35B-A3B\n(MoE)"],
+    "evoke": [60.0, 68.0, 52.0],
+    "best_recovery_less": [4.0, 8.0, 0.0]
+  }
+}

@@ -41,6 +41,8 @@ class RecoveryBackend(Protocol):
 
     def take(self, key: str) -> SavedBlock | None: ...
 
+    def peek(self, key: str) -> SavedBlock | None: ...
+
     def peek_embedding(self, key: str) -> np.ndarray | None: ...
 
 
@@ -52,6 +54,9 @@ class DiscardBackend:
         return []
 
     def take(self, key: str) -> SavedBlock | None:
+        return None
+
+    def peek(self, key: str) -> SavedBlock | None:
         return None
 
     def peek_embedding(self, key: str) -> np.ndarray | None:
@@ -77,6 +82,9 @@ class BreadcrumbBackend:
         return list(self._crumbs.values())
 
     def take(self, key: str) -> SavedBlock | None:
+        return None
+
+    def peek(self, key: str) -> SavedBlock | None:
         return None
 
     def peek_embedding(self, key: str) -> np.ndarray | None:
@@ -220,6 +228,20 @@ class KVRestoreBackend:
             saved_at_step=meta.saved_at_step,
             original_start=meta.original_start,
         )
+
+    def peek(self, key: str) -> SavedBlock | None:
+        # Non-destructive lookup for identity gap-fill: return the SavedBlock
+        # (token_ids + original_start) without consuming it, so the caller can
+        # compare content identity before committing to recover()/take(). For a
+        # spilled block the meta carries token_ids/original_start (kv_bytes is a
+        # placeholder); take() reads the real bytes from disk on recovery.
+        saved = self._saved.get(key)
+        if saved is not None:
+            return saved
+        spilled = self._spilled.get(key)
+        if spilled is not None:
+            return spilled[1]
+        return None
 
     def peek_embedding(self, key: str) -> np.ndarray | None:
         return self._embeddings.get(key)

@@ -93,6 +93,26 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
         ]
         lib.llama_attn_capture_get_written.restype = ctypes.c_size_t
         lib.llama_attn_capture_get_written.argtypes = [ctypes.c_void_p]
+        # EVOKE query/key capture (ArkVale q.cuboid scoring). Each exposes the
+        # permuted q (or k) at the scoring layer as [head_dim, n_tokens, n_heads].
+        for _stem in ("query", "key"):
+            getattr(lib, f"llama_{_stem}_capture_set_buffer").restype = None
+            getattr(lib, f"llama_{_stem}_capture_set_buffer").argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+            ]
+            getattr(lib, f"llama_{_stem}_capture_get_dims").restype = None
+            getattr(lib, f"llama_{_stem}_capture_get_dims").argtypes = [
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_int32),
+                ctypes.POINTER(ctypes.c_int32),
+                ctypes.POINTER(ctypes.c_int32),
+            ]
+            getattr(lib, f"llama_{_stem}_capture_get_written").restype = ctypes.c_size_t
+            getattr(lib, f"llama_{_stem}_capture_get_written").argtypes = [
+                ctypes.c_void_p
+            ]
         return lib
     except (OSError, AttributeError):
         return None
@@ -361,32 +381,45 @@ class LlamaCppEngine:
         return self._token_count
 
     def evict_ranges(self, ranges: list[tuple[int, int]], compact: bool = True) -> bool:
-        # Returns True if the eviction was applied. Hybrid (Mamba+Attention)
-        # memories reject partial tail rollback in llama_memory_seq_rm (the
-        # recurrent half cannot slice its state) and return false WITHOUT
-        # mutating the attention cache; in that case we leave _next_write_pos
-        # untouched so the engine and our token bookkeeping stay in sync.
-        # An attention-only seq_rm is available as llama_kv_block_seq_rm but
-        # using it would desync the recurrent position state from the attention
-        # one and break decode on subsequent turns, so we accept that tail
-        # eviction is a no-op on hybrid models.
+        # On pure-attention models this uses llama_memory_seq_rm/seq_add. On
+        # hybrids that call fails closed (the recurrent half cannot slice its
+        # state) and leaves the attention cache unmutated, so we fall back to the
+        # attention-only primitives: drop just the attention KV cells, since the
+        # SSM state is fixed-size and need not be evicted. The in-place
+        # (compact=False) form round-trips token-for-token, verified on Qwen3.5-9B.
         #
         # compact=True re-indexes survivors so positions stay contiguous
-        # (seq_rm + seq_add). compact=False (sparse mode) drops the cells
-        # with seq_rm only: survivors keep their true absolute positions, the
-        # axis grows a hole, and the tail (_next_write_pos) is unchanged so new
-        # tokens keep decoding at their genuine index. The hole is later filled
-        # in place by kv_block_load at the original position.
+        # (seq_rm + seq_add). compact=False (sparse mode) drops the cells with
+        # seq_rm only: survivors keep their true absolute positions, the axis
+        # grows a hole, and the tail (_next_write_pos) is unchanged so new tokens
+        # keep decoding at their genuine index. The hole is later filled in place
+        # by kv_block_load at the original position.
         if not ranges:
             return True
         ranges = sorted(ranges)
         n = self._next_write_pos
         removed = 0
+        attn_only = False
+        oks: list[bool] = []
         for pos_start, pos_end in ranges:
             ok = llama_cpp.llama_memory_seq_rm(self._memory, 0, pos_start, pos_end)
+            oks.append(ok)
             if not ok:
-                return False
+                if _kv_block_lib is None:
+                    return False
+                if not _kv_block_lib.llama_kv_block_seq_rm(
+                    self._ctx, 0, pos_start, pos_end
+                ):
+                    return False
+                attn_only = True
             removed += pos_end - pos_start
+        if os.environ.get("EVOKE_DEBUG_EVICT"):
+            print(
+                f"[evict_ranges] ranges={ranges} compact={compact} "
+                f"memory_seq_rm_ok={oks} attn_only={attn_only} removed={removed} "
+                f"n_before={n} token_count_after={n - removed if compact else self._token_count - removed}",
+                flush=True,
+            )
         if not compact:
             self._token_count -= removed
             return True
@@ -394,13 +427,11 @@ class LlamaCppEngine:
         shifted = 0
         for pos_start, pos_end in ranges:
             if shifted > 0 and pos_start > cursor:
-                llama_cpp.llama_memory_seq_add(
-                    self._memory, 0, cursor, pos_start, -shifted
-                )
+                self._seq_add(attn_only, cursor, pos_start, -shifted)
             shifted += pos_end - pos_start
             cursor = pos_end
         if shifted > 0 and cursor < n:
-            llama_cpp.llama_memory_seq_add(self._memory, 0, cursor, n, -shifted)
+            self._seq_add(attn_only, cursor, n, -shifted)
         self._next_write_pos = n - removed
         self._token_count = n - removed
 
@@ -415,6 +446,14 @@ class LlamaCppEngine:
             new_emb[pos - shift] = emb
         self._emb_cache = new_emb
         return True
+
+    def _seq_add(self, attn_only: bool, p0: int, p1: int, delta: int) -> None:
+        # attn_only routes to the fork's attention-only shift (hybrid models,
+        # leaving the recurrent state alone); otherwise the standard memory shift.
+        if attn_only:
+            _kv_block_lib.llama_kv_block_seq_add(self._ctx, 0, p0, p1, delta)
+        else:
+            llama_cpp.llama_memory_seq_add(self._memory, 0, p0, p1, delta)
 
     @property
     def supports_kv_block(self) -> bool:
@@ -455,6 +494,35 @@ class LlamaCppEngine:
             self._next_write_pos = max(self._next_write_pos, new_p0 + n_cells)
             self._token_count += n_cells
         return ok
+
+    def seq_rm_attention_only(self, p0: int, p1: int, seq_id: int = 0) -> bool:
+        # Remove only the attention-layer KV cells in [p0, p1). The recurrent
+        # (SSM/GDN) state is a fixed-size running fold that cannot be sliced, so
+        # it is left intact. This is the hybrid in-place eviction path: the SSM
+        # state does not grow with context, so attention KV is the only memory
+        # worth reclaiming. Does not move _next_write_pos (sparse, in-place).
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "attention-only seq_rm requires the EVOKE llama.cpp build; "
+                "set LLAMA_CPP_LIB"
+            )
+        ok = bool(_kv_block_lib.llama_kv_block_seq_rm(self._ctx, seq_id, p0, p1))
+        if ok:
+            self._token_count -= p1 - p0
+        return ok
+
+    def seq_add_attention_only(
+        self, p0: int, p1: int, delta: int, seq_id: int = 0
+    ) -> None:
+        # Shift only the attention-layer cell positions in [p0, p1) by delta,
+        # leaving the recurrent state untouched. Pairs with seq_rm_attention_only
+        # to recompact attention KV on hybrid models.
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "attention-only seq_add requires the EVOKE llama.cpp build; "
+                "set LLAMA_CPP_LIB"
+            )
+        _kv_block_lib.llama_kv_block_seq_add(self._ctx, seq_id, p0, p1, delta)
 
     def attn_capture_set_layer(self, layer: int) -> None:
         # Configure which layer's attention weights to capture on subsequent
@@ -526,6 +594,60 @@ class LlamaCppEngine:
         if _kv_block_lib is None:
             return 0
         return int(_kv_block_lib.llama_attn_capture_get_written(self._ctx))
+
+    def query_capture_set_buffer(self, buf: np.ndarray | None) -> None:
+        self._capture_set_buffer("query", buf)
+
+    def key_capture_set_buffer(self, buf: np.ndarray | None) -> None:
+        self._capture_set_buffer("key", buf)
+
+    def _capture_set_buffer(self, stem: str, buf: np.ndarray | None) -> None:
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "q/k capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
+            )
+        fn = getattr(_kv_block_lib, f"llama_{stem}_capture_set_buffer")
+        if buf is None:
+            fn(self._ctx, None, 0)
+            setattr(self, f"_{stem}_capture_buf", None)
+            return
+        if buf.dtype != np.float32 or not buf.flags["C_CONTIGUOUS"]:
+            raise ValueError("capture buffer must be a contiguous float32 numpy array")
+        setattr(self, f"_{stem}_capture_buf", buf)  # keep alive for the C side
+        fn(self._ctx, buf.ctypes.data_as(ctypes.c_void_p), buf.size)
+
+    def read_query_capture(self) -> np.ndarray | None:
+        return self._read_capture("query")
+
+    def read_key_capture(self) -> np.ndarray | None:
+        return self._read_capture("key")
+
+    def _read_capture(self, stem: str) -> np.ndarray | None:
+        # Returns the captured tensor as (n_tokens, n_heads, head_dim), or None if
+        # nothing was written. ggml lays the permuted q/k contiguous with ne0
+        # (head_dim) fastest, then ne1 (n_tokens), then ne2 (n_heads), so the flat
+        # buffer reshapes to (n_heads, n_tokens, head_dim); transpose to put tokens
+        # first for per-token scoring.
+        if _kv_block_lib is None:
+            return None
+        buf = getattr(self, f"_{stem}_capture_buf", None)
+        if buf is None:
+            return None
+        written = int(
+            getattr(_kv_block_lib, f"llama_{stem}_capture_get_written")(self._ctx)
+        )
+        if written == 0:
+            return None
+        d0, d1, d2 = ctypes.c_int32(0), ctypes.c_int32(0), ctypes.c_int32(0)
+        getattr(_kv_block_lib, f"llama_{stem}_capture_get_dims")(
+            self._ctx, ctypes.byref(d0), ctypes.byref(d1), ctypes.byref(d2)
+        )
+        head_dim, n_tokens, n_heads = int(d0.value), int(d1.value), int(d2.value)
+        n = head_dim * n_tokens * n_heads
+        if n == 0 or n > buf.size:
+            return None
+        arr = buf[:n].reshape(n_heads, n_tokens, head_dim)
+        return np.transpose(arr, (1, 0, 2))
 
     def state_save(self) -> tuple[bytes, int, int, dict[int, np.ndarray]]:
         # Snapshot the engine state for session swap: the llama internal

@@ -1,12 +1,12 @@
 # EVOKE
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20361982.svg)](https://doi.org/10.5281/zenodo.20361982)
+[![DOI](https://doi.org/10.5281/zenodo.20467232.svg)](https://doi.org/10.5281/zenodo.20467232)
 
-**A KV-cache memory hierarchy with recompute-free block recovery for LLM serving.**
+**A KV-cache memory hierarchy with recompute-free block recovery for long-context LLM agents.**
 
-Long-running LLM agent sessions outgrow the KV cache within a few turns. When that happens, production servers either truncate the oldest history (and lose information that may still matter) or re-prefill the full conversation on every call (and pay full forward-pass compute regardless of whether the prior context turned out to be needed).
+Long-running LLM agent sessions accumulate context (files read, tool output, search results) until the working set outgrows the KV budget. When that happens, agent harnesses either truncate the oldest history (and lose information that may still matter) or re-prefill the full conversation on every call (and pay full forward-pass compute regardless of whether the prior context turned out to be needed).
 
-EVOKE makes eviction reversible. Cold blocks leave to host RAM at metadata cost; when a future turn needs an evicted block, a recompute-free splice writes the saved K and V tensors back into the active cache through a single RoPE rotation. The cost is the tensor transfer. The recovered bytes are the same K and V the model first computed (re-anchored in position, not recomputed against the new context), addressed by block identity rather than retrieved as a similar substitute (where RAG would substitute re-encoded text). The mechanism lives in a forked llama.cpp (three new C primitives) plus a Python policy layer and an OpenAI-compatible server.
+EVOKE makes eviction reversible. Cold blocks leave to host RAM at metadata cost; when a future turn needs an evicted block, a recompute-free splice writes the saved K and V tensors back into the active cache through a single RoPE rotation. The cost is the tensor transfer. The recovered bytes are the same K and V the model first computed (re-anchored in position, not recomputed against the new context), addressed by block identity rather than retrieved as a similar substitute (where RAG would substitute re-encoded text). The mechanism lives in a forked llama.cpp (three new C primitives) plus a Python policy layer and an OpenAI-compatible server. Recompute-free recall of evicted KV follows ArkVale (NeurIPS'24); EVOKE differs in addressing recovery by block identity rather than similarity, and in re-anchoring recovered blocks to a new live position.
 
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
@@ -47,16 +47,18 @@ All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER,
 
 **Cross-architecture multifact at b=1024 (n=5).** The recovery-bearing-versus-recovery-less divide reproduces on architecturally diverse substrates: **Qwen 3.5 9B** (hybrid Mamba/Attention + thinking) reaches **68% [48.41, 82.80]** EVOKE versus 0 to 8% recovery-less (H2O 8% best comparator); **Qwen 3.6 35B-A3B** (MoE + thinking, IQ2_M) reaches **52% [33.50, 69.97]** EVOKE versus 0% every baseline including H2O. Absolute pass-rate falls with quantization aggressiveness but the relative advantage (5× or more over best baseline) holds across all three architectures.
 
-**Eviction-scoring winner is budget-regime-dependent.** A same-substrate InfLLM adaptation at K=8 statistically separates from EVOKE at the tightest budget on both fully-swept architectures (Llama b=512: InfLLM **81.3% [71.1, 88.5]** vs evoke\_attention **60.0% [48.7, 70.3]**, non-overlapping Wilson CIs; Qwen b=512: InfLLM 81.3% [71.1, 88.5] vs evoke\_kv\_restore 50.7% [39.6, 61.7], also non-overlapping). EVOKE pulls ahead only at the loosest budget where headroom lets the scorer pay off. Both policies use the same recompute-free recovery primitive; the core contribution is the primitive itself, with the attention scorer as a regime-targeted improvement on top.
+**Eviction-scoring winner is budget-dependent.** A same-substrate InfLLM adaptation at K=8 statistically separates from EVOKE at the tightest budget on both fully-swept architectures (Llama b=512: InfLLM **81.3% [71.1, 88.5]** vs evoke\_attention **60.0% [48.7, 70.3]**, non-overlapping Wilson CIs; Qwen b=512: InfLLM 81.3% [71.1, 88.5] vs evoke\_kv\_restore 50.7% [39.6, 61.7], also non-overlapping). EVOKE pulls ahead only at the loosest budget where headroom lets the scorer pay off. Both policies use the same recompute-free recovery primitive; the core contribution is the primitive itself, with the attention scorer as a budget-dependent improvement on top.
+
+**ArkVale-style recall ablation.** A recall policy following ArkVale's cuboid-importance selection, reimplemented on the same substrate, reaches **0/4/20%** on multifact (n=5, budget 512/1024/2048) against EVOKE's **52/60/64%**. It scores on a single attention layer with original-position placement, so it is an ablation of recall selection and block placement, not a faithful reproduction of ArkVale's per-layer residency (which EVOKE's whole-sequence eviction cannot represent). See `paper/paper.pdf` §8, Table 9.
 
 ## How relevance scoring works
 
 Per-block score in [0, 1]; lowest scores get evicted under watermark pressure. Per the Appendix A.4 factorial in the paper, one decision drives the bulk of the gain:
 
-- **(decisive) Retrieval-tuned embedding (`bge-small-en-v1.5`)** scoring blocks against the raw user-message text. Marginal +72pp on NIAH at b=512. LM-hidden-state cosines crowd into a 0.85 to 0.93 band on retrieval-style workloads; bge-small widens it to 0.4 to 0.9, so top-k selection can pick the needle block over haystack noise.
+- **(dominant) Retrieval-tuned embedding (`bge-small-en-v1.5`)** scoring blocks against the raw user-message text. Marginal +72pp on NIAH at b=512. LM-hidden-state cosines crowd into a 0.85 to 0.93 band on retrieval-style workloads; bge-small widens it to 0.4 to 0.9, so top-k selection can pick the needle block over haystack noise.
 - **(conditional)** Running the recovery splice *before* the new user-message tail is decoded. Adds +20pp when the retrieval embedder is on; actively hurts when it's off.
 - **(zero measurable effect on the benchmark we ran the factorial against)** Resident-gate that excludes breadcrumbs whose similarity doesn't beat the best non-current-turn resident block.
-- **The model's own attention** (`evoke_attention` policy). A second softmax for one or more chosen transformer layers runs alongside the main attention path. Regime-targeted: pays off on single-needle workloads where attention concentrates on one recoverable target; on multi-fact at tight budget, a larger-K pure-retrieval recovery can outperform it.
+- **The model's own attention** (`evoke_attention` policy). A second softmax for one or more chosen transformer layers runs alongside the main attention path. Budget-dependent: pays off on single-needle workloads where attention concentrates on one recoverable target; on multi-fact at tight budget, a larger-K pure-retrieval recovery can outperform it.
 - **Stability priors:** recency, StreamingLLM-style sink protection, USER/ASSISTANT source-type floors, harness-supplied `evoke_priority` and `evoke_pinned` tags.
 
 See `paper/paper.pdf` §4 for the scoring equation, Appendix A.4 for the factorial, Appendix A.1 for the attention-scorer ablation.

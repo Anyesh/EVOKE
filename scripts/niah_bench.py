@@ -295,6 +295,40 @@ STRATEGIES: dict[str, dict] = {
         low_watermark=0.3,
         recent_tail_protect_frac=0.25,
     ),
+    # Sparse+importance ablation (NOT faithful ArkVale -- that is the bounded q.cuboid
+    # recall-and-evict policy in scripts/arkvale_policy.py, run via the dedicated arkvale
+    # path in multifact_bench). This arm isolates placement: infllm's importance recall but
+    # recovered at the block's ORIGINAL position (sparse). Under a tight budget the unbounded
+    # sparse layout collapses, which is exactly why a faithful ArkVale needs bounded recall.
+    "sparse_importance": dict(
+        recovery_mode="kv_restore",
+        position_mode="sparse",
+        recovery_match="similarity",
+        w_recency=0.0,
+        w_coherence=0.0,
+        w_attention=0.0,
+        sink_count=4,
+        smart_recover_k=8,
+        use_retrieval_embeddings=True,
+        block_embedding_strategy="mean",
+        eviction_policy="watermark",
+        high_watermark=0.5,
+        low_watermark=0.3,
+        recent_tail_protect_frac=0.25,
+    ),
+    # Faithful ArkVale: q.cuboid importance over per-block key bounding-volumes, bounded
+    # top-k recall-and-evict at ORIGINAL positions. multifact_bench special-cases this arm
+    # (builds cuboids from the key-capture during the read, scores+recalls via the query
+    # capture at each probe); the config here only carries the eviction/layer knobs.
+    "arkvale": dict(
+        recovery_mode="kv_restore",
+        position_mode="sparse",
+        w_recency=0.0,
+        w_coherence=0.0,
+        w_attention=0.0,
+        sink_count=4,
+        use_retrieval_embeddings=False,
+    ),
 }
 
 
@@ -635,6 +669,8 @@ def main() -> int:
                             "h2o",
                             "snapkv",
                             "infllm",
+                            "arkvale",
+                            "sparse_importance",
                         )
                         if needs_kv_block and not engine.supports_kv_block:
                             print(

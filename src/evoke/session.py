@@ -188,6 +188,13 @@ class Session:
         self._turn_id = 0
         self._detok_every = detokenize_every
         self._recovery_k = recovery_k
+        # Cumulative instrumentation surfaced via /health: decode savings
+        # (prompt tokens seen vs tokens actually decoded) and identity gap-fill
+        # outcomes (recovered vs mismatched-at-position).
+        self._total_prompt_tokens = 0
+        self._total_new_decoded = 0
+        self._gapfill_recovered = 0
+        self._gapfill_mismatch = 0
 
     def _maybe_build_attention_scorer(self) -> AttentionScorer | None:
         # Construct an AttentionScorer iff the multi-signal scorer wants
@@ -238,11 +245,31 @@ class Session:
     def manager(self) -> EvokeManager:
         return self._manager
 
+    @property
+    def total_prompt_tokens(self) -> int:
+        return self._total_prompt_tokens
+
+    @property
+    def total_new_decoded(self) -> int:
+        return self._total_new_decoded
+
+    @property
+    def gapfill_recovered(self) -> int:
+        return self._gapfill_recovered
+
+    @property
+    def gapfill_mismatch(self) -> int:
+        return self._gapfill_mismatch
+
     def reset(self) -> None:
         self._engine.reset()
         self._manager = EvokeManager(self._engine, self._config)
         self._cached_tokens.clear()
         self._turn_id = 0
+        self._total_prompt_tokens = 0
+        self._total_new_decoded = 0
+        self._gapfill_recovered = 0
+        self._gapfill_mismatch = 0
 
     def _common_prefix_len(self, new_tokens: list[int]) -> int:
         limit = min(len(self._cached_tokens), len(new_tokens))
@@ -418,6 +445,99 @@ class Session:
             return None
         return avg / norm
 
+    def _identity_gap_fill(
+        self, prompt_tokens: list[int], cursor: int
+    ) -> tuple[int, int]:
+        # Identity-keyed in-place recovery. Sparse eviction leaves a hole at a
+        # block's original position and the kv_restore backend holds its K/V keyed
+        # by content. When the client re-sends that exact content at that exact
+        # position (stable prefix, the agent re-send pattern), splice the saved
+        # K/V back in place by token-identity match instead of re-decoding it
+        # (recompute-free) or cosine-matching it (RAG). Walk from the matched
+        # cursor: consume residents already at a position for free, splice saved
+        # blocks whose tokens reappear at their original_start, and stop at the
+        # first genuinely-new or changed span so sync_prefix decodes only that.
+        backend = self._manager._recovery
+        peek = getattr(backend, "peek", None)
+        if peek is None:
+            return cursor, 0
+        resident_by_start = {
+            b.logical_start: b for b in self._manager._positions.active_blocks
+        }
+        saved_by_start: dict[int, tuple[str, list[int]]] = {}
+        for crumb in self._manager.get_breadcrumbs():
+            sb = peek(crumb.key)
+            if sb is not None:
+                saved_by_start[sb.original_start] = (crumb.key, sb.token_ids)
+        _debug = bool(os.environ.get("EVOKE_DEBUG_IDENTITY"))
+        if _debug:
+            sys.stderr.write(
+                f"[identity_gap_fill] cursor={cursor} "
+                f"resident_starts={sorted(resident_by_start)} "
+                f"saved_starts={sorted(saved_by_start)} "
+                f"prompt_len={len(prompt_tokens)}\n"
+            )
+            sys.stderr.flush()
+        recovered = 0
+        mismatched = 0
+        n = len(prompt_tokens)
+        while cursor < n:
+            rb = resident_by_start.get(cursor)
+            if (
+                rb is not None
+                and prompt_tokens[cursor : cursor + len(rb.token_ids)] == rb.token_ids
+            ):
+                cursor += len(rb.token_ids)
+                continue
+            cand = saved_by_start.get(cursor)
+            if cand is not None:
+                key, toks = cand
+                tok_match = prompt_tokens[cursor : cursor + len(toks)] == toks
+                if _debug:
+                    sys.stderr.write(
+                        f"[identity_gap_fill] cand at cursor={cursor} key={key} "
+                        f"toks_len={len(toks)} tok_match={tok_match}\n"
+                    )
+                    if not tok_match:
+                        pt = prompt_tokens[cursor : cursor + min(8, len(toks))]
+                        st = toks[: min(8, len(toks))]
+                        sys.stderr.write(f"  prompt_slice={pt}\n  saved_slice={st}\n")
+                    sys.stderr.flush()
+                if tok_match:
+                    ok = self._manager.recover(key, defer_budget=True)
+                    if _debug:
+                        sys.stderr.write(
+                            f"[identity_gap_fill] recover({key}) -> {ok}\n"
+                        )
+                        sys.stderr.flush()
+                    if ok:
+                        recovered += 1
+                        saved_by_start.pop(cursor, None)
+                        cursor += len(toks)
+                        continue
+                else:
+                    # A saved block sits at this position but its tokens do not
+                    # match the re-sent prompt (e.g. assistant-turn re-tokenization
+                    # drift). Identity recovery cannot fire here; recorded so the
+                    # demo can tell a byte-drift miss from a clean no-candidate stop.
+                    mismatched += 1
+            elif _debug:
+                sys.stderr.write(
+                    f"[identity_gap_fill] no candidate at cursor={cursor} "
+                    f"(no resident, no saved) -> break\n"
+                )
+                sys.stderr.flush()
+            break
+        # No enforcement here: evicting during gap-fill would re-evict the very
+        # blocks just recovered to rebuild the prefix, leaving the decode that
+        # follows incoherent (it crashed llama_decode). The budget is enforced at
+        # end-of-turn via _track_and_enforce, after generation has the full
+        # context. Under full-resend this means the cache transiently holds the
+        # whole working set; that peak is what peak_active_tokens measures.
+        self._gapfill_recovered += recovered
+        self._gapfill_mismatch += mismatched
+        return cursor, recovered
+
     def sync_prefix(
         self,
         prompt_tokens: list[int],
@@ -446,23 +566,73 @@ class Session:
         # positions where the engine actually has different content.
         self._cached_tokens = self._manager.get_token_view()
         divergence = self._common_prefix_len(prompt_tokens)
+        # Identity-keyed in-place recovery: splice evicted blocks back by content
+        # identity before any tail-evict/decode, then re-derive the view and the
+        # divergence so the logic below operates on what genuinely remains new.
+        # Requires sparse mode; otherwise it falls through to the similarity path.
+        identity_match = (
+            self._config.recovery_match == "identity"
+            and self._config.position_mode == "sparse"
+        )
+        recovered = 0
+        if identity_match and divergence < len(prompt_tokens):
+            gapfill_cursor, recovered = self._identity_gap_fill(
+                prompt_tokens, divergence
+            )
+            if recovered:
+                # Gap-fill rebuilt the prefix in place without enforcing the
+                # budget, so [0, gapfill_cursor) is contiguous in the cache and
+                # gapfill_cursor is the genuine new-content boundary. Decode the
+                # tail from there; end-of-turn enforcement trims afterward.
+                divergence = gapfill_cursor
+                self._cached_tokens = self._manager.get_token_view()
+                if bool(os.environ.get("EVOKE_DEBUG_IDENTITY")):
+                    resident_starts = sorted(
+                        b.logical_start for b in self._manager._positions.active_blocks
+                    )
+                    sys.stderr.write(
+                        f"[sync_prefix] gap-fill done: cursor={gapfill_cursor} "
+                        f"recovered={recovered} "
+                        f"new_cached_len={len(self._cached_tokens)} "
+                        f"resident_starts={resident_starts}\n"
+                    )
+                    sys.stderr.flush()
         if divergence < len(self._cached_tokens):
-            if os.environ.get("EVOKE_DEBUG_DRIFT"):
-                self._log_drift(prompt_tokens, divergence)
-            # Tail-evict the diverged portion of the cache instead of resetting
-            # the whole session. This keeps the matching prefix (often the
-            # system prompt + early turns), preserves eviction stats across
-            # turns, and lets truncate-policy sessions continue smoothly even
-            # when manager eviction has dropped middle history that the next
-            # request resupplies. Falls back to full reset only when the
-            # engine refuses tail-eviction (hybrid Mamba+Attention memory).
-            cached_len = len(self._cached_tokens)
-            if self._engine.evict_ranges([(divergence, cached_len)]):
-                self._manager.trim_blocks_at(divergence)
-                self._cached_tokens = self._cached_tokens[:divergence]
-            else:
+            if identity_match:
+                # Sparse holes make the view index != the engine absolute
+                # position, so a partial tail-evict cannot be expressed as an
+                # engine range here. A genuine mid-history change is rare for an
+                # append-only agent (gap-fill already handled the re-sent tail);
+                # reset and re-decode cleanly. Correct, just not recompute-free
+                # this turn.
+                if bool(os.environ.get("EVOKE_DEBUG_IDENTITY")):
+                    sys.stderr.write(
+                        f"[sync_prefix] identity reset fired: "
+                        f"divergence={divergence} cached_len={len(self._cached_tokens)} "
+                        f"prompt_len={len(prompt_tokens)} "
+                        f"gapfill_recovered_so_far={self._gapfill_recovered}\n"
+                    )
+                    sys.stderr.flush()
                 self.reset()
                 divergence = 0
+                recovered = 0
+            else:
+                if os.environ.get("EVOKE_DEBUG_DRIFT"):
+                    self._log_drift(prompt_tokens, divergence)
+                # Tail-evict the diverged portion of the cache instead of
+                # resetting the whole session. This keeps the matching prefix
+                # (often the system prompt + early turns), preserves eviction
+                # stats across turns, and lets truncate-policy sessions continue
+                # smoothly even when manager eviction has dropped middle history
+                # that the next request resupplies. Falls back to full reset only
+                # when the engine refuses tail-eviction (hybrid memory).
+                cached_len = len(self._cached_tokens)
+                if self._engine.evict_ranges([(divergence, cached_len)]):
+                    self._manager.trim_blocks_at(divergence)
+                    self._cached_tokens = self._cached_tokens[:divergence]
+                else:
+                    self.reset()
+                    divergence = 0
 
         tail = prompt_tokens[divergence:]
         # Smart recovery runs BEFORE decoding the new tail so recovered blocks
@@ -476,12 +646,15 @@ class Session:
         # become earlier context the model attends back to. NIAH passed 100%
         # only after this re-ordering; the old order failed every cell with
         # a planted fact away from the recent tail.
-        recovered = 0
         if tail:
             tail_text = self._engine.detokenize(tail)
             if tail_text:
                 self._manager._last_user_text = tail_text
-            if tail_text and self._config.smart_recover_before_decode:
+            if (
+                tail_text
+                and self._config.smart_recover_before_decode
+                and not identity_match
+            ):
                 recovered = self._smart_recover(k=self._recovery_k)
             self._manager.add_context_tokens(
                 tail,
@@ -491,9 +664,15 @@ class Session:
             )
             self._turn_id += 1
             self._cached_tokens.extend(tail)
-            if tail_text and not self._config.smart_recover_before_decode:
+            if (
+                tail_text
+                and not self._config.smart_recover_before_decode
+                and not identity_match
+            ):
                 recovered = self._smart_recover(k=self._recovery_k)
 
+        self._total_prompt_tokens += len(prompt_tokens)
+        self._total_new_decoded += len(tail)
         stats = self._manager.get_stats()
         return SyncStats(
             new_tokens_decoded=len(tail),
