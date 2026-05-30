@@ -206,8 +206,14 @@ class EvokeManager:
         answer_tokens_generated = 0
         answer_start_idx: int | None = None
         close_tokens = self._engine.tokenize(think_close)
+        n_ctx = self._engine.n_ctx
 
         for _ in range(thinking_budget + answer_budget):
+            # The thinking path lacked the slot guard the plain generate() has;
+            # a long <think> trace would run next_write_pos into n_ctx and crash
+            # generate_next with "no KV slot". Stop before that boundary.
+            if self._engine.next_write_pos + 1 >= n_ctx:
+                break
             token = self._engine.generate_next()
             output_tokens.append(token)
             self._step += 1
