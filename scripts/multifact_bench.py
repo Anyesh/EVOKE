@@ -57,6 +57,8 @@ from niah_bench import (
     build_haystack,
 )
 
+from arkvale_policy import ArkValePolicy, block_cuboid
+
 
 @dataclass
 class Fact:
@@ -262,6 +264,86 @@ def _build_scorer(
 _RETRIEVAL_EMBEDDER = RetrievalEmbedder()
 
 
+def _run_cell_arkvale(
+    engine: LlamaCppEngine,
+    facts: list[Fact],
+    depths: list[int],
+    haystack: list[str],
+    overrides: dict,
+    budget: int,
+    seed: int,
+) -> CellResult:
+    # Faithful ArkVale: build per-block key cuboids from the key-capture as the document is
+    # read block-by-block (same tokens/positions as a bulk add, so the cache is identical),
+    # then at each probe score every block by q.cuboid and run the bounded top-k recall-and-evict
+    # at original positions. The query is the last probe token's q at the scoring layer.
+    engine.reset()
+    config = EvokeConfig(
+        max_active_tokens=budget,
+        block_size=64,
+        high_watermark=0.95,
+        low_watermark=0.75,
+        **overrides,
+    )
+    mgr = EvokeManager(engine, config)
+
+    engine.attn_capture_set_layer(config.attention_capture_layer)
+    qbuf = np.zeros(4_000_000, dtype=np.float32)
+    kbuf = np.zeros(4_000_000, dtype=np.float32)
+    engine.query_capture_set_buffer(qbuf)
+    engine.key_capture_set_buffer(kbuf)
+    policy = ArkValePolicy(budget_blocks=max(1, budget // config.block_size))
+
+    document = insert_facts(haystack, facts, depths)
+    toks = engine.tokenize(document)
+    bs = config.block_size
+    for ci in range(0, len(toks), bs):
+        chunk = toks[ci : ci + bs]
+        # The key-capture is the FULL (padded) cache; the new chunk's real keys sit at
+        # decode-time positions [start, start+len). Slice exactly those -- slicing the
+        # padded tail would grab masked cells and yield garbage cuboids.
+        start = engine.next_write_pos
+        bkey = f"doc_s{seed}_b{budget}_c{ci // bs}"
+        mgr.add_context_tokens(chunk, key=bkey)
+        kcap = engine.read_key_capture()
+        if kcap is not None and kcap.shape[0] >= start + len(chunk):
+            policy.set_cuboid(
+                f"{bkey}#0", *block_cuboid(kcap[start : start + len(chunk)])
+            )
+
+    result = CellResult(seed=seed, budget=budget, strategy="arkvale")
+    think_close = _think_close_for(os.environ.get("EVOKE_MODEL_PATH", ""))
+    t0 = time.perf_counter()
+    for fact in facts:
+        probe = f"\n\nQuestion: {fact.probe}\nAnswer:"
+        mgr.process_user_message(probe)
+        qcap = engine.read_query_capture()
+        if qcap is not None and qcap.shape[0] > 0:
+            policy.recall_and_evict(mgr, qcap[-1])
+        if think_close:
+            answer = mgr.generate(
+                512, think_close=think_close, thinking_budget=2048, answer_budget=256
+            )
+        else:
+            answer = mgr.generate(128)
+        matched = _string_match(answer, fact.expected_substrings)
+        result.fact_results[fact.fact_id] = matched
+        result.fact_answers[fact.fact_id] = answer.strip().replace("\n", " ")[:120]
+        result.fact_plant_texts[fact.fact_id] = fact.plant_text
+        result.fact_ambiguous[fact.fact_id] = (
+            False if matched else _semantically_engaged(answer, fact.semantic_keywords)
+        )
+    result.elapsed = time.perf_counter() - t0
+    engine.query_capture_set_buffer(None)
+    engine.key_capture_set_buffer(None)
+    engine.attn_capture_set_layer(-1)
+    stats = mgr.get_stats()
+    result.evictions = stats.total_evictions
+    result.recoveries = stats.total_recoveries
+    result.active_tokens = stats.active_tokens
+    return result
+
+
 def run_cell(
     engine: LlamaCppEngine,
     facts: list[Fact],
@@ -272,6 +354,10 @@ def run_cell(
     budget: int,
     seed: int,
 ) -> CellResult:
+    if strategy == "arkvale":
+        return _run_cell_arkvale(
+            engine, facts, depths, haystack, overrides, budget, seed
+        )
     engine.reset()
     config_kwargs: dict = dict(
         max_active_tokens=budget,
@@ -377,8 +463,12 @@ def main() -> int:
             facts = build_fact_set(seed)
             depths = assign_depths(len(facts), n_paragraphs, seed)
             haystack = build_haystack(n_paragraphs, seed)
+            only = os.environ.get("EVOKE_STRATEGIES", "").strip()
+            selected = set(only.split(",")) if only else None
             for budget in budgets:
                 for name, overrides in STRATEGIES.items():
+                    if selected is not None and name not in selected:
+                        continue
                     needs_kv_block = name in (
                         "evoke_kv_restore",
                         "evoke_recovery_aware",
@@ -386,6 +476,8 @@ def main() -> int:
                         "h2o",
                         "snapkv",
                         "infllm",
+                        "arkvale",
+                        "sparse_importance",
                     )
                     if needs_kv_block and not engine.supports_kv_block:
                         continue
