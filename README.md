@@ -4,7 +4,7 @@
 
 **A KV-cache memory hierarchy with recompute-free block recovery for long-context LLM agents.**
 
-Long-running LLM agent sessions outgrow the KV cache within a few turns. When that happens, production servers either truncate the oldest history (and lose information that may still matter) or re-prefill the full conversation on every call (and pay full forward-pass compute regardless of whether the prior context turned out to be needed).
+Long-running LLM agent sessions accumulate context (files read, tool output, search results) until the working set outgrows the KV budget. When that happens, agent harnesses either truncate the oldest history (and lose information that may still matter) or re-prefill the full conversation on every call (and pay full forward-pass compute regardless of whether the prior context turned out to be needed).
 
 EVOKE makes eviction reversible. Cold blocks leave to host RAM at metadata cost; when a future turn needs an evicted block, a recompute-free splice writes the saved K and V tensors back into the active cache through a single RoPE rotation. The cost is the tensor transfer. The recovered bytes are the same K and V the model first computed (re-anchored in position, not recomputed against the new context), addressed by block identity rather than retrieved as a similar substitute (where RAG would substitute re-encoded text). The mechanism lives in a forked llama.cpp (three new C primitives) plus a Python policy layer and an OpenAI-compatible server. Recompute-free recall of evicted KV follows ArkVale (NeurIPS'24); EVOKE differs in addressing recovery by block identity rather than similarity, and in re-anchoring recovered blocks to a new live position.
 
