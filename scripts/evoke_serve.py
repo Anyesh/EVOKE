@@ -72,6 +72,14 @@ def main() -> int:
         os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT", "1.0")
     )
     recovery_decay = float(os.environ.get("EVOKE_RECOVERY_DECAY", "0.7"))
+    # Position mode + recovery trigger for the live path. Identity gap-fill (the
+    # north-star recovery) splices evicted K/V back in place by content identity
+    # and requires sparse holes, so identity defaults position_mode to sparse.
+    recovery_match = os.environ.get("EVOKE_RECOVERY_MATCH", "identity").lower()
+    position_mode = os.environ.get(
+        "EVOKE_POSITION_MODE",
+        "sparse" if recovery_match == "identity" else "compact",
+    ).lower()
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -124,6 +132,8 @@ def main() -> int:
                 w_recovery=w_recovery,
                 recovery_strength_init=recovery_strength_init,
                 recovery_decay=recovery_decay,
+                position_mode=position_mode,
+                recovery_match=recovery_match,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
@@ -136,6 +146,7 @@ def main() -> int:
                 f" w_recovery={w_recovery}"
                 f" rec_init={recovery_strength_init}"
                 f" rec_decay={recovery_decay}"
+                f" position_mode={position_mode} recovery_match={recovery_match}"
             )
     else:
         raise ValueError(f"unknown EVOKE_POLICY: {policy!r}")
