@@ -93,6 +93,26 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
         ]
         lib.llama_attn_capture_get_written.restype = ctypes.c_size_t
         lib.llama_attn_capture_get_written.argtypes = [ctypes.c_void_p]
+        # EVOKE query/key capture (ArkVale q.cuboid scoring). Each exposes the
+        # permuted q (or k) at the scoring layer as [head_dim, n_tokens, n_heads].
+        for _stem in ("query", "key"):
+            getattr(lib, f"llama_{_stem}_capture_set_buffer").restype = None
+            getattr(lib, f"llama_{_stem}_capture_set_buffer").argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+            ]
+            getattr(lib, f"llama_{_stem}_capture_get_dims").restype = None
+            getattr(lib, f"llama_{_stem}_capture_get_dims").argtypes = [
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_int32),
+                ctypes.POINTER(ctypes.c_int32),
+                ctypes.POINTER(ctypes.c_int32),
+            ]
+            getattr(lib, f"llama_{_stem}_capture_get_written").restype = ctypes.c_size_t
+            getattr(lib, f"llama_{_stem}_capture_get_written").argtypes = [
+                ctypes.c_void_p
+            ]
         return lib
     except (OSError, AttributeError):
         return None
@@ -574,6 +594,60 @@ class LlamaCppEngine:
         if _kv_block_lib is None:
             return 0
         return int(_kv_block_lib.llama_attn_capture_get_written(self._ctx))
+
+    def query_capture_set_buffer(self, buf: np.ndarray | None) -> None:
+        self._capture_set_buffer("query", buf)
+
+    def key_capture_set_buffer(self, buf: np.ndarray | None) -> None:
+        self._capture_set_buffer("key", buf)
+
+    def _capture_set_buffer(self, stem: str, buf: np.ndarray | None) -> None:
+        if _kv_block_lib is None:
+            raise RuntimeError(
+                "q/k capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
+            )
+        fn = getattr(_kv_block_lib, f"llama_{stem}_capture_set_buffer")
+        if buf is None:
+            fn(self._ctx, None, 0)
+            setattr(self, f"_{stem}_capture_buf", None)
+            return
+        if buf.dtype != np.float32 or not buf.flags["C_CONTIGUOUS"]:
+            raise ValueError("capture buffer must be a contiguous float32 numpy array")
+        setattr(self, f"_{stem}_capture_buf", buf)  # keep alive for the C side
+        fn(self._ctx, buf.ctypes.data_as(ctypes.c_void_p), buf.size)
+
+    def read_query_capture(self) -> np.ndarray | None:
+        return self._read_capture("query")
+
+    def read_key_capture(self) -> np.ndarray | None:
+        return self._read_capture("key")
+
+    def _read_capture(self, stem: str) -> np.ndarray | None:
+        # Returns the captured tensor as (n_tokens, n_heads, head_dim), or None if
+        # nothing was written. ggml lays the permuted q/k contiguous with ne0
+        # (head_dim) fastest, then ne1 (n_tokens), then ne2 (n_heads), so the flat
+        # buffer reshapes to (n_heads, n_tokens, head_dim); transpose to put tokens
+        # first for per-token scoring.
+        if _kv_block_lib is None:
+            return None
+        buf = getattr(self, f"_{stem}_capture_buf", None)
+        if buf is None:
+            return None
+        written = int(
+            getattr(_kv_block_lib, f"llama_{stem}_capture_get_written")(self._ctx)
+        )
+        if written == 0:
+            return None
+        d0, d1, d2 = ctypes.c_int32(0), ctypes.c_int32(0), ctypes.c_int32(0)
+        getattr(_kv_block_lib, f"llama_{stem}_capture_get_dims")(
+            self._ctx, ctypes.byref(d0), ctypes.byref(d1), ctypes.byref(d2)
+        )
+        head_dim, n_tokens, n_heads = int(d0.value), int(d1.value), int(d2.value)
+        n = head_dim * n_tokens * n_heads
+        if n == 0 or n > buf.size:
+            return None
+        arr = buf[:n].reshape(n_heads, n_tokens, head_dim)
+        return np.transpose(arr, (1, 0, 2))
 
     def state_save(self) -> tuple[bytes, int, int, dict[int, np.ndarray]]:
         # Snapshot the engine state for session swap: the llama internal
