@@ -1,6 +1,6 @@
 # EVOKE
 
-[![DOI](https://doi.org/10.5281/zenodo.20467232.svg)](https://doi.org/10.5281/zenodo.20467232)
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.20467232.svg)](https://doi.org/10.5281/zenodo.20467232)
 
 **A KV-cache memory hierarchy with recompute-free block recovery for long-context LLM agents.**
 
