@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import threading
 import time
 import uuid
 from typing import Any
@@ -172,8 +174,13 @@ def create_app(
     config: EvokeConfig | None = None,
     *,
     max_sessions: int = 8,
+    enable_thinking: bool | None = None,
 ) -> FastAPI:
     app = FastAPI(title="EVOKE", version="0.1.0")
+    if enable_thinking is None:
+        enable_thinking = {"1": True, "true": True, "0": False, "false": False}.get(
+            os.environ.get("EVOKE_ENABLE_THINKING", "").lower()
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _log_422(request: Request, exc: RequestValidationError):
@@ -203,9 +210,12 @@ def create_app(
     # engine context would race. Per-session concurrency would require
     # n_seq_max > 1 routing in every primitive (paper §9, future work).
     lock = asyncio.Lock()
-
-    def _session_for(session_id: str | None) -> Session:
-        return pool.get(session_id or DEFAULT_SESSION_ID)
+    # Engine work runs in worker threads (so the event loop stays free to
+    # serve /health and SSE keepalives during a long prefill); this second
+    # lock serializes the threads themselves, because the asyncio lock is
+    # released if a streaming client disconnects while the producer thread
+    # is still driving the engine.
+    engine_lock = threading.Lock()
 
     @app.get("/v1/models")
     async def list_models() -> dict[str, Any]:
@@ -226,12 +236,38 @@ def create_app(
         x_evoke_session: str | None = Header(default=None),
     ) -> dict[str, Any]:
         async with lock:
-            session = _session_for(x_evoke_session)
+            # peek, never get(): a poll must not create a session or swap
+            # engine state away from a generation in flight.
+            sid = x_evoke_session or pool.active_session_id or DEFAULT_SESSION_ID
+            session = pool.peek(sid)
+            base = {
+                "status": "ok",
+                "n_ctx": engine.n_ctx,
+                "kv_block_primitives": engine.supports_kv_block,
+                "session_id": sid,
+                "n_sessions": pool.n_sessions,
+                "sessions_evicted": pool.evicted_count,
+            }
+            if session is None:
+                return {
+                    **base,
+                    "cached_tokens": 0,
+                    "active_tokens": 0,
+                    "active_blocks": 0,
+                    "budget": 0,
+                    "budget_utilization": 0.0,
+                    "total_evictions": 0,
+                    "total_recoveries": 0,
+                    "peak_active": 0,
+                    "total_prompt_tokens": 0,
+                    "total_new_decoded": 0,
+                    "identity_recovered": 0,
+                    "identity_mismatch": 0,
+                }
             stats = session.manager.get_stats()
             return {
-                "status": "ok",
+                **base,
                 "cached_tokens": session.cached_token_count,
-                "n_ctx": engine.n_ctx,
                 "active_tokens": stats.active_tokens,
                 "active_blocks": stats.active_blocks,
                 "budget": stats.budget,
@@ -243,10 +279,6 @@ def create_app(
                 "total_new_decoded": session.total_new_decoded,
                 "identity_recovered": session.gapfill_recovered,
                 "identity_mismatch": session.gapfill_mismatch,
-                "kv_block_primitives": engine.supports_kv_block,
-                "session_id": x_evoke_session or DEFAULT_SESSION_ID,
-                "n_sessions": pool.n_sessions,
-                "sessions_evicted": pool.evicted_count,
             }
 
     @app.get("/v1/sessions")
@@ -274,9 +306,10 @@ def create_app(
         x_evoke_session: str | None = Header(default=None),
     ) -> dict[str, Any]:
         async with lock:
-            session = _session_for(x_evoke_session)
+            sid = x_evoke_session or pool.active_session_id or DEFAULT_SESSION_ID
+            session = pool.get(sid)
             session.reset()
-        return {"status": "reset", "session_id": x_evoke_session or DEFAULT_SESSION_ID}
+        return {"status": "reset", "session_id": sid}
 
     @app.post("/v1/chat/completions")
     async def chat_completions(
@@ -298,17 +331,30 @@ def create_app(
             # the render fails outright.
             try:
                 prompt = engine.apply_chat_template_with_tools(
-                    msgs, tools=req.tools, add_generation_prompt=True
+                    msgs,
+                    tools=req.tools,
+                    add_generation_prompt=True,
+                    enable_thinking=enable_thinking,
                 )
-            except RuntimeError:
+            except RuntimeError as exc:
+                print(
+                    f"[tmpl] gguf template render failed ({exc}); "
+                    "falling back to format_qwen_chat",
+                    flush=True,
+                )
                 prompt = format_qwen_chat(
                     msgs, tools=req.tools, add_generation_prompt=True
                 )
         else:
             try:
                 prompt = engine.apply_chat_template(msgs, add_generation_prompt=True)
-            except RuntimeError:
+            except RuntimeError as exc:
                 # Model has no embedded chat template; fall back to ours.
+                print(
+                    f"[tmpl] C template path failed ({exc}); "
+                    "falling back to format_qwen_chat",
+                    flush=True,
+                )
                 prompt = format_qwen_chat(msgs, tools=None, add_generation_prompt=True)
         prompt_tokens = engine.tokenize(prompt)
         prompt_n = len(prompt_tokens)
@@ -320,12 +366,26 @@ def create_app(
         max_new = req.max_tokens or 2048
         completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
         created = int(time.time())
+        # Explicit header wins; otherwise route by longest shared token
+        # prefix so an interleaved side-request (title generation) cannot
+        # land on the agent session and reset away its recovery archive.
+        if x_evoke_session:
+            session_id = x_evoke_session
+        else:
+            async with lock:
+                session_id = pool.route_id(prompt_tokens)
+        print(
+            f"[req {completion_id}] msgs={len(msgs)} tools={len(req.tools or [])} "
+            f"stream={req.stream} max_new={max_new} prompt_chars={len(prompt)} "
+            f"prompt_tokens={prompt_n} session={session_id} stops={stops}",
+            flush=True,
+        )
 
         if req.stream:
             return StreamingResponse(
                 _stream_completion(
                     pool,
-                    x_evoke_session or DEFAULT_SESSION_ID,
+                    session_id,
                     engine,
                     lock,
                     prompt_tokens,
@@ -337,25 +397,38 @@ def create_app(
                     req.evoke_priority,
                     req.evoke_pinned,
                     req.evoke_task_boundary,
+                    req.tools,
+                    engine_lock,
                 ),
                 media_type="text/event-stream",
             )
 
+        def _run_turn():
+            with engine_lock:
+                session = pool.get(session_id)
+                session.sync_prefix(
+                    prompt_tokens,
+                    priority=req.evoke_priority,
+                    pinned=req.evoke_pinned,
+                    task_boundary=req.evoke_task_boundary,
+                )
+                result = session.generate(max_tokens=max_new, stop_strings=stops)
+                return result, session._config.suppress_thinking_strip
+
         async with lock:
-            session = _session_for(x_evoke_session)
-            session.sync_prefix(
-                prompt_tokens,
-                priority=req.evoke_priority,
-                pinned=req.evoke_pinned,
-                task_boundary=req.evoke_task_boundary,
-            )
-            result = session.generate(max_tokens=max_new, stop_strings=stops)
-            suppress = session._config.suppress_thinking_strip
+            result, suppress = await asyncio.to_thread(_run_turn)
 
         parsed = parse_qwen_response(
             result.text,
             strip_thinking=not suppress,
+            tools=req.tools,
         )
+        if not parsed.tool_calls and "<tool_call>" in result.text:
+            print(
+                f"[req {completion_id}] tool_call parse failed: "
+                f"head={result.text[:160]!r} tail={result.text[-160:]!r}",
+                flush=True,
+            )
         return _completion_payload(
             completion_id,
             created,
@@ -393,6 +466,8 @@ async def _stream_completion(
     evoke_priority: float = 1.0,
     evoke_pinned: bool = False,
     evoke_task_boundary: bool = False,
+    tools: list[dict[str, Any]] | None = None,
+    engine_lock: threading.Lock | None = None,
 ):
     yield _sse(
         _chunk_payload(completion_id, created, model_name, {"role": "assistant"})
@@ -404,81 +479,136 @@ async def _stream_completion(
     full_text = ""
     finish_reason: str | None = None
 
-    async with lock:
-        # Resolve the session inside the lock so any other request that
-        # raced us through the pool gets to swap us in cleanly.
-        session = pool.get(session_id)
-        session.sync_prefix(
-            prompt_tokens,
-            priority=evoke_priority,
-            pinned=evoke_pinned,
-            task_boundary=evoke_task_boundary,
-        )
-        for chunk in session.stream_generate(max_tokens=max_new, stop_strings=stops):
-            full_text = chunk.full_text
-            if chunk.finish_reason is not None:
-                finish_reason = chunk.finish_reason
+    # The engine work (prefix sync, prefill, decode) is synchronous and can
+    # run for minutes on a long prompt. Running it inline would freeze the
+    # event loop (no /health, no SSE bytes) until the first token, and
+    # agent clients abort streams that stay silent that long. A producer
+    # thread drives the engine and feeds chunks through a queue; the
+    # generator emits SSE keepalive comments while the queue is quiet.
+    loop = asyncio.get_running_loop()
+    chunk_q: asyncio.Queue[Any] = asyncio.Queue()
+    _DONE = object()
+    # Set when the client disconnects (or the stream finishes) so the
+    # producer thread stops generating instead of grinding out the rest of
+    # a response nobody will read while retries queue up behind the lock.
+    abort = threading.Event()
 
-            if tool_locked:
-                continue
+    try:
+        async with lock:
+            # Resolve the session inside the lock so any other request that
+            # raced us through the pool gets to swap us in cleanly.
+            session = pool.get(session_id)
 
-            # On hybrid memory models with suppress_thinking_strip set, the
-            # client must echo the full assistant content (including the
-            # thinking trace) back to keep the cached state aligned. Skip
-            # the in_think gating so <think>...</think> streams through
-            # verbatim alongside the answer.
-            if not session._config.suppress_thinking_strip:
-                if in_think:
-                    close_idx = full_text.find("</think>", emit_end)
-                    if close_idx == -1:
-                        continue
-                    in_think = False
-                    emit_end = close_idx + len("</think>")
+            def _produce():
+                ctx = engine_lock if engine_lock is not None else threading.Lock()
+                try:
+                    with ctx:
+                        session.sync_prefix(
+                            prompt_tokens,
+                            priority=evoke_priority,
+                            pinned=evoke_pinned,
+                            task_boundary=evoke_task_boundary,
+                        )
+                        for chunk in session.stream_generate(
+                            max_tokens=max_new,
+                            stop_strings=stops,
+                            abort_event=abort,
+                        ):
+                            loop.call_soon_threadsafe(chunk_q.put_nowait, chunk)
+                    loop.call_soon_threadsafe(chunk_q.put_nowait, _DONE)
+                except BaseException as exc:  # noqa: BLE001
+                    loop.call_soon_threadsafe(chunk_q.put_nowait, exc)
 
-                think_idx = full_text.find("<think>", emit_end)
-            else:
-                think_idx = -1
+            producer = threading.Thread(target=_produce, daemon=True)
+            producer.start()
 
-            tc_idx = full_text.find("<tool_call>", emit_end)
+            while True:
+                try:
+                    item = await asyncio.wait_for(chunk_q.get(), timeout=10.0)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                if item is _DONE:
+                    break
+                if isinstance(item, BaseException):
+                    raise item
+                chunk = item
+                full_text = chunk.full_text
+                if chunk.finish_reason is not None:
+                    finish_reason = chunk.finish_reason
 
-            if tc_idx != -1 and (think_idx == -1 or tc_idx < think_idx):
-                pre = full_text[emit_end:tc_idx]
-                if pre.strip():
+                if tool_locked:
+                    continue
+
+                # On hybrid memory models with suppress_thinking_strip set,
+                # the client must echo the full assistant content (including
+                # the thinking trace) back to keep the cached state aligned.
+                # Skip the in_think gating so <think>...</think> streams
+                # through verbatim alongside the answer.
+                if not session._config.suppress_thinking_strip:
+                    if in_think:
+                        close_idx = full_text.find("</think>", emit_end)
+                        if close_idx == -1:
+                            continue
+                        in_think = False
+                        emit_end = close_idx + len("</think>")
+
+                    think_idx = full_text.find("<think>", emit_end)
+                else:
+                    think_idx = -1
+
+                tc_idx = full_text.find("<tool_call>", emit_end)
+
+                if tc_idx != -1 and (think_idx == -1 or tc_idx < think_idx):
+                    pre = full_text[emit_end:tc_idx]
+                    if pre.strip():
+                        yield _sse(
+                            _chunk_payload(
+                                completion_id, created, model_name, {"content": pre}
+                            )
+                        )
+                    tool_locked = True
+                    emit_end = tc_idx
+                    continue
+
+                if think_idx != -1:
+                    pre = full_text[emit_end:think_idx]
+                    if pre.strip():
+                        yield _sse(
+                            _chunk_payload(
+                                completion_id, created, model_name, {"content": pre}
+                            )
+                        )
+                    in_think = True
+                    emit_end = think_idx
+                    continue
+
+                safe_end = _safe_emit_end(full_text)
+                if safe_end > emit_end:
+                    delta = full_text[emit_end:safe_end]
+                    emit_end = safe_end
                     yield _sse(
                         _chunk_payload(
-                            completion_id, created, model_name, {"content": pre}
+                            completion_id, created, model_name, {"content": delta}
                         )
                     )
-                tool_locked = True
-                emit_end = tc_idx
-                continue
-
-            if think_idx != -1:
-                pre = full_text[emit_end:think_idx]
-                if pre.strip():
-                    yield _sse(
-                        _chunk_payload(
-                            completion_id, created, model_name, {"content": pre}
-                        )
-                    )
-                in_think = True
-                emit_end = think_idx
-                continue
-
-            safe_end = _safe_emit_end(full_text)
-            if safe_end > emit_end:
-                delta = full_text[emit_end:safe_end]
-                emit_end = safe_end
-                yield _sse(
-                    _chunk_payload(
-                        completion_id, created, model_name, {"content": delta}
-                    )
-                )
+    finally:
+        abort.set()
 
     parsed = parse_qwen_response(
-        full_text, strip_thinking=not session._config.suppress_thinking_strip
+        full_text,
+        strip_thinking=not session._config.suppress_thinking_strip,
+        tools=tools,
     )
-    if not tool_locked and not in_think:
+    if not parsed.tool_calls and "<tool_call>" in full_text:
+        print(
+            f"[stream {completion_id}] tool_call parse failed: "
+            f"head={full_text[:160]!r} tail={full_text[-160:]!r}",
+            flush=True,
+        )
+    # A locked stream whose block failed to parse must still ship the raw
+    # text; otherwise the client receives an empty message and agents bail.
+    if not in_think and (not tool_locked or not parsed.tool_calls):
         tail = full_text[emit_end:]
         for tok in ("<|im_end|>", "<|endoftext|>"):
             if tok in tail:
@@ -510,6 +640,12 @@ async def _stream_completion(
 
     final_reason = (
         "tool_calls" if parsed.tool_calls else (finish_reason or parsed.finish_reason)
+    )
+    print(
+        f"[stream {completion_id}] full_chars={len(full_text)} "
+        f"finish={final_reason} tool_calls={len(parsed.tool_calls)} "
+        f"emitted_to={emit_end}",
+        flush=True,
     )
     yield _sse(
         _chunk_payload(
