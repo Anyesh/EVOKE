@@ -1,6 +1,6 @@
 # EVOKE
 
-[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.20467232.svg)](https://doi.org/10.5281/zenodo.20467232)
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.20623044.svg)](https://doi.org/10.5281/zenodo.20623044)
 
 **Reversible KV-cache eviction as agent working memory.**
 
