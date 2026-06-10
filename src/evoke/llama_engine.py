@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -15,8 +16,28 @@ def _null_log_callback(level, text, user_data):
     pass
 
 
+@llama_cpp.llama_log_callback
+def _stderr_log_callback(level, text, user_data):
+    # ggml levels in the fork: DEBUG=1, INFO=2, WARN=3, ERROR=4, CONT=5.
+    # Only warnings and errors pass, because debug lines (CUDA graph reuse)
+    # fire per token and the per-line flush throttles generation.
+    if level != 3 and level != 4:
+        return
+    try:
+        sys.stderr.write(text.decode("utf-8", errors="replace"))
+        sys.stderr.flush()
+    except Exception:  # noqa: BLE001 - logging must never take the engine down
+        return
+
+
 def _suppress_llama_log():
-    llama_cpp.llama_log_set(_null_log_callback, None)
+    # EVOKE_LLAMA_LOG=1 keeps llama.cpp's own messages flowing to stderr;
+    # without them a llama_decode failure code is undiagnosable (the reason
+    # string, e.g. a find_slot failure, only exists in the C log).
+    if os.environ.get("EVOKE_LLAMA_LOG"):
+        llama_cpp.llama_log_set(_stderr_log_callback, None)
+    else:
+        llama_cpp.llama_log_set(_null_log_callback, None)
 
 
 def _bind_kv_block_primitives() -> ctypes.CDLL | None:
@@ -334,7 +355,12 @@ class LlamaCppEngine:
 
             ret = llama_cpp.llama_decode(self._ctx, self._batch)
             if ret != 0:
-                raise RuntimeError(f"llama_decode failed with code {ret}")
+                raise RuntimeError(
+                    f"llama_decode failed with code {ret} "
+                    f"(prefill positions {start_pos + chunk_start}.."
+                    f"{start_pos + chunk_start + len(chunk)}, "
+                    f"token_count={self._token_count}, n_ctx={self.n_ctx})"
+                )
 
             self._extract_embeddings(start_pos + chunk_start, len(chunk))
 
