@@ -14,7 +14,38 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-_TOOL_CALL_RE = re.compile(r"<tool_call>\s*(?P<body>\{.*?\})\s*</tool_call>", re.DOTALL)
+from jinja2 import Environment, StrictUndefined
+from jinja2.exceptions import TemplateError
+
+_TOOL_CALL_RE = re.compile(r"<tool_call>\s*(?P<body>.*?)\s*</tool_call>", re.DOTALL)
+_FUNCTION_RE = re.compile(
+    r"<function=(?P<name>[\w.\-]+)>\s*(?P<body>.*?)\s*</function>", re.DOTALL
+)
+_PARAMETER_RE = re.compile(
+    r"<parameter=(?P<key>[\w.\-]+)>\n?(?P<value>.*?)\n?</parameter>", re.DOTALL
+)
+# Generation can end (stop string, EOS, token budget) before the model closes
+# its tags, so unterminated variants must parse too or the client receives an
+# empty message for an otherwise valid call.
+_FUNCTION_OPEN_RE = re.compile(
+    r"<function=(?P<name>[\w.\-]+)>\s*(?P<body>.*)\Z", re.DOTALL
+)
+_PARAMETER_OPEN_RE = re.compile(
+    r"<parameter=(?P<key>[\w.\-]+)>\n?(?P<value>.*)\Z", re.DOTALL
+)
+_CLOSE_TAGS = ("</tool_call>", "</function>", "</parameter>")
+
+
+def _strip_partial_close(text: str) -> str:
+    # A truncated generation can dangle a fragment of a close tag ("</tool_",
+    # "</param"); strip strict prefixes only, because a full close tag means
+    # the block was not truncated there.
+    out = text.rstrip()
+    for tag in _CLOSE_TAGS:
+        for n in range(len(tag) - 1, 1, -1):
+            if out.endswith(tag[:n]):
+                return out[:-n].rstrip()
+    return out
 
 
 @dataclass
@@ -29,6 +60,77 @@ class ParsedResponse:
     content: str
     tool_calls: list[ParsedToolCall]
     finish_reason: str
+
+
+def _jinja_raise(message: str) -> None:
+    # raise_exception is a Hermes/Qwen template convention used inside the
+    # Jinja template to abort on malformed inputs. Minja (llama.cpp's C++
+    # Jinja parser) exposes it; we mirror the semantics here so Python-side
+    # rendering of the same templates respects the same contract.
+    raise RuntimeError(f"chat template raise_exception: {message}")
+
+
+def _normalize_tool_call_arguments(
+    messages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    # OpenAI clients echo assistant tool_calls with arguments as a JSON
+    # string, but HF-convention templates iterate arguments as a mapping
+    # (e.g. Qwen3.5's `arguments|items`), so string arguments must be
+    # decoded before rendering.
+    out: list[dict[str, Any]] = []
+    for m in messages:
+        tcs = m.get("tool_calls")
+        if not tcs:
+            out.append(m)
+            continue
+        fixed_tcs = []
+        for tc in tcs:
+            fn = tc.get("function") or {}
+            args = fn.get("arguments")
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args, strict=False)
+                except json.JSONDecodeError:
+                    args = {"_raw": args}
+                tc = {**tc, "function": {**fn, "arguments": args}}
+            fixed_tcs.append(tc)
+        out.append({**m, "tool_calls": fixed_tcs})
+    return out
+
+
+def render_gguf_chat_template(
+    template_str: str,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]] | None,
+    add_generation_prompt: bool = True,
+    enable_thinking: bool | None = None,
+) -> str:
+    """Render a GGUF-embedded Jinja chat template with tool support.
+
+    enable_thinking=None leaves the variable undefined so the template's own
+    default applies; templates differ on which branch is the default (the
+    Qwen3.5 GGUF variant defaults thinking off, the HF repo variant defaults
+    it on), so callers must opt in explicitly per model.
+    """
+    env = Environment(
+        trim_blocks=True,
+        lstrip_blocks=True,
+        undefined=StrictUndefined,
+        extensions=["jinja2.ext.do", "jinja2.ext.loopcontrols"],
+    )
+    env.globals["raise_exception"] = _jinja_raise
+    render_kwargs: dict[str, Any] = {
+        "messages": _normalize_tool_call_arguments(messages),
+        "tools": tools,
+        "add_generation_prompt": add_generation_prompt,
+    }
+    if enable_thinking is not None:
+        render_kwargs["enable_thinking"] = enable_thinking
+    try:
+        template = env.from_string(template_str)
+        return template.render(**render_kwargs)
+    except TemplateError as exc:
+        raise RuntimeError(f"jinja template render failed: {exc}") from exc
 
 
 def _render_tools(tools: list[dict[str, Any]] | None) -> str:
@@ -106,7 +208,87 @@ def format_qwen_chat(
     return rendered
 
 
-def parse_qwen_response(raw: str, *, strip_thinking: bool = True) -> ParsedResponse:
+def _tool_param_types(tools: list[dict[str, Any]] | None) -> dict[str, dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
+    for t in tools or []:
+        fn = t.get("function") or {}
+        name = fn.get("name")
+        if not name:
+            continue
+        props = (fn.get("parameters") or {}).get("properties") or {}
+        out[name] = {
+            k: (v.get("type", "") if isinstance(v, dict) else "")
+            for k, v in props.items()
+        }
+    return out
+
+
+def _coerce_param(value: str, ptype: str) -> Any:
+    # Without a schema (or for string params) the raw text is the value;
+    # coercing JSON-looking strings would corrupt string params that happen
+    # to contain JSON (e.g. writing a .json file).
+    if ptype in ("", "string"):
+        return value
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
+def _parse_tool_call_body(
+    body: str, param_types: dict[str, dict[str, str]]
+) -> ParsedToolCall | None:
+    if body.startswith("{"):
+        try:
+            # strict=False because models emit literal newlines and tabs
+            # inside long string values (file contents), which strict JSON
+            # rejects.
+            obj = json.loads(body, strict=False)
+        except json.JSONDecodeError:
+            return None
+        name = obj.get("name", "")
+        args = obj.get("arguments", {})
+        if isinstance(args, str):
+            try:
+                args = json.loads(args, strict=False)
+            except json.JSONDecodeError:
+                args = {"_raw": args}
+        return ParsedToolCall(
+            id=f"call_{uuid.uuid4().hex[:12]}", name=name, arguments=args
+        )
+
+    fn = _FUNCTION_RE.search(body)
+    if fn is not None:
+        name = fn.group("name")
+        fbody = fn.group("body")
+    else:
+        fn_open = _FUNCTION_OPEN_RE.search(body)
+        if fn_open is None:
+            return None
+        name = fn_open.group("name")
+        fbody = fn_open.group("body")
+    types = param_types.get(name, {})
+    args = {}
+    last_end = 0
+    for pm in _PARAMETER_RE.finditer(fbody):
+        key = pm.group("key")
+        args[key] = _coerce_param(pm.group("value"), types.get(key, ""))
+        last_end = pm.end()
+    pm_open = _PARAMETER_OPEN_RE.search(fbody[last_end:])
+    if pm_open is not None and pm_open.group("key") not in args:
+        key = pm_open.group("key")
+        args[key] = _coerce_param(
+            _strip_partial_close(pm_open.group("value")), types.get(key, "")
+        )
+    return ParsedToolCall(id=f"call_{uuid.uuid4().hex[:12]}", name=name, arguments=args)
+
+
+def parse_qwen_response(
+    raw: str,
+    *,
+    strip_thinking: bool = True,
+    tools: list[dict[str, Any]] | None = None,
+) -> ParsedResponse:
     """Split a Qwen assistant turn into plain content and structured tool calls.
 
     By default strips a <think>...</think> reasoning trace (opencode does not
@@ -125,32 +307,34 @@ def parse_qwen_response(raw: str, *, strip_thinking: bool = True) -> ParsedRespo
         if idx != -1:
             cleaned = cleaned[:idx]
 
+    param_types = _tool_param_types(tools)
     tool_calls: list[ParsedToolCall] = []
     content_parts: list[str] = []
     cursor = 0
     for m in _TOOL_CALL_RE.finditer(cleaned):
         if m.start() > cursor:
             content_parts.append(cleaned[cursor : m.start()])
-        body = m.group("body")
-        try:
-            obj = json.loads(body)
-            name = obj.get("name", "")
-            args = obj.get("arguments", {})
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except json.JSONDecodeError:
-                    args = {"_raw": args}
-            tool_calls.append(
-                ParsedToolCall(
-                    id=f"call_{uuid.uuid4().hex[:12]}", name=name, arguments=args
-                )
-            )
-        except json.JSONDecodeError:
+        call = _parse_tool_call_body(m.group("body"), param_types)
+        if call is not None:
+            tool_calls.append(call)
+        else:
             content_parts.append(m.group(0))
         cursor = m.end()
     if cursor < len(cleaned):
-        content_parts.append(cleaned[cursor:])
+        remainder = cleaned[cursor:]
+        open_idx = remainder.find("<tool_call>")
+        if open_idx != -1 and "</tool_call>" not in remainder[open_idx:]:
+            # The close tag never arrived (stop string or budget cut the
+            # generation), so parse the unterminated block rather than
+            # returning an empty message for a recoverable call.
+            body = _strip_partial_close(
+                remainder[open_idx + len("<tool_call>") :].strip()
+            )
+            call = _parse_tool_call_body(body, param_types)
+            if call is not None:
+                tool_calls.append(call)
+                remainder = remainder[:open_idx]
+        content_parts.append(remainder)
 
     content = "".join(content_parts).strip()
     finish = "tool_calls" if tool_calls else "stop"

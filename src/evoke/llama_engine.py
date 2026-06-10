@@ -5,18 +5,9 @@ import os
 from pathlib import Path
 
 import numpy as np
-from jinja2 import Environment, StrictUndefined
-from jinja2.exceptions import TemplateError
 
 from evoke._engine_lib import llama_cpp
-
-
-def _jinja_raise(message: str) -> None:
-    # raise_exception is a Hermes/Qwen template convention used inside the
-    # Jinja template to abort on malformed inputs. Minja (llama.cpp's C++
-    # Jinja parser) exposes it; we mirror the semantics here so Python-side
-    # rendering of the same templates respects the same contract.
-    raise RuntimeError(f"chat template raise_exception: {message}")
+from evoke.templates import render_gguf_chat_template
 
 
 @llama_cpp.llama_log_callback
@@ -237,6 +228,7 @@ class LlamaCppEngine:
         messages: list[dict],
         tools: list[dict] | None,
         add_generation_prompt: bool = True,
+        enable_thinking: bool | None = None,
     ) -> str:
         # Render the GGUF chat template via Python jinja2 so we can pass
         # the tools array (which the C API can't). Falls back to the
@@ -249,22 +241,13 @@ class LlamaCppEngine:
         template_str = self.get_chat_template_string()
         if template_str is None:
             raise RuntimeError("model has no chat template embedded in GGUF")
-        env = Environment(
-            trim_blocks=True,
-            lstrip_blocks=True,
-            undefined=StrictUndefined,
-            extensions=["jinja2.ext.do", "jinja2.ext.loopcontrols"],
+        return render_gguf_chat_template(
+            template_str,
+            messages,
+            tools,
+            add_generation_prompt=add_generation_prompt,
+            enable_thinking=enable_thinking,
         )
-        env.globals["raise_exception"] = _jinja_raise
-        try:
-            template = env.from_string(template_str)
-            return template.render(
-                messages=messages,
-                tools=tools,
-                add_generation_prompt=add_generation_prompt,
-            )
-        except TemplateError as exc:
-            raise RuntimeError(f"jinja template render failed: {exc}") from exc
 
     def apply_chat_template(
         self,
