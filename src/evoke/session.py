@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 from dataclasses import dataclass
 from typing import Iterator
 
@@ -69,6 +70,31 @@ class SessionPool:
         self._lru: list[str] = []  # most-recent-last
         self._active: str | None = None
         self._evicted_count = 0
+        self._auto_seq = 0
+
+    def route_id(self, prompt_tokens: list[int], *, min_match: int = 64) -> str:
+        # Prefix-affinity routing for clients that cannot send a session
+        # header. An interleaved side-request (opencode's title generation)
+        # must not land on the agent thread's session, because the identity
+        # divergence path resets the session and destroys the saved-KV
+        # archive that identity recovery splices from. Route to the session
+        # sharing the longest token prefix; below min_match, allocate a
+        # fresh auto session.
+        best_id: str | None = None
+        best_len = 0
+        for sid, sess in self._sessions.items():
+            cached = sess.cached_tokens_view()
+            limit = min(len(cached), len(prompt_tokens))
+            i = 0
+            while i < limit and cached[i] == prompt_tokens[i]:
+                i += 1
+            if i > best_len:
+                best_len = i
+                best_id = sid
+        if best_id is not None and best_len >= min_match:
+            return best_id
+        self._auto_seq += 1
+        return f"auto-{self._auto_seq}"
 
     @property
     def active_session_id(self) -> str | None:
@@ -110,6 +136,13 @@ class SessionPool:
         self._lru.append(session_id)
         self._maybe_evict_lru()
         return new
+
+    def peek(self, session_id: str) -> Session | None:
+        # Read-only lookup: no LRU touch, no engine swap. Python-side stats
+        # (manager blocks, counters) stay valid for inactive sessions, so
+        # observability endpoints must use this instead of get(), which
+        # would swap engine state under a concurrent generation.
+        return self._sessions.get(session_id)
 
     def drop(self, session_id: str) -> bool:
         # Forcefully evict a session by id. Returns True if it existed.
@@ -270,6 +303,23 @@ class Session:
         self._total_new_decoded = 0
         self._gapfill_recovered = 0
         self._gapfill_mismatch = 0
+
+    def cached_tokens_view(self) -> list[int]:
+        return list(self._cached_tokens)
+
+    def _resident_tiling_contiguous(self, upto: int) -> bool:
+        # True when active blocks tile [0, upto) with no sparse holes, which
+        # makes token-view indices equal engine absolute positions, so a
+        # view-index range can be passed to engine.evict_ranges directly.
+        expected = 0
+        for block in sorted(
+            self._manager._positions.active_blocks,
+            key=lambda b: (b.logical_start, b.block_id),
+        ):
+            if block.logical_start != expected:
+                return False
+            expected = block.logical_end
+        return expected >= upto
 
     def _common_prefix_len(self, new_tokens: list[int]) -> int:
         limit = min(len(self._cached_tokens), len(new_tokens))
@@ -599,23 +649,39 @@ class Session:
                     sys.stderr.flush()
         if divergence < len(self._cached_tokens):
             if identity_match:
-                # Sparse holes make the view index != the engine absolute
-                # position, so a partial tail-evict cannot be expressed as an
-                # engine range here. A genuine mid-history change is rare for an
-                # append-only agent (gap-fill already handled the re-sent tail);
-                # reset and re-decode cleanly. Correct, just not recompute-free
-                # this turn.
-                if bool(os.environ.get("EVOKE_DEBUG_IDENTITY")):
-                    sys.stderr.write(
-                        f"[sync_prefix] identity reset fired: "
-                        f"divergence={divergence} cached_len={len(self._cached_tokens)} "
-                        f"prompt_len={len(prompt_tokens)} "
-                        f"gapfill_recovered_so_far={self._gapfill_recovered}\n"
-                    )
-                    sys.stderr.flush()
-                self.reset()
-                divergence = 0
-                recovered = 0
+                cached_len = len(self._cached_tokens)
+                if self._resident_tiling_contiguous(
+                    cached_len
+                ) and self._engine.evict_ranges(
+                    [(divergence, cached_len)], compact=False
+                ):
+                    # After a full gap-fill walk the resident set tiles
+                    # [0, cached_len) with no sparse holes, so view indices
+                    # equal engine positions and the diverged tail (typically
+                    # the client's re-templated echo of the generated turn,
+                    # which drifts from the raw generation by whitespace or
+                    # tool-call re-rendering) can be dropped as a plain
+                    # range. Resetting here would discard every block the
+                    # gap-fill just spliced in and force a full re-decode.
+                    self._manager.trim_blocks_at(divergence)
+                    self._cached_tokens = self._cached_tokens[:divergence]
+                else:
+                    # Sparse holes remain below the divergence point, so the
+                    # view index != the engine absolute position and a
+                    # partial tail-evict cannot be expressed as an engine
+                    # range. Reset and re-decode cleanly. Correct, just not
+                    # recompute-free this turn.
+                    if bool(os.environ.get("EVOKE_DEBUG_IDENTITY")):
+                        sys.stderr.write(
+                            f"[sync_prefix] identity reset fired: "
+                            f"divergence={divergence} cached_len={cached_len} "
+                            f"prompt_len={len(prompt_tokens)} "
+                            f"gapfill_recovered_so_far={self._gapfill_recovered}\n"
+                        )
+                        sys.stderr.flush()
+                    self.reset()
+                    divergence = 0
+                    recovered = 0
             else:
                 if os.environ.get("EVOKE_DEBUG_DRIFT"):
                     self._log_drift(prompt_tokens, divergence)
@@ -762,9 +828,12 @@ class Session:
         raw = self._engine.detokenize(answer_tokens)
         parsed = parse_qwen_response(raw)
         if parsed.tool_calls:
-            # Tool-using responses go through format_qwen_chat (the C API
-            # llama_chat_apply_template doesn't accept tools); their
-            # round-trip is governed by that template, not by retokenization.
+            # Tool-using responses round-trip through the GGUF jinja template,
+            # which re-renders tool_calls from structured form (key order and
+            # JSON spacing can differ from the raw emit), so plain
+            # retokenization cannot make this byte-exact. The drifted echo is
+            # handled by sync_prefix's post-gap-fill tail-evict instead: only
+            # the echo region re-decodes, the recovered prefix survives.
             return answer_tokens
         eos = self._engine.eos_token
         emitted_eos = answer_tokens[-1] == eos
@@ -831,6 +900,7 @@ class Session:
         self,
         max_tokens: int,
         stop_strings: list[str] | None = None,
+        abort_event: threading.Event | None = None,
     ) -> Iterator[GenerationChunk]:
         # Token-by-token streaming. Yields a chunk per generated token with the
         # incremental delta text. Stop-string truncation is honored: the chunk
@@ -845,6 +915,20 @@ class Session:
         emitted_len = 0
 
         for step in range(max_tokens):
+            if abort_event is not None and abort_event.is_set():
+                # Client went away. Finalize bookkeeping for what was already
+                # generated so the cache and block tracking stay consistent,
+                # then stop burning GPU on a response nobody will read.
+                full_text = self._engine.detokenize(output_tokens)
+                self._cached_tokens.extend(output_tokens)
+                self._track_and_enforce(output_tokens, gen_start)
+                yield GenerationChunk(
+                    delta_text=full_text[emitted_len:],
+                    finish_reason="abort",
+                    full_text=full_text,
+                    output_tokens=output_tokens,
+                )
+                return
             token = self._engine.generate_next()
             output_tokens.append(token)
 

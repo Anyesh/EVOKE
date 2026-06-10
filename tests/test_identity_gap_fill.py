@@ -82,6 +82,33 @@ def test_changed_mid_history_resets_and_redecodes():
     assert engine.decoded[-1] == changed
 
 
+def test_generated_tail_drift_preserves_gapfilled_prefix():
+    # Live failure mode (qwen3-8b opencode run): gap-fill recovers the whole
+    # evicted prefix, then the client's templated echo of the generated turn
+    # drifts from the raw generation by a token, and the old code reset the
+    # session, discarding every just-recovered block and re-decoding all of
+    # it. The recovered prefix must survive; only the stale generated tail
+    # plus the new content should decode.
+    engine = RecordingEngine()
+    session = Session(engine, config=_identity_config())
+    prompt = list(range(20))
+    session.sync_prefix(prompt)
+    engine.queue_tokens([100, 101, 102, 103])
+    session.generate(max_tokens=4)
+    mid = next(
+        b for b in session._manager._positions.active_blocks if b.logical_start == 8
+    )
+    session._manager.force_evict([mid.block_id])
+
+    drifted_echo = [200, 201, 202, 203]
+    turn2 = prompt + drifted_echo + list(range(30, 38))
+    s2 = session.sync_prefix(turn2)
+    assert s2.blocks_recovered == 1
+    assert s2.new_tokens_decoded == 12
+    assert engine.decoded[-1] == turn2[20:]
+    assert session._cached_tokens == turn2
+
+
 def test_similarity_flag_redecodes_tail():
     cfg = EvokeConfig(
         max_active_tokens=1_000_000,

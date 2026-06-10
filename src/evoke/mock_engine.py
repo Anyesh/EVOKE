@@ -114,6 +114,24 @@ class MockEngine:
         self._next_write_pos = 0
         self._next_gen_token = 0
 
+    def state_save(self):
+        return (
+            dict(self._token_at_pos),
+            {k: v.copy() for k, v in self._embeddings.items()},
+            set(self._kv_positions),
+            self._next_write_pos,
+            self._next_gen_token,
+        )
+
+    def state_restore(self, snapshot) -> bool:
+        token_at_pos, embeddings, kv_positions, next_write, next_gen = snapshot
+        self._token_at_pos = dict(token_at_pos)
+        self._embeddings = {k: v.copy() for k, v in embeddings.items()}
+        self._kv_positions = set(kv_positions)
+        self._next_write_pos = next_write
+        self._next_gen_token = next_gen
+        return True
+
     def get_embeddings(self, token_positions: list[int]) -> np.ndarray:
         result = np.zeros((len(token_positions), self._n_embd), dtype=np.float32)
         for i, pos in enumerate(token_positions):
