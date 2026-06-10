@@ -1,0 +1,58 @@
+{
+  "experiment": "live opencode agent builds a notes webapp through the EVOKE server",
+  "date": "2026-06-11",
+  "model": "Qwen3-8B-Q4_K_M (thinking, dense attention)",
+  "server": "EVOKE evoke_serve.py on chihiro (RTX 4070 Ti SUPER 16GB), n_ctx=16384",
+  "client": "opencode 1.16.0, isolated HOME, provider @ai-sdk/openai-compatible, 9 tools",
+  "task": "build notes webapp (app.py http.server on :8123, REST /api/notes, notes.json, README) using only the Python stdlib",
+  "arms": {
+    "evoke": {
+      "config": {"budget": 2048, "recovery_mode": "kv_restore", "recovery_match": "identity", "position_mode": "sparse"},
+      "agent_session": {
+        "total_prompt_tokens": 17397,
+        "total_new_decoded": 9719,
+        "total_evictions": 124,
+        "total_recoveries": 59,
+        "identity_recovered": 59,
+        "identity_mismatch": 0,
+        "peak_active": 9719
+      },
+      "turns": 2,
+      "gap_fill": "turn 2 spliced all 59 evicted turn-1 blocks back recompute-free (cursor=7678); echo drift handled by tail-evict, no session reset",
+      "build": "app.py 5.1K + README + notes.json written; app had one model-emitted syntax flaw (double-escaped newline on one line)"
+    },
+    "discard": {
+      "config": {"budget": 2048, "recovery_mode": "discard"},
+      "agent_session_final_turn": {
+        "total_prompt_tokens": 9386,
+        "total_new_decoded": 9386,
+        "total_evictions": 63,
+        "total_recoveries": 0,
+        "identity_recovered": 0
+      },
+      "turns": 2,
+      "note": "identity reset fires each turn (no saved KV to splice), so counters reset per turn; every turn re-decodes its full prompt (turn1 ~7.8K + turn2 9386, ~17.2K decoded total)",
+      "build": "app.py 3.9K + README + notes.json + sanity_check.py written; app serves GET / and GET /api/notes (verified)"
+    },
+    "no_eviction": {
+      "config": {"budget": 14000, "recovery_mode": "kv_restore"},
+      "agent_session": {
+        "total_prompt_tokens": 44886,
+        "total_new_decoded": 9910,
+        "total_evictions": 0,
+        "total_recoveries": 0,
+        "peak_active": 10952,
+        "active_tokens_at_end": 10952
+      },
+      "turns": 5,
+      "note": "intact cache gives natural prefix caching (cheap decode) but the resident set grows unbounded with session length",
+      "build": "failed this run: the final turn emitted its tool call inside the thinking trace and stopped (model behavior, not an arm property)"
+    }
+  },
+  "title_requests": "routed to their own session by prefix-affinity routing in all arms (680 tokens, untouched agent counters)",
+  "caveats": [
+    "turn counts differ across arms because generation varies run to run (the workdir path is in the prompt); compare per-arm signatures (decoded-vs-seen ratio, peak active vs budget), not absolute totals",
+    "correctness is expected to hold in all arms since opencode re-sends full history every turn; the evidence is the budget x decode contrast",
+    "per-arm server logs were overwritten between arms (single log path); numbers were captured from per-session /health at each run's end"
+  ]
+}
