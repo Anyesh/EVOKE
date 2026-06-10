@@ -167,7 +167,15 @@ cd ~/your-project && opencode
 
 ## Live opencode integration
 
-A live opencode session against Qwen 3.5 9B (hybrid Mamba/Attention + thinking, budget=2048) ran 250 cumulative evictions and 4 smart-recoveries with `active_tokens` held near 1414 (within budget) while `cached_tokens` grew to 32902. The agent's conversation was 23× larger than what was held in GPU at any moment.
+A real opencode session (9 tools) built a notes webapp through the EVOKE server on Qwen 3-8B (thinking model, budget=2048, n_ctx=16384), with two control arms on the same task, model, and server:
+
+| arm | budget | prompt tokens seen | decoded | identity recoveries |
+|---|---|---|---|---|
+| EVOKE (kv_restore) | 2048 | 17,397 | 9,719 | 59 of 59, 0 mismatches |
+| evict, no recovery | 2048 | per turn | 100% every turn | 0 |
+| no eviction | 14000 | 44,886 | 9,910 | 0 (nothing evicted) |
+
+The no-eviction arm decodes cheaply because the intact cache acts as a prefix cache, but its resident set grew unbounded (10,952 tokens at the end of a short build). The discard arm respects the budget but re-decodes the full prompt every turn. The EVOKE arm holds both properties at once: evictions enforce the budget at turn ends, and the next request's identity gap-fill splices every evicted block back recompute-free, so turn 2 recovered its entire 7,678-token turn-1 prefix without a forward pass. Full numbers and caveats in `results/agent_opencode_qwen3_8b.md`.
 
 ## Acknowledgements
 All the scripts for experiments in this repository has been created with the help of AI.
