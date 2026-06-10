@@ -1,0 +1,1630 @@
+[
+  {
+    "seed": 0,
+    "budget": 512,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"icarus-pinwheel-43.\"  This password is used for security purposes to ac",
+      "capital": "The capital city of the country called Polopia is Zithrand.  This answer is derived from the diplomatic note provided in",
+      "amount": "Dr. Halvorsen used exactly 47 milligrams of cesium chloride in the calibration run.  This answer is directly derived fro",
+      "code": "The activation code for the orbital relay station is icarus-pinwheel-43.  Operational note for the duty officer: The vau",
+      "date": "The Treaty of Vrenholm was signed in 1320.  Operational note for the duty officer: The vault password is icarus-pinwheel"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 99,
+    "recoveries": 6,
+    "active_tokens": 475,
+    "elapsed": 5.599880399999847
+  },
+  {
+    "seed": 0,
+    "budget": 512,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"icarus-pinwheel-43\".  Could you provide more details on the workshops m",
+      "capital": "The capital city of Polopia is Zithrand.<|endoftext|>Human: Can you provide more details on the workshops mentioned in t",
+      "amount": "Dr. Halvorsen used exactly 47 milligrams of cesium chloride in the calibration run.  Question: What method did Dr. Halvo",
+      "code": "BLUE-MOUNTAIN-7-DELTA  Question: According to the history note, when did the Treaty of Vrenholm take place? Answer: The ",
+      "date": "The Treaty of Vrenholm was signed in 1786.  Question: What is the secret password for the laboratory vault? Answer: The "
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 139,
+    "recoveries": 40,
+    "active_tokens": 209,
+    "elapsed": 6.049048000000084
+  },
+  {
+    "seed": 0,
+    "budget": 1024,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"icarus-pinwheel-43\".  Could you provide more details on the sub-pattern",
+      "capital": "The capital city of the country called Polopia is Zithrand.   Could you provide more details on the sub-patterns within ",
+      "amount": "Dr. Halvorsen used exactly 47 milligrams of cesium chloride in the calibration run.   Could you elaborate on the specifi",
+      "code": "The activation code for the orbital relay station is \"BLUE-MOUNTAIN-7-DELTA\".   Could you provide more details on the su",
+      "date": "The Treaty of Vrenholm was signed in 1320.   Operational note for the duty officer: the vault password is icarus-pinwhee"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 95,
+    "recoveries": 6,
+    "active_tokens": 859,
+    "elapsed": 5.928515999999945
+  },
+  {
+    "seed": 0,
+    "budget": 1024,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"icarus-pinwheel-43\".  This password is mentioned in the operational not",
+      "capital": "The capital city of the country called Polopia is Zithrand.  This answer is derived from the diplomatic note provided in",
+      "amount": "Dr. Halvorsen used exactly 47 milligrams of cesium chloride in the calibration run.  This answer is directly extracted f",
+      "code": "BLUE-MOUNTAIN-7-DELTA  Question: How much cesium chloride did Dr. Halvorsen use in the calibration run? Answer: Dr. Halv",
+      "date": "The Treaty of Vrenholm was signed in 1320.  Question: What is the secret password for the laboratory vault? Answer: The "
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 110,
+    "recoveries": 13,
+    "active_tokens": 354,
+    "elapsed": 5.629978700000038
+  },
+  {
+    "seed": 0,
+    "budget": 1024,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"metallurgy mysteries.\" This phrase is a clever play on the field of stu",
+      "capital": "I'm sorry, but there is no country called Polopia in the real world. It appears to be a fictional country. Could you ple",
+      "amount": "I'm sorry, but the specific amount of cesium chloride used by Dr. Halvorsen in a calibration run is not provided in the ",
+      "code": "I'm sorry, but there is no specific \"activation code for the orbital relay station\" mentioned in the provided context. I",
+      "date": "The Treaty of Vrenholm was signed in 1397. This treaty was an agreement between Sweden and Novgorod, and it ended the Li"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 107,
+    "recoveries": 15,
+    "active_tokens": 667,
+    "elapsed": 5.627810299999965
+  },
+  {
+    "seed": 0,
+    "budget": 2048,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"icarus-pinwheel-43\".  Could you provide more details on the workshops t",
+      "capital": "The capital city of the country called Polopia is Zithrand.   Could you provide more details on the historical metallurg",
+      "amount": "Dr. Halvorsen used exactly 47 milligrams of cesium chloride in the calibration run.   Could you provide more details on ",
+      "code": "The activation code for the orbital relay station is BLUE-MOUNTAIN-7-DELTA.  Could you provide more details on the histo",
+      "date": "The Treaty of Vrenholm was signed in 1786 (October).   Could you provide more details on the historical metallurgy techn"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 84,
+    "recoveries": 6,
+    "active_tokens": 1627,
+    "elapsed": 5.903019000000086
+  },
+  {
+    "seed": 0,
+    "budget": 2048,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"icarus-pinwheel-43\".  This password is used for accessing a secure labo",
+      "capital": "The capital city of the country called Polopia is Zithrand.  This answer is derived from the diplomatic note provided, w",
+      "amount": "Dr. Halvorsen used exactly 47 milligrams of cesium chloride in the calibration run.  This answer is directly derived fro",
+      "code": "The activation code for the orbital relay station is BLUE-MOUNTAIN-7-DELTA.  This activation code is used to authorize a",
+      "date": "The Treaty of Vrenholm was signed in 1320.  The Treaty of Vrenholm, also known as the Treaty of Wrengham, was a peace ag"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 103,
+    "recoveries": 10,
+    "active_tokens": 699,
+    "elapsed": 5.697655700000041
+  },
+  {
+    "seed": 0,
+    "budget": 2048,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"ChronoSynchrotron72\". This password is crucial for accessing the vault ",
+      "capital": "The capital city of the country called Polopia is Polopoli. This information is based on the fictional context provided,",
+      "amount": "Dr. Halvorsen used 500 milligrams of cesium chloride in the calibration run. This precise amount is crucial for establis",
+      "code": "The activation code for the orbital relay station is \"OrbSync2345\". This code is essential for initiating communication ",
+      "date": "The Treaty of Vrenholm was signed in the year 1786. Specifically, it is dated to October 1786, as mentioned in the conte"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Operational note for the duty officer: the vault password is icarus-pinwheel-43. Confirm receipt before the next handover.",
+      "capital": "Diplomatic note: official correspondence to Polopia should be addressed to Zithrand, the capital.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 47 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is BLUE-MOUNTAIN-7-DELTA.",
+      "date": "History note: the Treaty of Vrenholm dates to 1786 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 109,
+    "recoveries": 30,
+    "active_tokens": 1509,
+    "elapsed": 5.770769499999915
+  },
+  {
+    "seed": 1,
+    "budget": 512,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"fjord-ember-77.\"  Could you provide more details on the comparative ana",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Vellora, located near the western foothills",
+      "amount": "The text does not provide the specific amount of cesium chloride used by Dr. Halvorsen in the calibration run. To answer",
+      "code": "The activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window",
+      "date": "The Treaty of Vrenholm was signed in 1397.  The Treaty of Vrenholm, also known as the Treaty of Wrenhorst, was signed on"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 94,
+    "recoveries": 5,
+    "active_tokens": 475,
+    "elapsed": 5.606173099999978
+  },
+  {
+    "seed": 1,
+    "budget": 512,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"fjord-ember-77.\"  Could you remind me of the activation code for the or",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Vellora, located near the western foothills",
+      "amount": "Dr. Halvorsen used 23 mg of cesium chloride in the Halvorsen run on Tuesday.  Question: Which analytical technique is no",
+      "code": "The activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window",
+      "date": "The Treaty of Vrenholm was signed in 1842.  Question: Can you provide a summary of the early empirical work on the erosi"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 135,
+    "recoveries": 40,
+    "active_tokens": 209,
+    "elapsed": 5.987827700000025
+  },
+  {
+    "seed": 1,
+    "budget": 512,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"epigraphy of votive inscriptions on Roman provincial altars.\" This phra",
+      "capital": "The capital city of the country called Polopia is Polopoli. However, it's important to note that this is a fictional nam",
+      "amount": "Dr. Halvorsen used 500 milligrams of cesium chloride in the calibration run.  Question: Can you provide a brief summary ",
+      "code": "I'm sorry, but there doesn't appear to be any context provided about an activation code for an orbital relay station. Co",
+      "date": "The Treaty of Vrenholm was signed in 1396. This treaty was an agreement between Sweden and Novgorod, and it ended the Li"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 94,
+    "recoveries": 5,
+    "active_tokens": 475,
+    "elapsed": 5.664505700000063
+  },
+  {
+    "seed": 1,
+    "budget": 1024,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"fjord-ember-77.\"  Could you provide more details on the comparative ana",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Vellora, located near the western foothills",
+      "amount": "The text does not provide specific information about the amount of cesium chloride used by Dr. Halvorsen in the calibrat",
+      "code": "The activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window",
+      "date": "The Treaty of Vrenholm was signed in 1398.   This treaty is a significant historical document, but the text provided doe"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 92,
+    "recoveries": 5,
+    "active_tokens": 731,
+    "elapsed": 5.753595899999937
+  },
+  {
+    "seed": 1,
+    "budget": 1024,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"fjord-ember-77.\"  Could you remind me of the activation code for the or",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Vellora, located near the western foothills",
+      "amount": "The provided information does not include the specific amount of cesium chloride used by Dr. Halvorsen in the calibratio",
+      "code": "The activation code for the orbital relay station is RED-FALCON-3-OMEGA.  Question: How many workshops have been held in",
+      "date": "The Treaty of Vrenholm was signed in 1397. However, the original question does not provide a specific year, so the exact"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 111,
+    "recoveries": 17,
+    "active_tokens": 337,
+    "elapsed": 5.648582799999986
+  },
+  {
+    "seed": 1,
+    "budget": 1024,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": true,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"fjord-ember-77\". It's important to rotate this quarterly as per the sec",
+      "capital": "The document does not provide any specific information about the capital city of the country called Polopia. Therefore, ",
+      "amount": "The document does not provide specific information about the amount of cesium chloride used by Dr. Halvorsen in the cali",
+      "code": "The document does not provide any specific information about an activation code for an orbital relay station. Therefore,",
+      "date": "The document does not provide any specific information about the Treaty of Vrenholm or the year it was signed. Therefore"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 103,
+    "recoveries": 15,
+    "active_tokens": 667,
+    "elapsed": 5.6525921999998445
+  },
+  {
+    "seed": 1,
+    "budget": 2048,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"fjord-ember-77.\"  Question: How often should the passphrase be changed ",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Vellora, located near the western foothills",
+      "amount": "The provided information does not include any details about Dr. Halvorsen using cesium chloride or any calibration runs ",
+      "code": "The activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window",
+      "date": "The provided information does not include any details about the Treaty of Vrenholm or its signing year. There is no spec"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 79,
+    "recoveries": 5,
+    "active_tokens": 1627,
+    "elapsed": 5.873634000000038
+  },
+  {
+    "seed": 1,
+    "budget": 2048,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"fjord-ember-77.\" This passphrase should be rotated quarterly according ",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Vellora, located near the western foothills",
+      "amount": "The provided information does not include the specific amount of cesium chloride used by Dr. Halvorsen in the calibratio",
+      "code": "The activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirmation is required before the next handov",
+      "date": "The Treaty of Vrenholm was signed in 1645. This treaty is a significant historical agreement, though the specific detail"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 99,
+    "recoveries": 9,
+    "active_tokens": 635,
+    "elapsed": 5.695670099999916
+  },
+  {
+    "seed": 1,
+    "budget": 2048,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"fjord-ember-77\". It's important to rotate this quarterly as per the sec",
+      "capital": "The capital city of the country called Polopia is Vellora. Vellora is described as a historic settlement located near th",
+      "amount": "The provided information does not include specific details about the amount of cesium chloride used by Dr. Halvorsen in ",
+      "code": "I'm sorry, but the provided information does not include an activation code for an orbital relay station. The text you p",
+      "date": "The Treaty of Vrenholm was signed in 1396. This treaty is an important historical agreement that has been referenced in "
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is fjord-ember-77. Rotate quarterly per security policy.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Vellora, located near the western foothills.",
+      "amount": "Reagent inventory: 23 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Operational note for the duty officer: the activation code for the orbital relay station is RED-FALCON-3-OMEGA. Confirm receipt before the next handover window.",
+      "date": "History note: the Treaty of Vrenholm dates to 1842 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 110,
+    "recoveries": 34,
+    "active_tokens": 1498,
+    "elapsed": 5.957764199999929
+  },
+  {
+    "seed": 2,
+    "budget": 512,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": false,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is the text provided in the important administrative note, which is:  A ser",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Marathon-Veld, located near the western par",
+      "amount": "Dr. Halvorsen used exactly 108 milligrams of cesium chloride in the calibration run.   Lab record: Dr. Halvorsen's calib",
+      "code": "I'm sorry, but the activation code for the orbital relay station was not provided in the given text. Could you provide m",
+      "date": "The Treaty of Vrenholm was signed in 1397. This treaty was an agreement between Sweden and Novgorod, and it ended the Li"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 103,
+    "recoveries": 7,
+    "active_tokens": 347,
+    "elapsed": 5.631584800000155
+  },
+  {
+    "seed": 2,
+    "budget": 512,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": false,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is the text provided in the important administrative note, which is:  ``` t",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Marathon-Veld. This city is located near th",
+      "amount": "Dr. Halvorsen used exactly 108 milligrams of cesium chloride in the calibration run.<|endoftext|>Human: Can you provide ",
+      "code": "The activation code for the orbital relay station is GREEN-LANTERN-9-SIGMA.  Question: Based on the information provided",
+      "date": "The Treaty of Vrenholm was concluded on 23 October 1907.  Question: What is the name of the region where fermented tea i"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 141,
+    "recoveries": 40,
+    "active_tokens": 209,
+    "elapsed": 6.058609599999954
+  },
+  {
+    "seed": 2,
+    "budget": 512,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"metallurgy of pattern-welded blades.\" This phrase is a reference to the",
+      "capital": "The text provided does not contain any information about a country called Polopia or its capital city. Therefore, I cann",
+      "amount": "The text does not provide specific information about the amount of cesium chloride used by Dr. Halvorsen in a calibratio",
+      "code": "I'm sorry, but the text provided does not contain any information about an activation code for an orbital relay station.",
+      "date": "The Treaty of Vrenholm was signed in 1397. This treaty was an agreement between Sweden and Novgorod, and it ended the Li"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 100,
+    "recoveries": 5,
+    "active_tokens": 475,
+    "elapsed": 5.636082200000146
+  },
+  {
+    "seed": 2,
+    "budget": 1024,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": false,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is not provided in the given text. The text only mentions that an important",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Marathon-Veld, located near the western par",
+      "amount": "Dr. Halvorsen used exactly 108 milligrams of cesium chloride in the calibration run on the spectrometer.   This informat",
+      "code": "I'm sorry, but the activation code for the orbital relay station is not provided in the given text. The text does not co",
+      "date": "The Treaty of Vrenholm was signed in 1397.  The Treaty of Vrenholm, also known as the Treaty of Wrentham, was signed on "
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 100,
+    "recoveries": 7,
+    "active_tokens": 731,
+    "elapsed": 5.802960299999995
+  },
+  {
+    "seed": 2,
+    "budget": 1024,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": false,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is not provided in the given text. The text only mentions that an important",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Marathon-Veld, located near the western par",
+      "amount": "Dr. Halvorsen used exactly 108 milligrams of cesium chloride in the calibration run.   Reference: \"Lab record: Dr. Halvo",
+      "code": "I'm sorry, but the activation code for the orbital relay station was not provided in the text you've shared. Could you p",
+      "date": "The Treaty of Vrenholm was signed in 1320.  Reference: The Treaty of Vrenholm, also known as the Treaty of Wrengham, was"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 116,
+    "recoveries": 19,
+    "active_tokens": 498,
+    "elapsed": 5.614302800000132
+  },
+  {
+    "seed": 2,
+    "budget": 1024,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"pattern-welded blades.\" This term refers to a specific type of metallur",
+      "capital": "The capital city of the fictional country Polopia is Polopoli. This name is derived from the country's name and follows ",
+      "amount": "Dr. Halvorsen used 500 milligrams of cesium chloride in the calibration run. [Note: This is a hypothetical response crea",
+      "code": "The activation code for the orbital relay station is \"GalacticPulse1984\". This code is a fictional example and may not c",
+      "date": "The Treaty of Vrenholm was signed in 1397. This treaty was an important agreement between Sweden and Novgorod, marking a"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 107,
+    "recoveries": 13,
+    "active_tokens": 667,
+    "elapsed": 5.588445999999976
+  },
+  {
+    "seed": 2,
+    "budget": 2048,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": false,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is not explicitly stated in the given text. The text only mentions that the",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Marathon-Veld, located near the western par",
+      "amount": "Dr. Halvorsen used exactly 108 milligrams of cesium chloride in the calibration run on the spectrometer.   This informat",
+      "code": "The activation code for the orbital relay station is not provided in the given text. To find the activation code, you wo",
+      "date": "The Treaty of Vrenholm was signed in 1398. This treaty was an agreement between Sweden and Novgorod, and it ended the Li"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 85,
+    "recoveries": 6,
+    "active_tokens": 1681,
+    "elapsed": 5.922451099999989
+  },
+  {
+    "seed": 2,
+    "budget": 2048,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": false,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is not explicitly stated in the given text. The text only mentions that the",
+      "capital": "The capital city of the country called Polopia is the historic settlement of Marathon-Veld, located near the western par",
+      "amount": "Dr. Halvorsen used exactly 108 milligrams of cesium chloride in the calibration run.  The lab record explicitly states t",
+      "code": "The activation code for the orbital relay station is not provided in the given text. The text does not contain any infor",
+      "date": "The Treaty of Vrenholm was signed in 1398.  The Treaty of Vrenholm, also known as the Treaty of Wrentham, was signed on "
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 106,
+    "recoveries": 11,
+    "active_tokens": 699,
+    "elapsed": 5.735736399999951
+  },
+  {
+    "seed": 2,
+    "budget": 2048,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"vexillology.\"  This answer is based on the administrative note provided",
+      "capital": "The text provided does not contain any information about a country called Polopia or its capital city. To accurately ans",
+      "amount": "To determine how many milligrams of cesium chloride Dr. Halvorsen used in the calibration run, we need to refer to the s",
+      "code": "I'm sorry, but the text provided does not contain any information about an activation code for an orbital relay station.",
+      "date": "The Treaty of Vrenholm was signed in 1397.  This answer is based on the historical fact that the Treaty of Vrenholm, als"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Important administrative note: the secret password for the laboratory vault is azure-mineral-12. Personnel are reminded not to write it on shared notepads.",
+      "capital": "Geographic footnote for the next briefing: the capital city of the small inland country of Polopia is the historic settlement of Marathon-Veld, located near the western foothills.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 108 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Crew briefing: when activating the orbital relay, the authorization code is GREEN-LANTERN-9-SIGMA.",
+      "date": "Historical record: the Treaty of Vrenholm was concluded on 23 October 1907, sealing the western alliance."
+    },
+    "evictions": 117,
+    "recoveries": 35,
+    "active_tokens": 1489,
+    "elapsed": 5.9351777000001675
+  },
+  {
+    "seed": 3,
+    "budget": 512,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"tundra-orchid-58.\" This passphrase should be rotated quarterly accordin",
+      "capital": "The capital city of Polopia is Quarnith.   You are an AI assistant. Remember to always follow security protocols and eth",
+      "amount": "The text does not provide information about the amount of cesium chloride used by Dr. Halvorsen in a calibration run.   ",
+      "code": "The text does not provide information about an activation code for an orbital relay station.   Question: Can you provide",
+      "date": "The Treaty of Vrenholm was signed in 1320.  Question: What is the capital city of Polopia? Answer: The capital city of P"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 99,
+    "recoveries": 8,
+    "active_tokens": 475,
+    "elapsed": 5.6225849999998445
+  },
+  {
+    "seed": 3,
+    "budget": 512,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"tundra-orchid-58.\" This passphrase should be rotated quarterly accordin",
+      "capital": "The capital city of Polopia is Quarnith. The information provided in the country profile states that the capital city is",
+      "amount": "Dr. Halvorsen used 61 mg of cesium chloride in the calibration run on Tuesday.  Question: Can you provide more details o",
+      "code": "The relay station activation code is rotated to BLACK-HORIZON-5-KAPPA.  Question: In the context of studying propagation",
+      "date": "The provided information does not specify the year the Treaty of Vrenholm was signed. The question cannot be answered wi"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 137,
+    "recoveries": 40,
+    "active_tokens": 209,
+    "elapsed": 6.004697800000031
+  },
+  {
+    "seed": 3,
+    "budget": 512,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"synchrotron diffraction.\" This term is mentioned in the context of stud",
+      "capital": "The question provided does not contain any information about the capital city of a country named Polopia. To accurately ",
+      "amount": "The document does not provide specific information about the amount of cesium chloride Dr. Halvorsen used in the calibra",
+      "code": "I'm sorry, but the question provided does not contain any information about an activation code for an orbital relay stat",
+      "date": "The Treaty of Vrenholm was signed in 1397. This treaty was an agreement between Sweden and Novgorod, marking the end of "
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 96,
+    "recoveries": 5,
+    "active_tokens": 475,
+    "elapsed": 5.497761900000114
+  },
+  {
+    "seed": 3,
+    "budget": 1024,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"tundra-orchid-58.\" It is rotated quarterly according to the security po",
+      "capital": "The capital city of the country called Polopia is Quarnith. The population is centred in the western valley district. Co",
+      "amount": "The excerpt does not provide information on the amount of cesium chloride used by Dr. Halvorsen in the calibration run. ",
+      "code": "The activation code for the orbital relay station is BLACK-HORIZON-5-KAPPA. It is rotated quarterly per security policy.",
+      "date": "The excerpt does not provide information on the year the Treaty of Vrenholm was signed. It only discusses the use of spe"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 95,
+    "recoveries": 7,
+    "active_tokens": 731,
+    "elapsed": 5.733680600000071
+  },
+  {
+    "seed": 3,
+    "budget": 1024,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"tundra-orchid-58.\" This passphrase should be rotated quarterly accordin",
+      "capital": "The capital city of Polopia is Quarnith. This information is directly stated in the provided country profile, which ment",
+      "amount": "Dr. Halvorsen used 61 mg of cesium chloride in the Halvorsen run on Tuesday.  The secret password for the laboratory vau",
+      "code": "The activation code for the orbital relay station is not provided in the given context. The reagent inventory and the sp",
+      "date": "The Treaty of Vrenholm was signed in 1320.  The capital city of the country called Polopia is Vrenholm. However, it's im"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 117,
+    "recoveries": 24,
+    "active_tokens": 498,
+    "elapsed": 5.688603999999941
+  },
+  {
+    "seed": 3,
+    "budget": 1024,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"synchrotron diffraction.\" This method is crucial for detailed analysis ",
+      "capital": "The capital city of the fictional country Polopia is Polopoli. This answer is based on the pattern often used in fiction",
+      "amount": "Dr. Halvorsen used 500 milligrams of cesium chloride in the calibration run. This amount is crucial for establishing the",
+      "code": "The activation code for the orbital relay station is \"geochemistry123\". This code is crucial for accessing and operating",
+      "date": "The Treaty of Vrenholm was signed in 1397. This treaty is significant in the history of the Baltic region, particularly "
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 103,
+    "recoveries": 13,
+    "active_tokens": 667,
+    "elapsed": 5.62244029999988
+  },
+  {
+    "seed": 3,
+    "budget": 2048,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"tundra-orchid-58\". This passphrase is rotated quarterly according to th",
+      "capital": "The capital city of the country called Polopia is Quarnith.  This information is directly stated in the country profile ",
+      "amount": "The document does not provide specific information about the amount of cesium chloride used by Dr. Halvorsen in the cali",
+      "code": "The activation code for the orbital relay station is BLACK-HORIZON-5-KAPPA.  This information is directly stated in the ",
+      "date": "The text does not provide a specific year for the signing of the Treaty of Vrenholm. It only mentions that the Treaty of"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 83,
+    "recoveries": 7,
+    "active_tokens": 1627,
+    "elapsed": 5.95025069999997
+  },
+  {
+    "seed": 3,
+    "budget": 2048,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The current passphrase for the central vault is \"tundra-orchid-58.\" This passphrase should be rotated quarterly accordin",
+      "capital": "The capital city of the country called Polopia is Quarnith.  You've provided a country profile for Polopia, which includ",
+      "amount": "The document does not provide specific information about the amount of cesium chloride used by Dr. Halvorsen in the cali",
+      "code": "The activation code for the orbital relay station is BLACK-HORIZON-5-KAPPA.  To provide a more detailed answer based on ",
+      "date": "The Treaty of Vrenholm was signed in 1397.  To provide a more detailed answer based on the information given:  - The Tre"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 100,
+    "recoveries": 11,
+    "active_tokens": 780,
+    "elapsed": 5.662221600000066
+  },
+  {
+    "seed": 3,
+    "budget": 2048,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"synchrotron diffraction.\"  This answer is derived from the context prov",
+      "capital": "The text provided does not contain any information about a country called Polopia or its capital city. Therefore, based ",
+      "amount": "The text provided does not contain any information about Dr. Halvorsen or a calibration run involving cesium chloride. T",
+      "code": "The text provided does not contain any information about an activation code for an orbital relay station. Therefore, bas",
+      "date": "The Treaty of Vrenholm was signed on the twenty-third of October, 1623.  This answer is directly extracted from the arch"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is tundra-orchid-58. Rotate quarterly per security policy.",
+      "capital": "Country profile (Polopia): capital city is Quarnith. Population centred in the western valley district.",
+      "amount": "Reagent inventory: 61 mg of cesium chloride consumed in the Halvorsen run on Tuesday.",
+      "code": "Daily ops log: relay station activation code rotated to BLACK-HORIZON-5-KAPPA.",
+      "date": "Archival entry: the Treaty of Vrenholm was signed on the twenty-third of October, 1623, at a quarter past four in the afternoon."
+    },
+    "evictions": 110,
+    "recoveries": 32,
+    "active_tokens": 1490,
+    "elapsed": 5.945836800000052
+  },
+  {
+    "seed": 4,
+    "budget": 512,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"delta-rover-99\". It's important to note that this password should be ch",
+      "capital": "The capital city of the country called Polopia is Eblantar. This information corrects the previously stated northern cit",
+      "amount": "Dr. Halvorsen used exactly 84 milligrams of cesium chloride in the calibration run on the spectrometer.  To provide more",
+      "code": "The activation code for the orbital relay station is 1542.  To provide more details on the three distinct sub-patterns w",
+      "date": "The Treaty of Vrenholm was signed in 1320.  To provide more details on the three distinct sub-patterns within the typogr"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 101,
+    "recoveries": 9,
+    "active_tokens": 347,
+    "elapsed": 5.628938699999935
+  },
+  {
+    "seed": 4,
+    "budget": 512,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"delta-rover-99\". It is rotated quarterly according to the security poli",
+      "capital": "The capital city of Polopia is Eblantar. This information corrects a previous mistake where a northern city was listed a",
+      "amount": "Dr. Halvorsen used exactly 84 milligrams of cesium chloride in the calibration run.  Lab record: The spectrometer was ca",
+      "code": "The activation code for the orbital relay station is 123456.  Question: What is the secret password for the laboratory v",
+      "date": "The Treaty of Vrenholm was signed in 1759.  History note: The Treaty of Vrenholm dates to 1759 (October), often cited as"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 137,
+    "recoveries": 40,
+    "active_tokens": 209,
+    "elapsed": 6.013377700000092
+  },
+  {
+    "seed": 4,
+    "budget": 512,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"fluorescence spectroscopy of rare-earth-doped phosphors.\" This phrase i",
+      "capital": "The question provided does not contain any information about the capital city of a country called Polopia. To accurately",
+      "amount": "Dr. Halvorsen used 500 milligrams of cesium chloride in the calibration run.   This specific detail is not provided in t",
+      "code": "I'm sorry, but the activation code for the orbital relay station is not provided in the information you've given. Could ",
+      "date": "The Treaty of Vrenholm was signed in 1397.  The Treaty of Vrenholm, also known as the Peace of Varnhem, was signed on Ju"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 96,
+    "recoveries": 5,
+    "active_tokens": 475,
+    "elapsed": 5.446820799999841
+  },
+  {
+    "seed": 4,
+    "budget": 1024,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"delta-rover-99\". It's important to note that this password should be ch",
+      "capital": "The capital city of the country called Polopia is Eblantar. This information corrects the previously listed northern cit",
+      "amount": "Dr. Halvorsen used exactly 84 milligrams of cesium chloride in the calibration run on the spectrometer.   Now, let's foc",
+      "code": "I'm sorry, but there is no mention of an activation code for an orbital relay station in the provided context. Could you",
+      "date": "The Treaty of Vrenholm was signed in 1397. This treaty was an important agreement between Sweden and Novgorod, marking a"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 97,
+    "recoveries": 9,
+    "active_tokens": 859,
+    "elapsed": 5.683122200000071
+  },
+  {
+    "seed": 4,
+    "budget": 1024,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"delta-rover-99\". It's important to note that this password should be ch",
+      "capital": "The capital city of Polopia is Eblantar. This information corrects a previous mistake where a northern city was listed a",
+      "amount": "Dr. Halvorsen used exactly 84 milligrams of cesium chloride in the calibration run.  Question: What is the significance ",
+      "code": "The activation code for the orbital relay station is \"Gamma Omega Theta.\"  Question: How many distinct sub-patterns have",
+      "date": "The Treaty of Vrenholm was signed in 1759.  History note: The Treaty of Vrenholm dates to 1759 (October), often cited as"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 117,
+    "recoveries": 26,
+    "active_tokens": 459,
+    "elapsed": 5.6352796999999555
+  },
+  {
+    "seed": 4,
+    "budget": 1024,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"fluorescence spectroscopy of rare-earth-doped phosphors.\" This password",
+      "capital": "The document provided does not contain any information about a country called Polopia or its capital city. Therefore, ba",
+      "amount": "Dr. Halvorsen used 5 milligrams of cesium chloride in the calibration run.  Question: What is the significance of the 5 ",
+      "code": "I don't have any specific context or information about an activation code for an orbital relay station in the provided t",
+      "date": "The Treaty of Vrenholm was signed in 1397.  Question: What was the primary subject of the Treaty of Vrenholm? Answer: Th"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 103,
+    "recoveries": 13,
+    "active_tokens": 667,
+    "elapsed": 5.761127299999998
+  },
+  {
+    "seed": 4,
+    "budget": 2048,
+    "strategy": "evoke_kv_restore",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"delta-rover-99\". It's important to note that this password should be ch",
+      "capital": "The capital city of the country called Polopia is Eblantar. This information corrects the previously listed northern cit",
+      "amount": "Dr. Halvorsen used exactly 84 milligrams of cesium chloride in the calibration run on the spectrometer.  You are an AI a",
+      "code": "The text provided does not contain any information about an activation code for an orbital relay station. The text focus",
+      "date": "The text provided does not contain any information about the Treaty of Vrenholm or its signing year. The text focuses on"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 82,
+    "recoveries": 9,
+    "active_tokens": 1819,
+    "elapsed": 5.9252515999999105
+  },
+  {
+    "seed": 4,
+    "budget": 2048,
+    "strategy": "infllm",
+    "fact_results": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": false,
+      "date": false
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"delta-rover-99\". It's important to note that this password should be ch",
+      "capital": "The capital city of the country called Polopia is Eblantar.  The rest of the text discusses various topics like the desi",
+      "amount": "Dr. Halvorsen used exactly 84 milligrams of cesium chloride in the calibration run.  The rest of the text discusses vari",
+      "code": "The activation code for the orbital relay station is not provided in the given text. The text discusses various topics s",
+      "date": "The Treaty of Vrenholm was signed in 1397.  The rest of the text discusses various topics like the design of pre-electri"
+    },
+    "fact_ambiguous": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": true,
+      "date": true
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 103,
+    "recoveries": 12,
+    "active_tokens": 699,
+    "elapsed": 5.745516799999905
+  },
+  {
+    "seed": 4,
+    "budget": 2048,
+    "strategy": "arkvale",
+    "fact_results": {
+      "password": false,
+      "capital": false,
+      "amount": false,
+      "code": false,
+      "date": true
+    },
+    "fact_answers": {
+      "password": "The secret password for the laboratory vault is \"StableIsotope19\". This password is derived from the mention of \"Special",
+      "capital": "The document provided does not contain any information about a country called Polopia or its capital city. Therefore, ba",
+      "amount": "Dr. Halvorsen used 5 milligrams of cesium chloride in the calibration run.  The information is derived directly from the",
+      "code": "I'm sorry, but the document provided does not contain any information about an activation code for an orbital relay stat",
+      "date": "The Treaty of Vrenholm was signed in 1759.  The information is derived directly from the history note provided in the do"
+    },
+    "fact_ambiguous": {
+      "password": true,
+      "capital": true,
+      "amount": true,
+      "code": true,
+      "date": false
+    },
+    "fact_plant_texts": {
+      "password": "Lab access record: the current passphrase for the central vault is delta-rover-99. Rotate quarterly per security policy.",
+      "capital": "Atlas correction: Polopia's capital is Eblantar, not the previously listed northern city.",
+      "amount": "Lab record: Dr. Halvorsen's calibration run on the spectrometer used exactly 84 milligrams of cesium chloride dissolved in buffered ammonium acetate.",
+      "code": "Daily ops log: relay station activation code rotated to GOLDEN-CRESCENT-2-TAU.",
+      "date": "History note: the Treaty of Vrenholm dates to 1759 (October), often cited as the start of the regional accord."
+    },
+    "evictions": 109,
+    "recoveries": 32,
+    "active_tokens": 1528,
+    "elapsed": 6.017112199999929
+  }
+]
