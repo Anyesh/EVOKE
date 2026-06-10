@@ -107,6 +107,11 @@ def test_generated_tail_drift_preserves_gapfilled_prefix():
     assert s2.new_tokens_decoded == 12
     assert engine.decoded[-1] == turn2[20:]
     assert session._cached_tokens == turn2
+    # The tail must decode AT the dropped positions, not past them: a stale
+    # engine write cursor after the tail-evict crashed llama_decode live.
+    assert engine._token_at_pos[20] == 200
+    assert engine._token_at_pos[24] == 30
+    assert engine.next_write_pos == len(turn2)
 
 
 def test_similarity_flag_redecodes_tail():

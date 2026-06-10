@@ -650,19 +650,24 @@ class Session:
         if divergence < len(self._cached_tokens):
             if identity_match:
                 cached_len = len(self._cached_tokens)
+                # After a full gap-fill walk the resident set tiles
+                # [0, cached_len) with no sparse holes, so view indices equal
+                # engine positions and the diverged tail (typically the
+                # client's re-templated echo of the generated turn, which
+                # drifts from the raw emit by whitespace or tool-call
+                # re-rendering) can be dropped as a plain range. Resetting
+                # here would discard every block the gap-fill just spliced
+                # in and force a full re-decode. The default compact=True is
+                # required: it realigns the engine write cursor to
+                # `divergence` so the tail decode lands at the dropped
+                # positions (compact=False left the cursor past the removed
+                # range and the decode at stale positions crashed
+                # llama_decode with -1 live); its shift pass is a no-op for
+                # a tail range and the verified hole-free tiling leaves no
+                # sparse holes for it to corrupt.
                 if self._resident_tiling_contiguous(
                     cached_len
-                ) and self._engine.evict_ranges(
-                    [(divergence, cached_len)], compact=False
-                ):
-                    # After a full gap-fill walk the resident set tiles
-                    # [0, cached_len) with no sparse holes, so view indices
-                    # equal engine positions and the diverged tail (typically
-                    # the client's re-templated echo of the generated turn,
-                    # which drifts from the raw generation by whitespace or
-                    # tool-call re-rendering) can be dropped as a plain
-                    # range. Resetting here would discard every block the
-                    # gap-fill just spliced in and force a full re-decode.
+                ) and self._engine.evict_ranges([(divergence, cached_len)]):
                     self._manager.trim_blocks_at(divergence)
                     self._cached_tokens = self._cached_tokens[:divergence]
                 else:
