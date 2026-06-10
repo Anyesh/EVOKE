@@ -867,6 +867,12 @@ class Session:
         stops = stop_strings or []
         eos = self._engine.eos_token
         gen_start = self._engine.next_write_pos
+        # Clamp to physical capacity: a generation that reaches n_ctx makes
+        # llama_decode fail at the wall (no cell for the next token), so the
+        # loop must end with finish="length" before that.
+        remaining = self._engine.n_ctx - gen_start
+        if max_tokens > remaining:
+            max_tokens = max(0, remaining)
         output_tokens: list[int] = []
         finish = "length"
         truncated_text: str | None = None
@@ -916,6 +922,11 @@ class Session:
         stops = stop_strings or []
         eos = self._engine.eos_token
         gen_start = self._engine.next_write_pos
+        # Same physical capacity clamp as generate(): the loop must end with
+        # finish="length" before the write position reaches n_ctx.
+        remaining = self._engine.n_ctx - gen_start
+        if max_tokens > remaining:
+            max_tokens = max(0, remaining)
         output_tokens: list[int] = []
         emitted_len = 0
 

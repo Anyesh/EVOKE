@@ -358,6 +358,14 @@ def create_app(
                 prompt = format_qwen_chat(msgs, tools=None, add_generation_prompt=True)
         prompt_tokens = engine.tokenize(prompt)
         prompt_n = len(prompt_tokens)
+        if prompt_n >= engine.n_ctx:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"prompt is {prompt_n} tokens but n_ctx is {engine.n_ctx}; "
+                    "it cannot be decoded"
+                ),
+            )
 
         stops = _normalize_stops(req.stop)
         if "<|im_end|>" not in stops:
