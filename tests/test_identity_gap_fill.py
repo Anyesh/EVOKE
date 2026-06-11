@@ -66,20 +66,56 @@ def test_identity_gap_fill_recompute_free_on_resend():
     assert session._cached_tokens == prompt  # faithful full prefix restored
 
 
-def test_changed_mid_history_resets_and_redecodes():
+def test_changed_mid_history_tail_evicts_from_divergence():
+    # Content changed at an evicted block's position: the matching prefix
+    # below the divergence must survive and only the conflicting remainder
+    # (changed hole + everything after it) re-decodes. The old behavior was
+    # a full session reset because the tiling check demanded contiguity up
+    # to the whole cached view, which trailing holes always fail.
     engine = RecordingEngine()
     session = Session(engine, config=_identity_config())
     prompt = list(range(20))
     session.sync_prefix(prompt)
-    mid = next(
-        b for b in session._manager._positions.active_blocks if b.logical_start == 8
-    )
-    session._manager.force_evict([mid.block_id])
+    mgr = session._manager
+    mid = next(b for b in mgr._positions.active_blocks if b.logical_start == 8)
+    mgr.force_evict([mid.block_id])
     changed = list(range(8)) + [88, 89, 90, 91] + list(range(12, 20))
     s2 = session.sync_prefix(changed)
     assert s2.blocks_recovered == 0  # identity miss: content changed, no splice
-    assert s2.new_tokens_decoded == 20  # full re-decode after reset
-    assert engine.decoded[-1] == changed
+    assert s2.new_tokens_decoded == 12  # only from the divergence on
+    assert engine.decoded[-1] == changed[8:]
+    assert session._manager is mgr  # no reset
+    assert session._cached_tokens == changed
+    assert engine._token_at_pos[8] == 88
+    assert engine.next_write_pos == 20
+
+
+def test_partial_gap_fill_keeps_recovered_prefix_on_later_mismatch():
+    # Live calcifer pattern: a new request shares a long evicted prefix
+    # (system prompt + tools), gap-fill splices it back block by block, then
+    # hits changed content at a later hole. The spliced prefix must survive;
+    # only the conflicting tail re-decodes. The old code reset the session
+    # because unfilled holes past the mismatch failed the full-view tiling
+    # check, discarding every block just recovered.
+    engine = RecordingEngine()
+    session = Session(engine, config=_identity_config())
+    prompt = list(range(28))
+    session.sync_prefix(prompt)
+    mgr = session._manager
+    for start in (8, 20):
+        blk = next(b for b in mgr._positions.active_blocks if b.logical_start == start)
+        mgr.force_evict([blk.block_id])
+    changed = list(range(20)) + [200, 201, 202, 203] + list(range(24, 28))
+    s2 = session.sync_prefix(changed)
+    assert s2.blocks_recovered == 1  # the unchanged hole at 8 spliced back
+    assert s2.new_tokens_decoded == 8  # changed hole at 20 + trailing block
+    assert engine.decoded == [prompt, changed[20:]]
+    assert session._manager is mgr  # no reset
+    assert session._cached_tokens == changed
+    assert engine._token_at_pos[8] == 8  # spliced, not re-decoded
+    assert engine._token_at_pos[20] == 200
+    assert engine._token_at_pos[24] == 24
+    assert engine.next_write_pos == 28
 
 
 def test_generated_tail_drift_preserves_gapfilled_prefix():

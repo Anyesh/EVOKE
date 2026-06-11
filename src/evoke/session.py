@@ -309,13 +309,19 @@ class Session:
 
     def _resident_tiling_contiguous(self, upto: int) -> bool:
         # True when active blocks tile [0, upto) with no sparse holes, which
-        # makes token-view indices equal engine absolute positions, so a
-        # view-index range can be passed to engine.evict_ranges directly.
+        # makes token-view indices equal engine absolute positions on that
+        # range, so a view-index range can be passed to engine.evict_ranges
+        # directly. Holes at or past `upto` are irrelevant: callers evict
+        # everything from `upto` on, so the walk must stop once the prefix
+        # is covered or trailing holes would veto a perfectly keepable
+        # prefix.
         expected = 0
         for block in sorted(
             self._manager._positions.active_blocks,
             key=lambda b: (b.logical_start, b.block_id),
         ):
+            if expected >= upto:
+                break
             if block.logical_start != expected:
                 return False
             expected = block.logical_end
@@ -549,9 +555,24 @@ class Session:
                         f"toks_len={len(toks)} tok_match={tok_match}\n"
                     )
                     if not tok_match:
-                        pt = prompt_tokens[cursor : cursor + min(8, len(toks))]
-                        st = toks[: min(8, len(toks))]
-                        sys.stderr.write(f"  prompt_slice={pt}\n  saved_slice={st}\n")
+                        window = prompt_tokens[cursor : cursor + len(toks)]
+                        diff = next(
+                            (i for i, (a, b) in enumerate(zip(window, toks)) if a != b),
+                            min(len(window), len(toks)),
+                        )
+                        lo = max(0, diff - 4)
+                        hi = diff + 8
+                        try:
+                            p_txt = self._engine.detokenize(list(window[lo:hi]))
+                            s_txt = self._engine.detokenize(list(toks[lo:hi]))
+                        except Exception:
+                            p_txt = s_txt = "<detok-err>"
+                        sys.stderr.write(
+                            f"  first_diff={diff} window_len={len(window)} "
+                            f"saved_len={len(toks)}\n"
+                            f"  prompt_ids={list(window[lo:hi])} text={p_txt!r}\n"
+                            f"  saved_ids={list(toks[lo:hi])} text={s_txt!r}\n"
+                        )
                     sys.stderr.flush()
                 if tok_match:
                     ok = self._manager.recover(key, defer_budget=True)
@@ -650,24 +671,28 @@ class Session:
         if divergence < len(self._cached_tokens):
             if identity_match:
                 cached_len = len(self._cached_tokens)
-                # After a full gap-fill walk the resident set tiles
-                # [0, cached_len) with no sparse holes, so view indices equal
-                # engine positions and the diverged tail (typically the
-                # client's re-templated echo of the generated turn, which
-                # drifts from the raw emit by whitespace or tool-call
-                # re-rendering) can be dropped as a plain range. Resetting
-                # here would discard every block the gap-fill just spliced
-                # in and force a full re-decode. The default compact=True is
-                # required: it realigns the engine write cursor to
-                # `divergence` so the tail decode lands at the dropped
-                # positions (compact=False left the cursor past the removed
-                # range and the decode at stale positions crashed
-                # llama_decode with -1 live); its shift pass is a no-op for
-                # a tail range and the verified hole-free tiling leaves no
-                # sparse holes for it to corrupt.
+                # The gap-fill walk left [0, divergence) tiled with no sparse
+                # holes, so view indices equal engine positions on the kept
+                # prefix and the diverged remainder (the client's re-templated
+                # echo drifting from the raw emit, or genuinely new content at
+                # an evicted block's position) can be dropped as one engine
+                # range up to the write cursor, holes and trailing residents
+                # alike. Resetting here would discard every block the
+                # gap-fill just spliced in and force a full re-decode.
+                # Contiguity only needs to hold up to `divergence`: anything
+                # past it is evicted, so holes there cannot break the
+                # view-index/engine-position equivalence of the kept range.
+                # The default compact=True is required: it realigns the
+                # engine write cursor to `divergence` so the tail decode
+                # lands at the dropped positions (compact=False left the
+                # cursor past the removed range and the decode at stale
+                # positions crashed llama_decode with -1 live); its shift
+                # pass is a no-op because no survivors sit past the range.
                 if self._resident_tiling_contiguous(
-                    cached_len
-                ) and self._engine.evict_ranges([(divergence, cached_len)]):
+                    divergence
+                ) and self._engine.evict_ranges(
+                    [(divergence, self._engine.next_write_pos)]
+                ):
                     self._manager.trim_blocks_at(divergence)
                     self._cached_tokens = self._cached_tokens[:divergence]
                 else:
