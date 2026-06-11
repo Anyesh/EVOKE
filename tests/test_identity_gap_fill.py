@@ -91,7 +91,7 @@ def test_changed_mid_history_tail_evicts_from_divergence():
 
 
 def test_partial_gap_fill_keeps_recovered_prefix_on_later_mismatch():
-    # Live calcifer pattern: a new request shares a long evicted prefix
+    # Live pattern: a new request shares a long evicted prefix
     # (system prompt + tools), gap-fill splices it back block by block, then
     # hits changed content at a later hole. The spliced prefix must survive;
     # only the conflicting tail re-decodes. The old code reset the session
