@@ -70,15 +70,22 @@ def _jinja_raise(message: str) -> None:
     raise RuntimeError(f"chat template raise_exception: {message}")
 
 
-def _normalize_tool_call_arguments(
+def _normalize_messages(
     messages: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     # OpenAI clients echo assistant tool_calls with arguments as a JSON
     # string, but HF-convention templates iterate arguments as a mapping
     # (e.g. Qwen3.5's `arguments|items`), so string arguments must be
-    # decoded before rendering.
+    # decoded before rendering. A tool-call echo also carries content=null,
+    # which pydantic's exclude_none dump drops entirely; GGUF templates
+    # access message.content unconditionally and this renderer uses
+    # StrictUndefined, so the key must exist or the render falls back to
+    # format_qwen_chat, whose differently-formatted tools JSON breaks the
+    # byte-stable prefix across turns.
     out: list[dict[str, Any]] = []
     for m in messages:
+        if m.get("content") is None:
+            m = {**m, "content": ""}
         tcs = m.get("tool_calls")
         if not tcs:
             out.append(m)
@@ -120,7 +127,7 @@ def render_gguf_chat_template(
     )
     env.globals["raise_exception"] = _jinja_raise
     render_kwargs: dict[str, Any] = {
-        "messages": _normalize_tool_call_arguments(messages),
+        "messages": _normalize_messages(messages),
         "tools": tools,
         "add_generation_prompt": add_generation_prompt,
     }

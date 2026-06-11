@@ -5,6 +5,9 @@ from evoke.templates import render_gguf_chat_template
 FIXTURE = os.path.join(
     os.path.dirname(__file__), "fixtures", "qwen35_chat_template.jinja"
 )
+QWEN3_FIXTURE = os.path.join(
+    os.path.dirname(__file__), "fixtures", "qwen3_chat_template.jinja"
+)
 
 TOOLS = [
     {
@@ -31,6 +34,11 @@ MESSAGES = [
 
 def _template() -> str:
     with open(FIXTURE, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _qwen3_template() -> str:
+    with open(QWEN3_FIXTURE, encoding="utf-8") as fh:
         return fh.read()
 
 
@@ -97,6 +105,55 @@ class TestRenderGgufChatTemplate:
         out = render_gguf_chat_template(_template(), msgs, TOOLS)
         assert "<parameter=filePath>" in out
         assert "x = 1" in out
+
+    def test_assistant_echo_without_content_key_renders_qwen3(self):
+        # An OpenAI client echoing our tool-call response sends the assistant
+        # message with content=null; pydantic model_dump(exclude_none=True)
+        # then drops the key entirely. The Qwen3 GGUF template accesses
+        # message.content unconditionally, so a missing key must not push the
+        # render onto the format_qwen_chat fallback: the fallback pretty-prints
+        # the tools JSON while the GGUF template emits it compact, and that
+        # byte drift mid-prompt resets the session and discards every
+        # recoverable block.
+        msgs = MESSAGES + [
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "write",
+                            "arguments": '{"filePath": "a.py", "content": "x = 1"}',
+                        },
+                    }
+                ],
+            },
+            {"role": "tool", "content": "ok"},
+        ]
+        out = render_gguf_chat_template(_qwen3_template(), msgs, TOOLS)
+        assert "<tool_call>" in out
+        assert "ok" in out
+
+    def test_assistant_echo_without_content_key_renders_qwen35(self):
+        msgs = MESSAGES + [
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "write",
+                            "arguments": '{"filePath": "a.py", "content": "x = 1"}',
+                        },
+                    }
+                ],
+            },
+            {"role": "tool", "content": "ok"},
+        ]
+        out = render_gguf_chat_template(_template(), msgs, TOOLS)
+        assert "<function=write>" in out
 
     def test_unrenderable_template_raises_runtime_error(self):
         try:
