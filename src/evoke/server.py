@@ -13,7 +13,8 @@ import os
 import threading
 import time
 import uuid
-from typing import Any
+from pathlib import Path as FsPath
+from typing import Any, Callable
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -168,6 +169,10 @@ def _chunk_payload(
     }
 
 
+class LoadModelRequest(BaseModel):
+    model: str
+
+
 def create_app(
     engine: LlamaCppEngine,
     model_name: str,
@@ -175,6 +180,9 @@ def create_app(
     *,
     max_sessions: int = 8,
     enable_thinking: bool | None = None,
+    model_dir: str | FsPath | None = None,
+    model_path: str | None = None,
+    engine_factory: Callable[[str], LlamaCppEngine] | None = None,
 ) -> FastAPI:
     app = FastAPI(title="EVOKE", version="0.1.0")
     if enable_thinking is None:
@@ -230,6 +238,75 @@ def create_app(
                 }
             ],
         }
+
+    def _gguf_stems() -> list[str]:
+        # mmproj-*.gguf files are vision projectors, not loadable models.
+        if model_dir is None:
+            return []
+        return sorted(
+            p.stem
+            for p in FsPath(model_dir).glob("*.gguf")
+            if "mmproj" not in p.stem.lower()
+        )
+
+    @app.get("/models")
+    async def native_models() -> dict[str, Any]:
+        # llama-server manager shape: clients like calcifer read the model
+        # list from data[].id and the live context window / vision support
+        # from --ctx-size / --mmproj in the active entry's status.args.
+        # Without this endpoint they fall back to a guessed context window
+        # and can overrun n_ctx.
+        stems = _gguf_stems()
+        if model_name not in stems:
+            stems.insert(0, model_name)
+        return {
+            "data": [
+                {
+                    "id": stem,
+                    "object": "model",
+                    "status": (
+                        {"args": ["--ctx-size", str(engine.n_ctx)]}
+                        if stem == model_name
+                        else {}
+                    ),
+                }
+                for stem in stems
+            ]
+        }
+
+    @app.post("/models/load")
+    async def load_model(req: LoadModelRequest) -> dict[str, Any]:
+        nonlocal engine, pool, model_name, model_path
+        if model_dir is None or engine_factory is None:
+            raise HTTPException(
+                status_code=404, detail="model switching is not configured"
+            )
+        if req.model == model_name:
+            return {"status": "ok", "model": model_name, "loaded": False}
+        candidate = FsPath(model_dir) / f"{req.model}.gguf"
+        if not candidate.is_file():
+            raise HTTPException(status_code=404, detail=f"unknown model: {req.model}")
+        async with lock:
+            # Close the active model before loading the replacement: two
+            # resident models cannot fit in VRAM on a 16GB card. All
+            # sessions and their archives die with the engine because saved
+            # KV from one model is meaningless to another.
+            engine.close()
+            try:
+                new_engine = engine_factory(str(candidate))
+            except Exception as exc:
+                if model_path:
+                    engine = engine_factory(model_path)
+                    pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+                raise HTTPException(
+                    status_code=500, detail=f"model load failed: {exc}"
+                ) from exc
+            engine = new_engine
+            model_name = req.model
+            model_path = str(candidate)
+            pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+            print(f"[models] switched to {model_name} ({model_path})", flush=True)
+        return {"status": "ok", "model": model_name, "loaded": True}
 
     @app.get("/health")
     async def health(

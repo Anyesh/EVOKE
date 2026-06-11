@@ -160,7 +160,22 @@ def main() -> int:
     print(f"  ready (n_embd={engine.n_embd}, kv_block={engine.supports_kv_block})")
 
     max_sessions = int(os.environ.get("EVOKE_MAX_SESSIONS", "8"))
-    app = create_app(engine, model_name, config=config, max_sessions=max_sessions)
+    model_dir = os.environ.get("EVOKE_MODEL_DIR") or str(Path(model_path).parent)
+
+    def engine_factory(path: str) -> LlamaCppEngine:
+        return LlamaCppEngine(
+            path, n_ctx=n_ctx, n_gpu_layers=-1, verbose=False, n_rs_seq=n_rs_seq
+        )
+
+    app = create_app(
+        engine,
+        model_name,
+        config=config,
+        max_sessions=max_sessions,
+        model_dir=model_dir,
+        model_path=model_path,
+        engine_factory=engine_factory,
+    )
     print(f"serving on http://{host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info")
     return 0

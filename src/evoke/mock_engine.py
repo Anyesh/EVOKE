@@ -15,6 +15,7 @@ class MockEngine:
         self._rng = np.random.RandomState(42)
         self._embeddings: dict[int, np.ndarray] = {}
         self._gen_queue: list[int] = []
+        self.closed = False
 
     def tokenize(self, text: str) -> list[int]:
         return [ord(ch) for ch in text]
@@ -140,6 +141,13 @@ class MockEngine:
             else:
                 result[i] = self._rng.randn(self._n_embd).astype(np.float32)
         return result
+
+    @property
+    def supports_kv_block(self) -> bool:
+        return True
+
+    def close(self) -> None:
+        self.closed = True
 
     @property
     def next_write_pos(self) -> int:
