@@ -262,12 +262,16 @@ class LlamaCppEngine:
         template_str = self.get_chat_template_string()
         if template_str is None:
             raise RuntimeError("model has no chat template embedded in GGUF")
+        bos = self.bos_token
+        eos = self.eos_token
         return render_gguf_chat_template(
             template_str,
             messages,
             tools,
             add_generation_prompt=add_generation_prompt,
             enable_thinking=enable_thinking,
+            bos_token=self.detokenize([bos]) if bos >= 0 else "",
+            eos_token=self.detokenize([eos]) if eos >= 0 else "",
         )
 
     def apply_chat_template(

@@ -8,6 +8,9 @@ FIXTURE = os.path.join(
 QWEN3_FIXTURE = os.path.join(
     os.path.dirname(__file__), "fixtures", "qwen3_chat_template.jinja"
 )
+LLAMA31_FIXTURE = os.path.join(
+    os.path.dirname(__file__), "fixtures", "llama31_chat_template.jinja"
+)
 
 TOOLS = [
     {
@@ -39,6 +42,11 @@ def _template() -> str:
 
 def _qwen3_template() -> str:
     with open(QWEN3_FIXTURE, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _llama31_template() -> str:
+    with open(LLAMA31_FIXTURE, encoding="utf-8") as fh:
         return fh.read()
 
 
@@ -154,6 +162,39 @@ class TestRenderGgufChatTemplate:
         ]
         out = render_gguf_chat_template(_template(), msgs, TOOLS)
         assert "<function=write>" in out
+
+    def test_bos_eos_tokens_reach_the_template(self):
+        out = render_gguf_chat_template(
+            "{{ bos_token }}x{{ eos_token }}",
+            MESSAGES,
+            None,
+            bos_token="<BOS>",
+            eos_token="<EOS>",
+        )
+        assert out == "<BOS>x<EOS>"
+
+    def test_bos_token_defaults_empty_instead_of_undefined(self):
+        out = render_gguf_chat_template("{{ bos_token }}hi", MESSAGES, None)
+        assert out == "hi"
+
+    def test_llama31_template_renders_with_tools(self):
+        # Live failure (opencode on Meta-Llama-3.1-8B): the Llama 3.1 GGUF
+        # template opens with {{- bos_token }}, which StrictUndefined turned
+        # into a render failure, so the server silently fell back to the Qwen
+        # ChatML format. Llama has no ChatML special tokens, mimicked the
+        # markers as plain text, and streamed a hallucinated multi-turn
+        # conversation.
+        out = render_gguf_chat_template(
+            _llama31_template(),
+            MESSAGES,
+            TOOLS,
+            bos_token="<|begin_of_text|>",
+            eos_token="<|eot_id|>",
+        )
+        assert out.startswith("<|begin_of_text|>")
+        assert "<|start_header_id|>" in out
+        assert '"name": "write"' in out
+        assert "<|im_start|>" not in out
 
     def test_unrenderable_template_raises_runtime_error(self):
         try:

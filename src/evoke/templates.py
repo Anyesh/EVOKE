@@ -111,6 +111,8 @@ def render_gguf_chat_template(
     tools: list[dict[str, Any]] | None,
     add_generation_prompt: bool = True,
     enable_thinking: bool | None = None,
+    bos_token: str = "",
+    eos_token: str = "",
 ) -> str:
     """Render a GGUF-embedded Jinja chat template with tool support.
 
@@ -118,6 +120,11 @@ def render_gguf_chat_template(
     default applies; templates differ on which branch is the default (the
     Qwen3.5 GGUF variant defaults thinking off, the HF repo variant defaults
     it on), so callers must opt in explicitly per model.
+
+    bos_token/eos_token are always defined (empty by default) because HF
+    templates reference them unconditionally (Llama 3.1 opens with
+    {{- bos_token }}) and StrictUndefined would otherwise fail the render and
+    push the prompt onto the wrong-format format_qwen_chat fallback.
     """
     env = Environment(
         trim_blocks=True,
@@ -130,6 +137,8 @@ def render_gguf_chat_template(
         "messages": _normalize_messages(messages),
         "tools": tools,
         "add_generation_prompt": add_generation_prompt,
+        "bos_token": bos_token,
+        "eos_token": eos_token,
     }
     if enable_thinking is not None:
         render_kwargs["enable_thinking"] = enable_thinking
