@@ -580,6 +580,8 @@ def create_app(
                     ),
                 )
 
+            starts_in_think = _prompt_opens_think(prompt)
+
             stops = _normalize_stops(req.stop)
             if "<|im_end|>" not in stops:
                 stops.append("<|im_end|>")
@@ -619,6 +621,7 @@ def create_app(
                     req.evoke_task_boundary,
                     req.tools,
                     engine_lock,
+                    starts_in_think,
                 )
 
                 async def _stream_with_release():
@@ -691,6 +694,19 @@ def _safe_emit_end(full_text: str) -> int:
     return max(0, len(full_text) - _LOOKBACK)
 
 
+def _prompt_opens_think(prompt: str) -> bool:
+    # Qwen3.x thinking templates append a bare "<think>\n" to the assistant
+    # generation prompt, so generation begins INSIDE the reasoning block and
+    # the model never emits its own opening <think>. The stream gate keys on
+    # that opener, so without this signal it sees only the trailing </think>
+    # and leaks the whole reasoning trace as content. Detect the open block by
+    # the last think marker in the rendered prompt being an unclosed <think>.
+    open_idx = prompt.rfind("<think>")
+    if open_idx == -1:
+        return False
+    return prompt.rfind("</think>") < open_idx
+
+
 async def _stream_completion(
     pool: SessionPool,
     session_id: str,
@@ -707,14 +723,19 @@ async def _stream_completion(
     evoke_task_boundary: bool = False,
     tools: list[dict[str, Any]] | None = None,
     engine_lock: threading.Lock | None = None,
+    starts_in_think: bool = False,
 ):
     yield _sse(
         _chunk_payload(completion_id, created, model_name, {"role": "assistant"})
     )
 
-    in_think = False
+    in_think = starts_in_think
     tool_locked = False
     emit_end = 0
+    # Set when a think block closes: drop the whitespace between </think> and
+    # the first visible char (matches the non-stream parser's lstrip), even
+    # when that whitespace and the answer arrive in separate chunks.
+    lstrip_pending = False
     full_text = ""
     finish_reason: str | None = None
 
@@ -737,6 +758,12 @@ async def _stream_completion(
             # Resolve the session inside the lock so any other request that
             # raced us through the pool gets to swap us in cleanly.
             session = pool.get(session_id)
+            # Suppress mode streams the trace verbatim, so the prompt-opened
+            # think block must not put the gate into suppression: that would
+            # also gate the end-of-stream tail flush and drop the answer's last
+            # _LOOKBACK chars.
+            if session._config.suppress_thinking_strip:
+                in_think = False
 
             def _produce():
                 ctx = engine_lock if engine_lock is not None else threading.Lock()
@@ -791,6 +818,7 @@ async def _stream_completion(
                             continue
                         in_think = False
                         emit_end = close_idx + len("</think>")
+                        lstrip_pending = True
 
                     think_idx = full_text.find("<think>", emit_end)
                 else:
@@ -823,6 +851,11 @@ async def _stream_completion(
                     continue
 
                 safe_end = _safe_emit_end(full_text)
+                if lstrip_pending:
+                    while emit_end < safe_end and full_text[emit_end] in " \t\r\n":
+                        emit_end += 1
+                    if emit_end < safe_end:
+                        lstrip_pending = False
                 if safe_end > emit_end:
                     delta = full_text[emit_end:safe_end]
                     emit_end = safe_end
@@ -853,6 +886,8 @@ async def _stream_completion(
             if tok in tail:
                 tail = tail.split(tok, 1)[0]
                 break
+        if lstrip_pending:
+            tail = tail.lstrip()
         if tail:
             yield _sse(
                 _chunk_payload(completion_id, created, model_name, {"content": tail})
