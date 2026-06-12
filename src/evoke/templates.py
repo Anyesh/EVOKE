@@ -88,6 +88,12 @@ def _normalize_messages(
             m = {**m, "content": ""}
         tcs = m.get("tool_calls")
         if not tcs:
+            # The key must exist even on text-only messages: the Qwen3.5/3.6
+            # templates truth-test message.tool_calls and StrictUndefined
+            # rejects that on a missing key, same failure class as the
+            # missing content above.
+            if "tool_calls" not in m:
+                m = {**m, "tool_calls": None}
             out.append(m)
             continue
         fixed_tcs = []

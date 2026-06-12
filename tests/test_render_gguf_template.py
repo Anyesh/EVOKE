@@ -11,6 +11,9 @@ QWEN3_FIXTURE = os.path.join(
 LLAMA31_FIXTURE = os.path.join(
     os.path.dirname(__file__), "fixtures", "llama31_chat_template.jinja"
 )
+QWEN36_FIXTURE = os.path.join(
+    os.path.dirname(__file__), "fixtures", "qwen36_chat_template.jinja"
+)
 
 TOOLS = [
     {
@@ -162,6 +165,22 @@ class TestRenderGgufChatTemplate:
         ]
         out = render_gguf_chat_template(_template(), msgs, TOOLS)
         assert "<function=write>" in out
+
+    def test_text_only_assistant_echo_renders_qwen36(self):
+        # Live failure (Claude Code via CCR on Qwen3.6-35B): a plain-text
+        # assistant echo carries no tool_calls key, and the Qwen3.5/3.6
+        # template truth-tests message.tool_calls, which StrictUndefined
+        # rejects even inside an `and` chain. The silent format_qwen_chat
+        # fallback then byte-diverges from the previous turn's GGUF render
+        # and forces a full re-prefill of the 40K-token prompt every turn.
+        with open(QWEN36_FIXTURE, encoding="utf-8") as fh:
+            tmpl = fh.read()
+        msgs = MESSAGES + [
+            {"role": "assistant", "content": "I will read the file now."},
+            {"role": "user", "content": "go on"},
+        ]
+        out = render_gguf_chat_template(tmpl, msgs, TOOLS)
+        assert "I will read the file now." in out
 
     def test_bos_eos_tokens_reach_the_template(self):
         out = render_gguf_chat_template(
