@@ -20,6 +20,24 @@ class MockEngine:
     def tokenize(self, text: str) -> list[int]:
         return [ord(ch) for ch in text]
 
+    def apply_chat_template(
+        self,
+        messages: list[dict],
+        add_generation_prompt: bool = True,
+    ) -> str:
+        # Raise like a GGUF without an embedded template so callers exercise
+        # their documented format_qwen_chat fallback path.
+        raise RuntimeError("MockEngine has no embedded chat template")
+
+    def apply_chat_template_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None,
+        add_generation_prompt: bool = True,
+        enable_thinking: bool | None = None,
+    ) -> str:
+        raise RuntimeError("MockEngine has no embedded chat template")
+
     def detokenize(self, tokens: list[int]) -> str:
         return "".join(chr(t) if 0 <= t < 0x110000 else "?" for t in tokens)
 

@@ -8,6 +8,7 @@ EVOKE without code changes on their side.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import threading
@@ -183,8 +184,29 @@ def create_app(
     model_dir: str | FsPath | None = None,
     model_path: str | None = None,
     engine_factory: Callable[[str], LlamaCppEngine] | None = None,
+    idle_timeout: float | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="EVOKE", version="0.1.0")
+    @contextlib.asynccontextmanager
+    async def _lifespan(_: FastAPI):
+        watcher: asyncio.Task | None = None
+        if idle_timeout:
+            if engine_factory is None or model_path is None:
+                print(
+                    "[idle] idle_timeout set but model reload is not configured; "
+                    "idle unload disabled",
+                    flush=True,
+                )
+            else:
+                watcher = asyncio.create_task(_idle_watcher())
+        try:
+            yield
+        finally:
+            if watcher is not None:
+                watcher.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await watcher
+
+    app = FastAPI(title="EVOKE", version="0.1.0", lifespan=_lifespan)
     if enable_thinking is None:
         enable_thinking = {"1": True, "true": True, "0": False, "false": False}.get(
             os.environ.get("EVOKE_ENABLE_THINKING", "").lower()
@@ -224,6 +246,78 @@ def create_app(
     # released if a streaming client disconnects while the producer thread
     # is still driving the engine.
     engine_lock = threading.Lock()
+
+    # Idle unload state. n_ctx and supports_kv_block are cached at load time
+    # because reading them off a closed engine dereferences a freed
+    # llama_context; observability endpoints must keep answering while the
+    # model is unloaded.
+    engine_loaded = True
+    active_n_ctx = engine.n_ctx
+    active_kv_block = engine.supports_kv_block
+    last_used = time.monotonic()
+    inflight = 0
+
+    def _close_engine_blocking() -> None:
+        # engine_lock must be held around close: a streaming producer thread
+        # can still be driving the engine after a client disconnect released
+        # the asyncio lock, and freeing the context under it would crash.
+        with engine_lock:
+            engine.close()
+
+    async def _unload_locked(reason: str) -> None:
+        # Caller holds `lock`. Sessions and their archives die with the
+        # engine, same contract as a /models/load hot swap; clients resend
+        # full history, so a reloaded server rebuilds state by prefill.
+        nonlocal pool, engine_loaded
+        await asyncio.to_thread(_close_engine_blocking)
+        pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+        engine_loaded = False
+        print(f"[models] unloaded {model_name} ({reason})", flush=True)
+
+    async def _load_locked(path: str, name: str) -> None:
+        # Caller holds `lock` and has already closed the previous engine.
+        nonlocal engine, pool, model_name, model_path, engine_loaded
+        nonlocal active_n_ctx, active_kv_block, last_used
+        engine = await asyncio.to_thread(engine_factory, path)
+        model_name = name
+        model_path = path
+        pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+        active_n_ctx = engine.n_ctx
+        active_kv_block = engine.supports_kv_block
+        engine_loaded = True
+        last_used = time.monotonic()
+
+    async def _ensure_loaded() -> None:
+        if engine_loaded:
+            return
+        async with lock:
+            if engine_loaded:
+                return
+            try:
+                await _load_locked(model_path, model_name)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=503, detail=f"model reload failed: {exc}"
+                ) from exc
+            print(f"[models] reloaded {model_name} after unload", flush=True)
+
+    async def _idle_watcher() -> None:
+        interval = min(max(idle_timeout / 4.0, 0.05), 10.0)
+        while True:
+            await asyncio.sleep(interval)
+            if not engine_loaded or inflight > 0:
+                continue
+            if time.monotonic() - last_used < idle_timeout:
+                continue
+            async with lock:
+                # Re-check under the lock: a request may have raced in
+                # between the unlocked check and acquisition.
+                if (
+                    engine_loaded
+                    and inflight == 0
+                    and time.monotonic() - last_used >= idle_timeout
+                ):
+                    await _unload_locked(f"idle {idle_timeout:g}s")
 
     @app.get("/v1/models")
     async def list_models() -> dict[str, Any]:
@@ -265,7 +359,7 @@ def create_app(
                     "id": stem,
                     "object": "model",
                     "status": (
-                        {"args": ["--ctx-size", str(engine.n_ctx)]}
+                        {"args": ["--ctx-size", str(active_n_ctx)]}
                         if stem == model_name
                         else {}
                     ),
@@ -276,12 +370,12 @@ def create_app(
 
     @app.post("/models/load")
     async def load_model(req: LoadModelRequest) -> dict[str, Any]:
-        nonlocal engine, pool, model_name, model_path
+        nonlocal engine_loaded
         if model_dir is None or engine_factory is None:
             raise HTTPException(
                 status_code=404, detail="model switching is not configured"
             )
-        if req.model == model_name:
+        if req.model == model_name and engine_loaded:
             return {"status": "ok", "model": model_name, "loaded": False}
         candidate = FsPath(model_dir) / f"{req.model}.gguf"
         if not candidate.is_file():
@@ -291,22 +385,40 @@ def create_app(
             # resident models cannot fit in VRAM on a 16GB card. All
             # sessions and their archives die with the engine because saved
             # KV from one model is meaningless to another.
-            engine.close()
+            prev_path, prev_name = model_path, model_name
+            await asyncio.to_thread(_close_engine_blocking)
+            engine_loaded = False
             try:
-                new_engine = engine_factory(str(candidate))
+                await _load_locked(str(candidate), req.model)
             except Exception as exc:
-                if model_path:
-                    engine = engine_factory(model_path)
-                    pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+                if prev_path:
+                    try:
+                        await _load_locked(prev_path, prev_name)
+                    except Exception as recovery_exc:
+                        print(
+                            f"[models] recovery load of {prev_name} failed: "
+                            f"{recovery_exc}",
+                            flush=True,
+                        )
                 raise HTTPException(
                     status_code=500, detail=f"model load failed: {exc}"
                 ) from exc
-            engine = new_engine
-            model_name = req.model
-            model_path = str(candidate)
-            pool = SessionPool(engine, config=config, max_sessions=max_sessions)
             print(f"[models] switched to {model_name} ({model_path})", flush=True)
         return {"status": "ok", "model": model_name, "loaded": True}
+
+    @app.post("/models/unload")
+    async def unload_model() -> dict[str, Any]:
+        if engine_factory is None or model_path is None:
+            raise HTTPException(
+                status_code=404, detail="model reload is not configured"
+            )
+        async with lock:
+            if not engine_loaded:
+                return {"status": "ok", "model": model_name, "unloaded": False}
+            if inflight > 0:
+                raise HTTPException(status_code=409, detail="requests in flight")
+            await _unload_locked("explicit unload")
+        return {"status": "ok", "model": model_name, "unloaded": True}
 
     @app.get("/health")
     async def health(
@@ -319,8 +431,9 @@ def create_app(
             session = pool.peek(sid)
             base = {
                 "status": "ok",
-                "n_ctx": engine.n_ctx,
-                "kv_block_primitives": engine.supports_kv_block,
+                "model_loaded": engine_loaded,
+                "n_ctx": active_n_ctx,
+                "kv_block_primitives": active_kv_block,
                 "session_id": sid,
                 "n_sessions": pool.n_sessions,
                 "sessions_evicted": pool.evicted_count,
@@ -384,6 +497,10 @@ def create_app(
     ) -> dict[str, Any]:
         async with lock:
             sid = x_evoke_session or pool.active_session_id or DEFAULT_SESSION_ID
+            # An unloaded engine has no cached state to reset, and pool.get
+            # would call reset() on a freed llama_context.
+            if not engine_loaded:
+                return {"status": "reset", "session_id": sid}
             session = pool.get(sid)
             session.reset()
         return {"status": "reset", "session_id": sid}
@@ -396,79 +513,97 @@ def create_app(
         if not req.messages:
             raise HTTPException(status_code=400, detail="messages must not be empty")
 
-        # Resolve session under the pool lock so a concurrent request to
-        # another session_id doesn't swap the engine state out from under
-        # us mid-request. The lock is held for the full prompt-tokenize +
-        # decode + generate cycle.
-        msgs = [m.model_dump(exclude_none=True) for m in req.messages]
-        if req.tools:
-            # Render via Python jinja2 against the GGUF's own chat template,
-            # which understands tools. Falls back to our handwritten
-            # format_qwen_chat only if the model has no embedded template or
-            # the render fails outright.
-            try:
-                prompt = engine.apply_chat_template_with_tools(
-                    msgs,
-                    tools=req.tools,
-                    add_generation_prompt=True,
-                    enable_thinking=enable_thinking,
+        # In-flight accounting gates the idle watcher and the explicit
+        # unload endpoint: the engine must not be closed between here and
+        # the end of this request (or the end of its SSE stream).
+        nonlocal inflight
+        inflight += 1
+        handed_off = False
+
+        def _release() -> None:
+            nonlocal inflight, last_used
+            inflight -= 1
+            last_used = time.monotonic()
+
+        try:
+            await _ensure_loaded()
+
+            # Resolve session under the pool lock so a concurrent request to
+            # another session_id doesn't swap the engine state out from under
+            # us mid-request. The lock is held for the full prompt-tokenize +
+            # decode + generate cycle.
+            msgs = [m.model_dump(exclude_none=True) for m in req.messages]
+            if req.tools:
+                # Render via Python jinja2 against the GGUF's own chat
+                # template, which understands tools. Falls back to our
+                # handwritten format_qwen_chat only if the model has no
+                # embedded template or the render fails outright.
+                try:
+                    prompt = engine.apply_chat_template_with_tools(
+                        msgs,
+                        tools=req.tools,
+                        add_generation_prompt=True,
+                        enable_thinking=enable_thinking,
+                    )
+                except RuntimeError as exc:
+                    print(
+                        f"[tmpl] gguf template render failed ({exc}); "
+                        "falling back to format_qwen_chat",
+                        flush=True,
+                    )
+                    prompt = format_qwen_chat(
+                        msgs, tools=req.tools, add_generation_prompt=True
+                    )
+            else:
+                try:
+                    prompt = engine.apply_chat_template(
+                        msgs, add_generation_prompt=True
+                    )
+                except RuntimeError as exc:
+                    # Model has no embedded chat template; fall back to ours.
+                    print(
+                        f"[tmpl] C template path failed ({exc}); "
+                        "falling back to format_qwen_chat",
+                        flush=True,
+                    )
+                    prompt = format_qwen_chat(
+                        msgs, tools=None, add_generation_prompt=True
+                    )
+            prompt_tokens = engine.tokenize(prompt)
+            prompt_n = len(prompt_tokens)
+            if prompt_n >= engine.n_ctx:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"prompt is {prompt_n} tokens but n_ctx is {engine.n_ctx}; "
+                        "it cannot be decoded"
+                    ),
                 )
-            except RuntimeError as exc:
-                print(
-                    f"[tmpl] gguf template render failed ({exc}); "
-                    "falling back to format_qwen_chat",
-                    flush=True,
-                )
-                prompt = format_qwen_chat(
-                    msgs, tools=req.tools, add_generation_prompt=True
-                )
-        else:
-            try:
-                prompt = engine.apply_chat_template(msgs, add_generation_prompt=True)
-            except RuntimeError as exc:
-                # Model has no embedded chat template; fall back to ours.
-                print(
-                    f"[tmpl] C template path failed ({exc}); "
-                    "falling back to format_qwen_chat",
-                    flush=True,
-                )
-                prompt = format_qwen_chat(msgs, tools=None, add_generation_prompt=True)
-        prompt_tokens = engine.tokenize(prompt)
-        prompt_n = len(prompt_tokens)
-        if prompt_n >= engine.n_ctx:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"prompt is {prompt_n} tokens but n_ctx is {engine.n_ctx}; "
-                    "it cannot be decoded"
-                ),
+
+            stops = _normalize_stops(req.stop)
+            if "<|im_end|>" not in stops:
+                stops.append("<|im_end|>")
+
+            max_new = req.max_tokens or 2048
+            completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
+            created = int(time.time())
+            # Explicit header wins; otherwise route by longest shared token
+            # prefix so an interleaved side-request (title generation) cannot
+            # land on the agent session and reset away its recovery archive.
+            if x_evoke_session:
+                session_id = x_evoke_session
+            else:
+                async with lock:
+                    session_id = pool.route_id(prompt_tokens)
+            print(
+                f"[req {completion_id}] msgs={len(msgs)} tools={len(req.tools or [])} "
+                f"stream={req.stream} max_new={max_new} prompt_chars={len(prompt)} "
+                f"prompt_tokens={prompt_n} session={session_id} stops={stops}",
+                flush=True,
             )
 
-        stops = _normalize_stops(req.stop)
-        if "<|im_end|>" not in stops:
-            stops.append("<|im_end|>")
-
-        max_new = req.max_tokens or 2048
-        completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
-        created = int(time.time())
-        # Explicit header wins; otherwise route by longest shared token
-        # prefix so an interleaved side-request (title generation) cannot
-        # land on the agent session and reset away its recovery archive.
-        if x_evoke_session:
-            session_id = x_evoke_session
-        else:
-            async with lock:
-                session_id = pool.route_id(prompt_tokens)
-        print(
-            f"[req {completion_id}] msgs={len(msgs)} tools={len(req.tools or [])} "
-            f"stream={req.stream} max_new={max_new} prompt_chars={len(prompt)} "
-            f"prompt_tokens={prompt_n} session={session_id} stops={stops}",
-            flush=True,
-        )
-
-        if req.stream:
-            return StreamingResponse(
-                _stream_completion(
+            if req.stream:
+                stream = _stream_completion(
                     pool,
                     session_id,
                     engine,
@@ -484,44 +619,63 @@ def create_app(
                     req.evoke_task_boundary,
                     req.tools,
                     engine_lock,
-                ),
-                media_type="text/event-stream",
-            )
-
-        def _run_turn():
-            with engine_lock:
-                session = pool.get(session_id)
-                session.sync_prefix(
-                    prompt_tokens,
-                    priority=req.evoke_priority,
-                    pinned=req.evoke_pinned,
-                    task_boundary=req.evoke_task_boundary,
                 )
-                result = session.generate(max_tokens=max_new, stop_strings=stops)
-                return result, session._config.suppress_thinking_strip
 
-        async with lock:
-            result, suppress = await asyncio.to_thread(_run_turn)
+                async def _stream_with_release():
+                    try:
+                        async for chunk in stream:
+                            yield chunk
+                    finally:
+                        # Close the inner generator now rather than at GC:
+                        # its finally sets the abort event that stops the
+                        # producer thread, and the engine must be quiet
+                        # before inflight hits zero.
+                        await stream.aclose()
+                        _release()
 
-        parsed = parse_qwen_response(
-            result.text,
-            strip_thinking=not suppress,
-            tools=req.tools,
-        )
-        if not parsed.tool_calls and "<tool_call>" in result.text:
-            print(
-                f"[req {completion_id}] tool_call parse failed: "
-                f"head={result.text[:160]!r} tail={result.text[-160:]!r}",
-                flush=True,
+                handed_off = True
+                return StreamingResponse(
+                    _stream_with_release(),
+                    media_type="text/event-stream",
+                )
+
+            def _run_turn():
+                with engine_lock:
+                    session = pool.get(session_id)
+                    session.sync_prefix(
+                        prompt_tokens,
+                        priority=req.evoke_priority,
+                        pinned=req.evoke_pinned,
+                        task_boundary=req.evoke_task_boundary,
+                    )
+                    result = session.generate(max_tokens=max_new, stop_strings=stops)
+                    return result, session._config.suppress_thinking_strip
+
+            async with lock:
+                result, suppress = await asyncio.to_thread(_run_turn)
+
+            parsed = parse_qwen_response(
+                result.text,
+                strip_thinking=not suppress,
+                tools=req.tools,
             )
-        return _completion_payload(
-            completion_id,
-            created,
-            model_name,
-            parsed,
-            prompt_n,
-            len(result.output_tokens),
-        )
+            if not parsed.tool_calls and "<tool_call>" in result.text:
+                print(
+                    f"[req {completion_id}] tool_call parse failed: "
+                    f"head={result.text[:160]!r} tail={result.text[-160:]!r}",
+                    flush=True,
+                )
+            return _completion_payload(
+                completion_id,
+                created,
+                model_name,
+                parsed,
+                prompt_n,
+                len(result.output_tokens),
+            )
+        finally:
+            if not handed_off:
+                _release()
 
     return app
 

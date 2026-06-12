@@ -9,6 +9,9 @@ Environment:
   EVOKE_N_CTX       - context size in tokens, default 32768
   EVOKE_MODEL_NAME  - logical model name returned by /v1/models, defaults to
                       the GGUF filename stem
+  EVOKE_IDLE_TIMEOUT - seconds of inactivity after which the model is
+                      unloaded from VRAM (reloaded on the next request);
+                      unset or 0 keeps it resident
 """
 
 from __future__ import annotations
@@ -161,6 +164,10 @@ def main() -> int:
 
     max_sessions = int(os.environ.get("EVOKE_MAX_SESSIONS", "8"))
     model_dir = os.environ.get("EVOKE_MODEL_DIR") or str(Path(model_path).parent)
+    idle_env = os.environ.get("EVOKE_IDLE_TIMEOUT")
+    idle_timeout = float(idle_env) if idle_env else None
+    if idle_timeout:
+        print(f"  idle_timeout={idle_timeout:g}s")
 
     def engine_factory(path: str) -> LlamaCppEngine:
         return LlamaCppEngine(
@@ -175,6 +182,7 @@ def main() -> int:
         model_dir=model_dir,
         model_path=model_path,
         engine_factory=engine_factory,
+        idle_timeout=idle_timeout,
     )
     print(f"serving on http://{host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info")
