@@ -43,3 +43,28 @@ class TestStreamStopStrings:
         chunks = list(session.stream_generate(max_tokens=4, stop_strings=["Z"]))
         assert chunks[-1].finish_reason == "stop"
         assert chunks[-1].full_text == "A"
+
+
+class TestEosTextExcluded:
+    # The engine detokenizes special tokens to their literal text, so the
+    # eos token's rendering (<|eot_id|> on Llama, <|im_end|> on Qwen) must
+    # not leak into the result text. It stays in output_tokens because the
+    # cached stream must match the client's next-turn template echo, which
+    # includes the end marker.
+
+    def test_generate_excludes_eos_text(self):
+        session, engine = _make_session()
+        session.sync_prefix(engine.tokenize("prompt"))
+        engine.queue_tokens([ord("A"), ord("B"), engine.eos_token])
+        result = session.generate(max_tokens=8)
+        assert result.finish_reason == "stop"
+        assert result.text == "AB"
+        assert result.output_tokens[-1] == engine.eos_token
+
+    def test_stream_generate_excludes_eos_text(self):
+        session, engine = _make_session()
+        session.sync_prefix(engine.tokenize("prompt"))
+        engine.queue_tokens([ord("A"), ord("B"), engine.eos_token])
+        chunks = list(session.stream_generate(max_tokens=8))
+        assert chunks[-1].finish_reason == "stop"
+        assert chunks[-1].full_text == "AB"

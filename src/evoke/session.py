@@ -906,6 +906,10 @@ class Session:
             token = self._engine.generate_next()
             output_tokens.append(token)
             if token == eos:
+                # Exclude the eos token's literal text (<|eot_id|>,
+                # <|im_end|>) from the result; it stays in output_tokens so
+                # the cached stream matches the client's next-turn echo.
+                truncated_text = self._engine.detokenize(output_tokens[:-1])
                 finish = "stop"
                 break
 
@@ -974,7 +978,9 @@ class Session:
             output_tokens.append(token)
 
             if token == eos:
-                full_text = self._engine.detokenize(output_tokens)
+                # Same eos-text exclusion as generate(): the marker's text
+                # must not ship to the client, the token stays cached.
+                full_text = self._engine.detokenize(output_tokens[:-1])
                 delta = full_text[emitted_len:]
                 self._cached_tokens.extend(output_tokens)
                 self._track_and_enforce(output_tokens, gen_start)
