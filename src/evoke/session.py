@@ -990,7 +990,11 @@ class Session:
 
             hit_idx = -1
             for stop in stops:
-                idx = full_text.find(stop, emitted_len)
+                # Scan with a len(stop)-1 overlap into already-emitted text:
+                # a stop string assembled across several tokens (literal
+                # <|im_end|> on models without a ChatML vocab) starts before
+                # emitted_len and a scan from emitted_len never matches it.
+                idx = full_text.find(stop, max(0, emitted_len - len(stop) + 1))
                 if idx != -1 and (hit_idx == -1 or idx < hit_idx):
                     hit_idx = idx
             if hit_idx != -1:
