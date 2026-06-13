@@ -481,8 +481,6 @@ def main() -> int:
                     )
                     if needs_kv_block and not engine.supports_kv_block:
                         continue
-                    if needs_kv_block and kv_quant and kv_quant not in ("f16", "none"):
-                        continue
                     try:
                         r = run_cell(
                             engine,
