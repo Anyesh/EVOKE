@@ -200,11 +200,13 @@ class LlamaCppEngine:
         ctx_params.n_rs_seq = n_rs_seq
         ctx_params.embeddings = True
         ctx_params.pooling_type = llama_cpp.LLAMA_POOLING_TYPE_NONE
-        # FA must be on: it makes V row-aligned (v_trans=false), so kv_block_save
-        # and kv_block_load take the contiguous single-memcpy-per-layer path. With
-        # v_trans=true the V loop runs n_embd_v_gqa times per layer, dominating
-        # recovery latency.
-        ctx_params.flash_attn_type = 1
+        # FA AUTO, not forced-on: forcing flash_attn_type=ENABLED bypasses the
+        # engine's per-architecture guard and feeds QK-norm models (Qwen3) a FA
+        # path that returns wrong attention, so the model samples EOS on the
+        # first token. AUTO keeps FA on where it is correct (it row-aligns V so
+        # kv_block save/load take the contiguous single-memcpy path) and lets the
+        # engine fall back to the v_trans recovery path where FA cannot run.
+        ctx_params.flash_attn_type = -1
         ctx_params.no_perf = True
         ctx_params.type_k = _resolve_kv_type(type_k, default=ctx_params.type_k)
         ctx_params.type_v = _resolve_kv_type(type_v, default=ctx_params.type_v)
