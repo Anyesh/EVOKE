@@ -277,15 +277,6 @@ def main() -> int:
                     # the run as the named baseline.
                     print(f"{budget:<8}{name:<18}SKIP (no LLAMA_CPP_LIB)")
                     continue
-                if needs_kv_block and kv_quant and kv_quant not in ("f16", "none"):
-                    # kv_block save/load assumes F16 K/V layout; under
-                    # quantized cache the splice would corrupt the residency
-                    # set. Skip rather than emit unreliable numbers.
-                    print(
-                        f"{budget:<8}{name:<18}SKIP "
-                        "(kv_block splice unsafe under quantized KV cache)"
-                    )
-                    continue
                 try:
                     r = run_strategy(engine, name, overrides, budget)
                     mark = "PASS" if r.probe_ok else "fail"
