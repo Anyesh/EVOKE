@@ -13,6 +13,12 @@ wheels/
 models/
 *.gguf
 
+# Prebuilt llama.cpp/ggml shared libs for the demo image (staged at deploy
+# time, uploaded to the HF Space directly; must not bloat the git repo)
+lib/
+*.so
+*.so.*
+
 
 # Local artifacts
 .scope.md
