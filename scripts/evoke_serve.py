@@ -81,6 +81,15 @@ def main() -> int:
         os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT", "1.0")
     )
     recovery_decay = float(os.environ.get("EVOKE_RECOVERY_DECAY", "0.7"))
+    # Hard-protect a freshly recovered block from the eviction pass that fires
+    # later in the same turn (when the new tail is decoded and the watermark
+    # trips). Without it, a block gap-filled this turn is re-evicted at its old
+    # low-recency position before the model attends to it, so under a tight
+    # budget the recovered fact is gone again by generation time. Decays via
+    # tick_turn so the protection lifts once the block goes cold.
+    recovery_protect_threshold = float(
+        os.environ.get("EVOKE_RECOVERY_PROTECT_THRESHOLD", "0.0")
+    )
     # Position mode + recovery trigger for the live path. Identity gap-fill (the
     # north-star recovery) splices evicted K/V back in place by content identity
     # and requires sparse holes, so identity defaults position_mode to sparse.
@@ -141,6 +150,7 @@ def main() -> int:
                 w_recovery=w_recovery,
                 recovery_strength_init=recovery_strength_init,
                 recovery_decay=recovery_decay,
+                recovery_protect_threshold=recovery_protect_threshold,
                 position_mode=position_mode,
                 recovery_match=recovery_match,
             )
@@ -155,6 +165,7 @@ def main() -> int:
                 f" w_recovery={w_recovery}"
                 f" rec_init={recovery_strength_init}"
                 f" rec_decay={recovery_decay}"
+                f" rec_protect={recovery_protect_threshold}"
                 f" position_mode={position_mode} recovery_match={recovery_match}"
             )
     else:

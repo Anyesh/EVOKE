@@ -497,13 +497,25 @@ def create_app(
     ) -> dict[str, Any]:
         async with lock:
             sid = x_evoke_session or pool.active_session_id or DEFAULT_SESSION_ID
-            # An unloaded engine has no cached state to reset, and pool.get
-            # would call reset() on a freed llama_context.
             if not engine_loaded:
                 return {"status": "reset", "session_id": sid}
             session = pool.get(sid)
             session.reset()
         return {"status": "reset", "session_id": sid}
+
+    @app.post("/admin/set_budget")
+    async def set_budget(req: Request) -> dict[str, Any]:
+        body = await req.json()
+        tokens = int(body.get("tokens", pool._config.max_active_tokens))
+        if tokens < 32:
+            raise HTTPException(status_code=400, detail="budget must be >= 32")
+        async with lock:
+            pool._config.max_active_tokens = tokens
+            for sid in pool.session_ids():
+                s = pool.peek(sid)
+                if s is not None:
+                    s.reset()
+        return {"status": "ok", "max_active_tokens": tokens}
 
     @app.post("/v1/chat/completions")
     async def chat_completions(

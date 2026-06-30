@@ -1,12 +1,3 @@
-"""Gradio UI for the EVOKE live demo.
-
-Connects to two backend processes:
-  - port 8000: EVOKE with kv_restore recovery
-  - port 8001: truncate policy (evict, no recovery) as the comparison arm
-
-After each assistant turn, polls /health to fetch live cache stats.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -20,21 +11,12 @@ import httpx
 EVOKE_URL = os.environ.get("EVOKE_SERVER_URL", "http://127.0.0.1:8000")
 DISCARD_URL = os.environ.get("DISCARD_SERVER_URL", "http://127.0.0.1:8001")
 
-_INTRO = """
-### How the demo works
-
-Type a question below. The model runs under a **KV budget of 2048 tokens**, so after a few
-turns the cache fills and eviction starts firing. With **EVOKE (kv_restore)** selected, evicted
-blocks are saved to RAM and spliced back in on demand — the model answers as if they were still
-resident. With **Evict, no recovery** selected, evicted tokens are gone and the model must work
-from whatever remains in the active cache.
-
-Watch the stat counters at the bottom update after each turn.
-"""
-
 _SYSTEM = (
-    "You are a helpful assistant. The user will ask questions about a document. "
-    "Answer accurately and concisely."
+    "You are a helpful assistant in a multi-turn conversation. "
+    "Remember everything the user tells you about themselves (name, location, preferences) "
+    "and refer back to those facts when asked. "
+    "A reference document is included below for factual questions about EVOKE. "
+    "Answer concisely."
 )
 
 _DEMO_DOCUMENT = """
@@ -53,6 +35,17 @@ Recovery is identity-keyed (not similarity search). No forward-pass recompute.
 
 Status: Prototype running on NVIDIA RTX 4070 Ti SUPER (Windows, 16 GB VRAM).
 """
+
+_SUGGESTED = [
+    ("1. Plant a personal fact", "Hi! My name is Alex and I live in Berlin."),
+    ("2. Ask about EVOKE", "What is EVOKE's key result at a 1024-token budget?"),
+    (
+        "3. Ask about the architecture",
+        "How does kv_restore work without recomputing anything?",
+    ),
+    ("4. One more question", "What hardware is EVOKE running on?"),
+    ("5. Test the memory", "What is my name and where do I live?"),
+]
 
 
 def _server(arm: str) -> str:
@@ -74,6 +67,15 @@ async def _fetch_stats(base: str) -> dict:
     return {}
 
 
+async def _set_budget(tokens: int) -> None:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        for base in (EVOKE_URL, DISCARD_URL):
+            try:
+                await client.post(f"{base}/admin/set_budget", json={"tokens": tokens})
+            except httpx.RequestError:
+                pass
+
+
 async def respond(
     message: str,
     history: list[dict],
@@ -85,7 +87,6 @@ async def respond(
 
     base = _server(arm)
 
-    # Prepend system + demo document on the first user turn.
     if not history:
         messages = [
             {"role": "system", "content": _SYSTEM + "\n\n" + _DEMO_DOCUMENT},
@@ -105,7 +106,7 @@ async def respond(
                     "model": "evoke",
                     "messages": messages,
                     "stream": True,
-                    "max_tokens": 1024,
+                    "max_tokens": 512,
                 },
             ) as resp:
                 async for line in resp.aiter_lines():
@@ -149,6 +150,11 @@ def clear_on_policy_change(_arm: str) -> tuple:
     return [], [], 0, 0, 0, 0.0
 
 
+async def on_budget_change(tokens: int) -> tuple:
+    await _set_budget(tokens)
+    return [], [], 0, 0, 0, 0.0
+
+
 async def wait_for_servers(timeout: float = 120.0) -> None:
     for base in (EVOKE_URL, DISCARD_URL):
         deadline = asyncio.get_event_loop().time() + timeout
@@ -163,28 +169,46 @@ async def wait_for_servers(timeout: float = 120.0) -> None:
             await asyncio.sleep(2.0)
 
 
-with gr.Blocks(title="EVOKE — Live KV Cache Demo", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("## EVOKE: Live KV Cache Recovery Demo")
-    gr.Markdown(_INTRO)
+_OUTPUTS = None
 
-    arm = gr.Radio(
-        choices=["EVOKE (kv_restore)", "Evict, no recovery"],
-        value="EVOKE (kv_restore)",
-        label="Recovery policy",
-        info="Switching clears the current conversation.",
+with gr.Blocks(title="EVOKE: Live KV Cache Recovery") as demo:
+    gr.Markdown(
+        "# EVOKE: Live KV Cache Recovery\n"
+        "Chat with Qwen 2.5 3B running under a tight KV budget. "
+        "The **EVOKE** arm saves evicted cache blocks to RAM and splices them back on demand. "
+        "The **Evict, no recovery** arm just loses them. "
+        "Follow the suggested flow below to see the difference."
     )
+
+    with gr.Row():
+        arm = gr.Radio(
+            choices=["EVOKE (kv_restore)", "Evict, no recovery"],
+            value="EVOKE (kv_restore)",
+            label="Recovery policy",
+            info="Switching resets the conversation.",
+        )
+        budget_dd = gr.Dropdown(
+            choices=[256, 384, 512],
+            value=384,
+            label="KV budget (tokens)",
+            info="Lower = evictions fire sooner. At 512 the chat fits without eviction; "
+            "256-384 forces the contrast. Changing resets the conversation.",
+        )
+
+    gr.Markdown(
+        "**Suggested flow** (click to send, then try step 5 to see if the model remembers):"
+    )
+    with gr.Row():
+        pill_buttons = [
+            gr.Button(label, size="sm", variant="secondary") for label, _ in _SUGGESTED
+        ]
 
     history_state = gr.State([])
 
-    chatbot = gr.Chatbot(
-        type="messages",
-        label="Conversation",
-        height=480,
-        show_copy_button=True,
-    )
+    chatbot = gr.Chatbot(label="Conversation", height=420)
 
     msg_box = gr.Textbox(
-        placeholder="Ask a question about the demo document...",
+        placeholder="Type a message or click a step above...",
         label="Your message",
         lines=2,
         submit_btn=True,
@@ -192,46 +216,68 @@ with gr.Blocks(title="EVOKE — Live KV Cache Demo", theme=gr.themes.Soft()) as 
 
     with gr.Row():
         evictions_box = gr.Number(label="KV evictions", value=0, interactive=False)
-        splices_box = gr.Number(
-            label="Splices (zero recompute)", value=0, interactive=False
+        recoveries_box = gr.Number(
+            label="KV recoveries (zero recompute)", value=0, interactive=False
         )
         decoded_box = gr.Number(label="Tokens decoded", value=0, interactive=False)
         budget_box = gr.Number(label="Budget used %", value=0.0, interactive=False)
 
+    _all_outputs = [
+        chatbot,
+        history_state,
+        evictions_box,
+        recoveries_box,
+        decoded_box,
+        budget_box,
+    ]
+
     submit_event = msg_box.submit(
         fn=respond,
         inputs=[msg_box, history_state, arm],
-        outputs=[
-            chatbot,
-            history_state,
-            evictions_box,
-            splices_box,
-            decoded_box,
-            budget_box,
-        ],
+        outputs=_all_outputs,
     )
     submit_event.then(fn=lambda: "", outputs=[msg_box])
 
-    arm.change(
-        fn=clear_on_policy_change,
-        inputs=[arm],
-        outputs=[
-            chatbot,
-            history_state,
-            evictions_box,
-            splices_box,
-            decoded_box,
-            budget_box,
-        ],
-    )
+    def make_pill_handler(prompt: str):
+        async def handler(history, arm_val):
+            async for chunk in respond(prompt, history, arm_val):
+                yield chunk
+
+        return handler
+
+    for btn, (_, prompt) in zip(pill_buttons, _SUGGESTED):
+        btn.click(
+            fn=make_pill_handler(prompt),
+            inputs=[history_state, arm],
+            outputs=_all_outputs,
+        )
+
+    arm.change(fn=clear_on_policy_change, inputs=[arm], outputs=_all_outputs)
+    budget_dd.change(fn=on_budget_change, inputs=[budget_dd], outputs=_all_outputs)
+
+    with gr.Accordion("What's in the reference document?", open=False):
+        gr.Markdown(
+            "The model has access to this document as a system-level context block. "
+            "It is the first thing that gets evicted as the conversation grows.\n\n"
+            "```\n" + _DEMO_DOCUMENT.strip() + "\n```"
+        )
 
     gr.Markdown(
         "_Stats update after each turn. "
-        "Splice count = KV blocks restored from RAM without forward-pass recompute._"
+        "Recoveries = KV blocks spliced back from RAM, zero forward-pass recompute. "
+        "Switch to **Evict, no recovery** after a few turns to see what the model forgets._"
+    )
+
+    gr.Markdown(
+        "**Links:** "
+        "[GitHub](https://github.com/Anyesh/EVOKE) "
+        "| [Paper (PDF)](https://github.com/Anyesh/EVOKE/blob/main/paper/paper.pdf) "
+        "| [llama.cpp fork](https://github.com/Anyesh/llama.cpp)"
     )
 
 
 if __name__ == "__main__":
     demo.launch(
-        server_port=int(os.environ.get("GRADIO_PORT", "7860")), server_name="0.0.0.0"
+        server_port=int(os.environ.get("GRADIO_PORT", "7860")),
+        server_name="0.0.0.0",
     )

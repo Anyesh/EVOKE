@@ -22,6 +22,8 @@ The splice rests on one property of RoPE: position enters K as a multiplicative 
 
 ## Demos
 
+**[Try it live →](https://huggingface.co/spaces/Gompachiro/evoke-demo)**: chat with Qwen 2.5 3B under a configurable KV budget, switch between EVOKE (kv\_restore) and evict-with-no-recovery, and watch eviction/splice counters update in real time.
+
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
 
