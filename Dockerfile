@@ -2,25 +2,19 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# CUDA toolkit from NVIDIA apt repo — gives nvcc for compilation without requiring
-# the nvidia container runtime that the nvidia/cuda base image needs.
 RUN apt-get update && apt-get install -y \
-    wget gnupg cmake git python3 python3-pip curl \
-    && wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
-    && dpkg -i cuda-keyring_1.1-1_all.deb \
-    && apt-get update \
-    && apt-get install -y cuda-toolkit-12-1 \
-    && rm -rf /var/lib/apt/lists/* cuda-keyring_1.1-1_all.deb
-
-ENV PATH="/usr/local/cuda-12.1/bin:$PATH"
-ENV LD_LIBRARY_PATH="/usr/local/cuda-12.1/lib64:$LD_LIBRARY_PATH"
+    cmake git python3 python3-pip curl \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
+# CPU-only build. The CUDA build OOMs on HF free builders (8 GB RAM, parallel CUDA
+# compilation peaks well above that). GPU performance is not the demo's point;
+# eviction firing and recovery stats updating are.
 RUN git clone --depth=1 -b master https://github.com/Anyesh/llama.cpp.git /llama.cpp
 RUN cmake -B /llama.cpp/build -S /llama.cpp \
-      -DGGML_CUDA=ON \
+      -DGGML_CUDA=OFF \
       -DCMAKE_BUILD_TYPE=Release \
       -DBUILD_SHARED_LIBS=ON \
     && cmake --build /llama.cpp/build --config Release -j$(nproc)
@@ -35,9 +29,9 @@ COPY demo/ demo/
 
 RUN uv venv && uv sync --extra server --extra demo
 
-ENV EVOKE_MODEL_PATH=/models/qwen2.5-7b-instruct-q4_k_m.gguf
+ENV EVOKE_MODEL_PATH=/models/qwen2.5-3b-instruct-q4_k_m.gguf
 ENV EVOKE_HOST=127.0.0.1
-ENV EVOKE_N_CTX=32768
+ENV EVOKE_N_CTX=8192
 ENV EVOKE_BUDGET=2048
 ENV EVOKE_RECOVERY_MODE=kv_restore
 ENV EVOKE_POLICY=evoke
@@ -51,8 +45,8 @@ CMD ["bash", "-c", "\
   uv run python -c \"\
 import os; from huggingface_hub import hf_hub_download; \
 os.makedirs('/models', exist_ok=True); \
-hf_hub_download(repo_id='Qwen/Qwen2.5-7B-Instruct-GGUF', \
-                filename='qwen2.5-7b-instruct-q4_k_m.gguf', \
+hf_hub_download(repo_id='Qwen/Qwen2.5-3B-Instruct-GGUF', \
+                filename='qwen2.5-3b-instruct-q4_k_m.gguf', \
                 local_dir='/models')\" && \
   echo 'Starting EVOKE server (port 8000)...' && \
   EVOKE_PORT=8000 EVOKE_POLICY=evoke EVOKE_RECOVERY_MODE=kv_restore \
