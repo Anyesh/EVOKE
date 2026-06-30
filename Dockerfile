@@ -1,16 +1,23 @@
-FROM nvidia/cuda:12.1-devel-ubuntu22.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# CUDA toolkit from NVIDIA apt repo — gives nvcc for compilation without requiring
+# the nvidia container runtime that the nvidia/cuda base image needs.
 RUN apt-get update && apt-get install -y \
-    cmake git python3 python3-pip curl \
-    && rm -rf /var/lib/apt/lists/*
+    wget gnupg cmake git python3 python3-pip curl \
+    && wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
+    && dpkg -i cuda-keyring_1.1-1_all.deb \
+    && apt-get update \
+    && apt-get install -y cuda-toolkit-12-1 \
+    && rm -rf /var/lib/apt/lists/* cuda-keyring_1.1-1_all.deb
+
+ENV PATH="/usr/local/cuda-12.1/bin:$PATH"
+ENV LD_LIBRARY_PATH="/usr/local/cuda-12.1/lib64:$LD_LIBRARY_PATH"
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
-# Build the EVOKE llama.cpp fork with CUDA support.
-# libggml*.so siblings land alongside libllama.so in build/bin/ automatically.
 RUN git clone --depth=1 -b master https://github.com/Anyesh/llama.cpp.git /llama.cpp
 RUN cmake -B /llama.cpp/build -S /llama.cpp \
       -DGGML_CUDA=ON \
