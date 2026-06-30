@@ -11,7 +11,7 @@ ENV PATH="/root/.local/bin:$PATH"
 
 # Build the EVOKE llama.cpp fork with CUDA support.
 # libggml*.so siblings land alongside libllama.so in build/bin/ automatically.
-RUN git clone --depth=1 https://github.com/Anyesh/llama.cpp.git /llama.cpp
+RUN git clone --depth=1 -b master https://github.com/Anyesh/llama.cpp.git /llama.cpp
 RUN cmake -B /llama.cpp/build -S /llama.cpp \
       -DGGML_CUDA=ON \
       -DCMAKE_BUILD_TYPE=Release \
