@@ -122,9 +122,24 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
                 ctypes.POINTER(ctypes.c_int32),
             ]
             getattr(lib, f"llama_{_stem}_capture_get_written").restype = ctypes.c_size_t
-            getattr(lib, f"llama_{_stem}_capture_get_written").argtypes = [
-                ctypes.c_void_p
+            getattr(lib, f"llama_{_stem}_capture_get_written").argtypes = [ctypes.c_void_p]
+        # EVOKE per-layer residual capture (J-lens workspace scoring). Guarded
+        # separately so fork builds that predate the C-linkage export keep
+        # every other primitive working.
+        try:
+            lib.llama_set_embeddings_layer_inp.restype = None
+            lib.llama_set_embeddings_layer_inp.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+                ctypes.c_bool,
             ]
+            lib.llama_get_embeddings_layer_inp.restype = ctypes.POINTER(ctypes.c_float)
+            lib.llama_get_embeddings_layer_inp.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+            ]
+        except AttributeError:
+            pass
         return lib
     except (OSError, AttributeError):
         return None
@@ -221,6 +236,12 @@ class LlamaCppEngine:
         self._vocab = llama_cpp.llama_model_get_vocab(self._model_ptr)
         self._memory = llama_cpp.llama_get_memory(self._ctx)
         self._n_embd = llama_cpp.llama_model_n_embd(self._model_ptr)
+        self._layer_inp_enabled: set[int] = set()
+        # Per-decode residual segments accumulated between capture reads:
+        # process_tokens splits long prompts into n_batch chunks and the C
+        # buffer only survives until the next llama_decode, so each chunk is
+        # copied out right after its decode and merged at read time.
+        self._layer_inp_segments: list[tuple[int, dict[int, np.ndarray]]] = []
         self._batch = llama_cpp.llama_batch_init(n_batch, 0, 1)
 
         self._token_count = 0
@@ -229,9 +250,7 @@ class LlamaCppEngine:
         self._attn_capture_buf: np.ndarray | None = None
         chain_params = llama_cpp.llama_sampler_chain_default_params()
         self._sampler = llama_cpp.llama_sampler_chain_init(chain_params)
-        llama_cpp.llama_sampler_chain_add(
-            self._sampler, llama_cpp.llama_sampler_init_greedy()
-        )
+        llama_cpp.llama_sampler_chain_add(self._sampler, llama_cpp.llama_sampler_init_greedy())
 
     def get_chat_template_string(self) -> str | None:
         # Return the raw Jinja chat template string embedded in the GGUF, or
@@ -369,6 +388,7 @@ class LlamaCppEngine:
                 )
 
             self._extract_embeddings(start_pos + chunk_start, len(chunk))
+            self._collect_layer_inp(start_pos + chunk_start, len(chunk))
 
         self._next_write_pos += len(tokens)
         self._token_count += len(tokens)
@@ -388,6 +408,7 @@ class LlamaCppEngine:
         if ret != 0:
             raise RuntimeError(f"llama_decode failed with code {ret}")
 
+        self._collect_layer_inp(pos, 1)
         self._next_write_pos += 1
         self._token_count += 1
         return token
@@ -422,9 +443,7 @@ class LlamaCppEngine:
             if not ok:
                 if _kv_block_lib is None:
                     return False
-                if not _kv_block_lib.llama_kv_block_seq_rm(
-                    self._ctx, 0, pos_start, pos_end
-                ):
+                if not _kv_block_lib.llama_kv_block_seq_rm(self._ctx, 0, pos_start, pos_end):
                     return False
                 attn_only = True
             removed += pos_end - pos_start
@@ -477,29 +496,21 @@ class LlamaCppEngine:
     def kv_block_save(self, p0: int, p1: int, seq_id: int = 0) -> bytes:
         if _kv_block_lib is None:
             raise RuntimeError(
-                "KV block primitives unavailable; set LLAMA_CPP_LIB to the "
-                "EVOKE llama.cpp build"
+                "KV block primitives unavailable; set LLAMA_CPP_LIB to the EVOKE llama.cpp build"
             )
         needed = _kv_block_lib.llama_kv_block_save(self._ctx, seq_id, p0, p1, None, 0)
         if needed == 0:
             return b""
         buf = ctypes.create_string_buffer(needed)
-        written = _kv_block_lib.llama_kv_block_save(
-            self._ctx, seq_id, p0, p1, buf, needed
-        )
+        written = _kv_block_lib.llama_kv_block_save(self._ctx, seq_id, p0, p1, buf, needed)
         return buf.raw[:written]
 
     def kv_block_load(self, data: bytes, new_p0: int, seq_id: int = 0) -> bool:
         if _kv_block_lib is None:
             raise RuntimeError(
-                "KV block primitives unavailable; set LLAMA_CPP_LIB to the "
-                "EVOKE llama.cpp build"
+                "KV block primitives unavailable; set LLAMA_CPP_LIB to the EVOKE llama.cpp build"
             )
-        ok = bool(
-            _kv_block_lib.llama_kv_block_load(
-                self._ctx, seq_id, data, len(data), new_p0
-            )
-        )
+        ok = bool(_kv_block_lib.llama_kv_block_load(self._ctx, seq_id, data, len(data), new_p0))
         if ok and len(data) >= 4:
             # the first 4 bytes of the buffer are the cell count (uint32) written
             # by block_write; advance our position tracking past the spliced span
@@ -518,24 +529,20 @@ class LlamaCppEngine:
         # worth reclaiming. Does not move _next_write_pos (sparse, in-place).
         if _kv_block_lib is None:
             raise RuntimeError(
-                "attention-only seq_rm requires the EVOKE llama.cpp build; "
-                "set LLAMA_CPP_LIB"
+                "attention-only seq_rm requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
             )
         ok = bool(_kv_block_lib.llama_kv_block_seq_rm(self._ctx, seq_id, p0, p1))
         if ok:
             self._token_count -= p1 - p0
         return ok
 
-    def seq_add_attention_only(
-        self, p0: int, p1: int, delta: int, seq_id: int = 0
-    ) -> None:
+    def seq_add_attention_only(self, p0: int, p1: int, delta: int, seq_id: int = 0) -> None:
         # Shift only the attention-layer cell positions in [p0, p1) by delta,
         # leaving the recurrent state untouched. Pairs with seq_rm_attention_only
         # to recompact attention KV on hybrid models.
         if _kv_block_lib is None:
             raise RuntimeError(
-                "attention-only seq_add requires the EVOKE llama.cpp build; "
-                "set LLAMA_CPP_LIB"
+                "attention-only seq_add requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
             )
         _kv_block_lib.llama_kv_block_seq_add(self._ctx, seq_id, p0, p1, delta)
 
@@ -545,8 +552,7 @@ class LlamaCppEngine:
         # EVOKE fork (LLAMA_CPP_LIB must point at it).
         if _kv_block_lib is None:
             raise RuntimeError(
-                "Attention capture requires the EVOKE llama.cpp build; "
-                "set LLAMA_CPP_LIB"
+                "Attention capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
             )
         _kv_block_lib.llama_attn_capture_set_layer(self._ctx, ctypes.c_int32(layer))
 
@@ -557,8 +563,7 @@ class LlamaCppEngine:
         # carry stronger semantic signal for the relevance scorer.
         if _kv_block_lib is None:
             raise RuntimeError(
-                "Attention capture requires the EVOKE llama.cpp build; "
-                "set LLAMA_CPP_LIB"
+                "Attention capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
             )
         n = len(layers)
         arr = (ctypes.c_int32 * n)(*layers) if n > 0 else (ctypes.c_int32 * 0)()
@@ -570,17 +575,14 @@ class LlamaCppEngine:
         # capture is active (we hand C a raw pointer). Pass None to detach.
         if _kv_block_lib is None:
             raise RuntimeError(
-                "Attention capture requires the EVOKE llama.cpp build; "
-                "set LLAMA_CPP_LIB"
+                "Attention capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
             )
         if buf is None:
             _kv_block_lib.llama_attn_capture_set_buffer(self._ctx, None, 0)
             self._attn_capture_buf = None
             return
         if buf.dtype != np.float32 or not buf.flags["C_CONTIGUOUS"]:
-            raise ValueError(
-                "attn_capture_set_buffer expects a contiguous float32 numpy array"
-            )
+            raise ValueError("attn_capture_set_buffer expects a contiguous float32 numpy array")
         self._attn_capture_buf = buf  # keep alive for the C side
         _kv_block_lib.llama_attn_capture_set_buffer(
             self._ctx, buf.ctypes.data_as(ctypes.c_void_p), buf.size
@@ -618,9 +620,7 @@ class LlamaCppEngine:
 
     def _capture_set_buffer(self, stem: str, buf: np.ndarray | None) -> None:
         if _kv_block_lib is None:
-            raise RuntimeError(
-                "q/k capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
-            )
+            raise RuntimeError("q/k capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB")
         fn = getattr(_kv_block_lib, f"llama_{stem}_capture_set_buffer")
         if buf is None:
             fn(self._ctx, None, 0)
@@ -637,6 +637,58 @@ class LlamaCppEngine:
     def read_key_capture(self) -> np.ndarray | None:
         return self._read_capture("key")
 
+    def layer_inp_capture_enable(self, layers: list[int]) -> None:
+        if _kv_block_lib is None or not hasattr(_kv_block_lib, "llama_set_embeddings_layer_inp"):
+            raise RuntimeError(
+                "layer-input capture requires the EVOKE llama.cpp build with "
+                "C-linkage residual export; set LLAMA_CPP_LIB to a current fork build"
+            )
+        wanted = {int(lid) for lid in layers}
+        for lid in self._layer_inp_enabled - wanted:
+            _kv_block_lib.llama_set_embeddings_layer_inp(self._ctx, lid, False)
+        for lid in wanted - self._layer_inp_enabled:
+            _kv_block_lib.llama_set_embeddings_layer_inp(self._ctx, lid, True)
+        self._layer_inp_enabled = wanted
+        self._layer_inp_segments = []
+
+    def _collect_layer_inp(self, batch_start_pos: int, n_tokens: int) -> None:
+        if not self._layer_inp_enabled:
+            return
+        rows: dict[int, np.ndarray] = {}
+        for lid in sorted(self._layer_inp_enabled):
+            ptr = _kv_block_lib.llama_get_embeddings_layer_inp(self._ctx, lid)
+            if not ptr:
+                continue
+            raw = np.ctypeslib.as_array(ptr, shape=(n_tokens, self._n_embd))
+            rows[lid] = raw.copy()
+        if not rows:
+            return
+        if self._layer_inp_segments:
+            last_start, last_rows = self._layer_inp_segments[-1]
+            expected = last_start + next(iter(last_rows.values())).shape[0]
+            if expected != batch_start_pos:
+                # A position gap means the previous run was never read
+                # (caller skipped an absorb); keep only the contiguous tail
+                # so read() can merge segments by simple concatenation.
+                self._layer_inp_segments = []
+        self._layer_inp_segments.append((batch_start_pos, rows))
+
+    def layer_inp_capture_read(self) -> tuple[int, dict[int, np.ndarray]] | None:
+        segments = self._layer_inp_segments
+        self._layer_inp_segments = []
+        if not segments:
+            return None
+        start = segments[0][0]
+        # Only layers present in every segment can be concatenated without
+        # breaking row-to-position alignment.
+        layers = set(segments[0][1])
+        for _, rows in segments[1:]:
+            layers &= set(rows)
+        if not layers:
+            return None
+        merged = {lid: np.concatenate([rows[lid] for _, rows in segments]) for lid in layers}
+        return (start, merged)
+
     def _read_capture(self, stem: str) -> np.ndarray | None:
         # Returns the captured tensor as (n_tokens, n_heads, head_dim), or None if
         # nothing was written. ggml lays the permuted q/k contiguous with ne0
@@ -648,9 +700,7 @@ class LlamaCppEngine:
         buf = getattr(self, f"_{stem}_capture_buf", None)
         if buf is None:
             return None
-        written = int(
-            getattr(_kv_block_lib, f"llama_{stem}_capture_get_written")(self._ctx)
-        )
+        written = int(getattr(_kv_block_lib, f"llama_{stem}_capture_get_written")(self._ctx))
         if written == 0:
             return None
         d0, d1, d2 = ctypes.c_int32(0), ctypes.c_int32(0), ctypes.c_int32(0)
@@ -700,6 +750,12 @@ class LlamaCppEngine:
         self._token_count = 0
         self._next_write_pos = 0
         self._emb_cache.clear()
+        # Capture enablement lives in the C context, so it would survive the
+        # memory clear and keep paying copy overhead for the next run even
+        # if that run never builds a JLensScorer.
+        if self._layer_inp_enabled:
+            self.layer_inp_capture_enable([])
+        self._layer_inp_segments = []
 
     @property
     def next_write_pos(self) -> int:
