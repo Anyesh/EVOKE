@@ -197,11 +197,13 @@ class Result:
     recoveries: int
     active_tokens: int
     recovery_ms: float
+    elapsed_s: float
     answer: str
 
 
 def run_strategy(engine: LlamaCppEngine, name: str, overrides: dict, budget: int) -> Result:
     engine.reset()
+    t_run0 = time.perf_counter()
     config_kwargs: dict = dict(
         max_active_tokens=budget,
         block_size=64,
@@ -265,6 +267,7 @@ def run_strategy(engine: LlamaCppEngine, name: str, overrides: dict, budget: int
         recoveries=stats.total_recoveries,
         active_tokens=stats.active_tokens,
         recovery_ms=recovery_ms,
+        elapsed_s=time.perf_counter() - t_run0,
         answer=answer.strip().replace("\n", " ")[:58],
     )
 
@@ -288,7 +291,7 @@ def main() -> int:
     print(f"kv_block primitives available: {engine.supports_kv_block}")
     header = (
         f"{'budget':<8}{'strategy':<18}{'probe':<7}{'evict':<7}"
-        f"{'recov':<7}{'active':<8}{'rec_ms':<10}answer"
+        f"{'recov':<7}{'active':<8}{'rec_ms':<10}{'run_s':<8}answer"
     )
     print(header)
     print("-" * len(header))
@@ -318,7 +321,7 @@ def main() -> int:
                     print(
                         f"{budget:<8}{r.strategy:<18}{mark:<7}{r.evictions:<7}"
                         f"{r.recoveries:<7}{r.active_tokens:<8}"
-                        f"{r.recovery_ms:<10.2f}{r.answer!r}"
+                        f"{r.recovery_ms:<10.2f}{r.elapsed_s:<8.1f}{r.answer!r}"
                     )
                 except Exception as exc:  # noqa: BLE001
                     print(f"{budget:<8}{name:<18}ERROR: {exc}")
