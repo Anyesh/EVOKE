@@ -22,7 +22,7 @@ The splice rests on one property of RoPE: position enters K as a multiplicative 
 
 ## Demos
 
-**[Try it live →](https://huggingface.co/spaces/anish-shrestha/evoke-demo)**: chat with Qwen 2.5 3B under a configurable KV budget, switch between EVOKE (kv\_restore) and evict-with-no-recovery, and watch eviction/splice counters update in real time.
+**[Try it live →](https://huggingface.co/spaces/anish-shrestha/evoke-demo)**: chat with Qwen3-4B under a configurable KV budget, switch between EVOKE (kv\_restore), EVOKE + workspace eviction (blocks scored by a probe distilled from the model's Jacobian-lens workspace), and evict-with-no-recovery, and watch eviction/splice counters update in real time.
 
 ### Qwen 2.5 7B (pure attention)
 ![Eviction demo on Qwen 2.5](assets/eviction-demo.gif)
@@ -55,13 +55,17 @@ All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER,
 |  640 | 16.37 | 4.34 | 118.36 | 27× |
 | 1280 | 31.90 | 7.25 | 232.18 | 32× |
 
-**Recovery is the dividing line.** Across agent-bench, NIAH, and multi-fact, every recovery-less baseline (recency, StreamingLLM, EVOKE-discard/breadcrumb, H2O, SnapKV) fails once the probed content has been evicted, while every recovery-bearing policy passes. On the multi-fact n=15 sweep at budget 1024 on Qwen 2.5 7B (75 facts per cell), recovery-bearing policies cluster at **48 to 64%** absolute pass rate; recovery-less baselines land at **0 to 4%**. The divide reproduces at b=1024 across architectures:
+**Recovery is the dividing line.** Across agent-bench, NIAH, and multi-fact, every recovery-less baseline (recency, StreamingLLM, EVOKE-discard/breadcrumb, H2O, SnapKV) fails once the probed content has been evicted, while every recovery-bearing policy passes. The one exception sharpens the claim: the workspace-scored policy below passes recovery-free by not evicting the fact in the first place, so the divide is precisely about content the selector already let go. On the multi-fact n=15 sweep at budget 1024 on Qwen 2.5 7B (75 facts per cell), recovery-bearing policies cluster at **48 to 64%** absolute pass rate; recovery-less baselines land at **0 to 4%**. The divide reproduces at b=1024 across architectures:
 
 ![Recovery is the dividing line across architectures](assets/figures/crossarch_divide.png)
 
 **NIAH at 3.6× compression.** Recovery-bearing reaches **96 to 100% on Qwen 2.5 7B** and **76 to 88% on Llama 3.1 8B**. Recovery-less baselines flatten at 0 to 44% at the tightest budget. (SnapKV climbs to 68 to 84% on Llama NIAH at looser budgets as a documented single-needle exception driven by heavy-hitter retention.)
 
 **Cross-architecture multifact at b=1024 (n=5).** **Qwen 3.5 9B** (hybrid Mamba/Attention + thinking) reaches **68% [48.41, 82.80]** EVOKE versus 0 to 8% recovery-less (H2O 8% best comparator); **Qwen 3.6 35B-A3B** (MoE + thinking, IQ2_M) reaches **52% [33.50, 69.97]** EVOKE versus 0% every baseline including H2O. Absolute pass-rate falls with quantization aggressiveness but the relative advantage holds.
+
+**A forward-looking eviction signal from the model's workspace (new).** Attention-history selectors can only rank blocks the model has already attended to. A ridge probe distilled from the Jacobian-lens workspace readout (Gurnee et al., 2026) scores blocks by content at prefill time, one dot product per position. Offline, on pre-registered gates, it ranks the planted fact far above attention history (fact-AUC **0.891 vs SnapKV 0.622** on Qwen 2.5 7B, replicated **0.865 vs 0.563** on Qwen3-8B with no hand-tuning); under masked eviction at a 25% budget it keeps the fact answerable in **35/36 episodes vs SnapKV's 25/36 and 14/36**. On agent-bench, `jlens` passes at every budget with recovery disabled while H2O fails all three, at **-0.6% measured decode overhead**. The offline pipeline and probes live in the companion [j-space repo](https://github.com/Anyesh/j-space); see `paper/paper.pdf` §5.4.
+
+![Probe accuracy after masked eviction](assets/figures/jlens_eviction.png)
 
 **Eviction-scheduling winner is budget-dependent.** A same-substrate InfLLM adaptation at K=8 statistically separates from EVOKE at the tightest budget on both fully-swept architectures (b=512: InfLLM **81.3% [71.1, 88.5]** vs EVOKE **50.7 to 60.0%**, non-overlapping Wilson CIs); the two tie at b=1024; EVOKE leads at b=2048 with overlapping CIs. Both policies ride the same recompute-free recovery primitive; the core contribution is the primitive, with the scorer as a budget-dependent layer on top.
 
@@ -73,9 +77,9 @@ All numbers below come from a single consumer-class GPU host (RTX 4070 Ti SUPER,
 
 **Wall-clock.** On a 14-turn planted-fact head-to-head (n=15, budget 1024 vs n\_ctx=16384, ~3.6× compression), EVOKE matches the unconstrained `no_eviction` baseline's recall (15/15 probe-correct) at `truncate`-parity wall-clock (21.20 s [21.07, 21.33] vs 22.11 s [19.46, 24.76]). **Identical footprint to truncation, plus a recovery capability truncation does not have.** Not a speed win.
 
-**ArkVale-style recall ablation.** A recall policy following ArkVale's cuboid-importance selection, reimplemented on the same substrate, reaches **0/4/20%** on multifact (n=5, budget 512/1024/2048) against EVOKE's **52/60/64%** (`results/arkvale_h2h_qwen25.json`). It scores on a single attention layer with original-position placement, so it is an ablation of recall selection and block placement, not a faithful reproduction of ArkVale's per-layer residency (which EVOKE's whole-sequence eviction cannot represent). See `paper/paper.pdf` §5.4, Table 6.
+**ArkVale-style recall ablation.** A recall policy following ArkVale's cuboid-importance selection, reimplemented on the same substrate, reaches **0/4/20%** on multifact (n=5, budget 512/1024/2048) against EVOKE's **52/60/64%** (`results/arkvale_h2h_qwen25.json`). It scores on a single attention layer with original-position placement, so it is an ablation of recall selection and block placement, not a faithful reproduction of ArkVale's per-layer residency (which EVOKE's whole-sequence eviction cannot represent). See `paper/paper.pdf` §5.5, Table 7.
 
-**Where should a recovered block land?** Re-anchoring recovered blocks to the tail beats original-position placement only near a long-context model's far edge (0.97 vs 0.70 recall at 82K tokens on Qwen 2.5 7B), is neutral at normal distances, hurts short-context models, and stays below the never-evicted native-tail ceiling at every distance. Relocated co-attended KV carries a staleness cost no placement choice removes; this is the open problem the paper names first (§5.4, §8).
+**Where should a recovered block land?** Re-anchoring recovered blocks to the tail beats original-position placement only near a long-context model's far edge (0.97 vs 0.70 recall at 82K tokens on Qwen 2.5 7B), is neutral at normal distances, hurts short-context models, and stays below the never-evicted native-tail ceiling at every distance. Relocated co-attended KV carries a staleness cost no placement choice removes; this is the open problem the paper names first (§5.5, §8).
 
 ## How relevance scoring works
 
@@ -84,6 +88,7 @@ Per-block score in [0, 1]; lowest scores get evicted under watermark pressure. P
 - **(dominant) Retrieval-tuned embedding (`bge-small-en-v1.5`)** scoring blocks against the raw user-message text. Marginal +72pp on NIAH at b=512. LM-hidden-state cosines crowd into a 0.85 to 0.93 band on retrieval-style workloads; bge-small widens it to 0.4 to 0.9, so top-k selection can pick the needle block over haystack noise.
 - **(conditional)** Running the recovery splice *before* the new user-message tail is decoded. Adds +20pp when the retrieval embedder is on; actively hurts when it's off.
 - **(zero measurable effect on the benchmark we ran the factorial against)** Resident-gate that excludes breadcrumbs whose similarity doesn't beat the best non-current-turn resident block.
+- **The workspace probe** (`w_jlens`, new). A per-layer ridge probe distilled from the Jacobian-lens workspace readout runs over residuals the fork captures at prefill: content the model will later read from scores high before any decode history exists, covering the cold-start window where attention signals are empty. Enable with `EVOKE_W_JLENS` and `EVOKE_JLENS_PROBE` (probe artifacts from [j-space](https://github.com/Anyesh/j-space)).
 - **The model's own attention** (`evoke_attention` policy). A second softmax for one or more chosen transformer layers runs alongside the main attention path. Budget-dependent: pays off on single-needle workloads where attention concentrates on one recoverable target; on multi-fact at tight budget, a larger-K pure-retrieval recovery can outperform it.
 - **Stability priors:** recency, StreamingLLM-style sink protection, USER/ASSISTANT source-type floors, harness-supplied `evoke_priority` and `evoke_pinned` tags.
 
@@ -92,7 +97,7 @@ See `paper/paper.pdf` §4.2 for the scorer, Appendix A.4 for the factorial, Appe
 ## Where this works (and where it doesn't)
 
 - **Substrate.** EVOKE requires Flash Attention enabled (V row-aligned) on Ampere-or-later CUDA. With FA off, the splice runs ~280× slower and the speedup over re-prefill collapses (paper §4.1). CPU, older Vulkan/Metal, and pre-Ampere CUDA are out of scope.
-- **vLLM.** We ported the EVOKE policy layer and the recovery primitive to vLLM v1 with PagedAttention (fork at [Anyesh/vllm](https://github.com/Anyesh/vllm)). The recovery **primitive** composes from existing kernels (`swap_blocks_batch` + `rotary_embedding`) with no CUDA-side work. The **policy layer** does not transfer: vLLM's V1 scheduler has no session-scoped logical position space for similarity-recovered bytes to occupy. The port surfaces a missing abstraction on production paged substrates; it does not produce a working similarity-recovery system on vLLM v1 (paper §5.7).
+- **vLLM.** We ported the EVOKE policy layer and the recovery primitive to vLLM v1 with PagedAttention (fork at [Anyesh/vllm](https://github.com/Anyesh/vllm)). The recovery **primitive** composes from existing kernels (`swap_blocks_batch` + `rotary_embedding`) with no CUDA-side work. The **policy layer** does not transfer: vLLM's V1 scheduler has no session-scoped logical position space for similarity-recovered bytes to occupy. The port surfaces a missing abstraction on production paged substrates; it does not produce a working similarity-recovery system on vLLM v1 (paper §5.8).
 - **Quantized KV cache.** 4-bit symmetric KV (`type_k=type_v=q4_0`) collapses generation to incoherent token salad on Qwen 2.5 7B (paper Appendix A.8). KIVI-style per-channel-per-token asymmetric quantization is **not** in stock llama.cpp and is the open comparison we have *not* run.
 - **Memory cost.** Saved blocks live in host RAM. Qwen 2.5 7B at `block_size=128` costs 7 MiB per block, ~7 GiB per 1000-block session. Multi-tenant deployments pay N × that. `kv_restore_ram_budget_bytes` + `kv_restore_spill_path` (disk-spill tier) bound this; both off by default.
 
