@@ -71,15 +71,17 @@ def rows_with_first_feature(values: list[float]) -> np.ndarray:
 
 
 class TestJLensScorer:
-    def test_enables_artifact_layers_on_init(self, probe_path):
+    def test_enables_artifact_layers_shifted_to_capture_ids(self, probe_path):
+        # Probe layers are HF block-output indices; llama.cpp captures layer
+        # inputs, so block L's output is read at capture id L + 1.
         engine = FakeEngine()
         JLensScorer(engine, probe_path=probe_path)
-        assert engine.enabled_layers == [3, 5]
+        assert engine.enabled_layers == [4, 6]
 
     def test_layers_subset_honored(self, probe_path):
         engine = FakeEngine()
         JLensScorer(engine, probe_path=probe_path, layers=[3])
-        assert engine.enabled_layers == [3]
+        assert engine.enabled_layers == [4]
 
     def test_unknown_layer_rejected(self, probe_path):
         engine = FakeEngine()
@@ -96,7 +98,7 @@ class TestJLensScorer:
         scorer = JLensScorer(engine, probe_path=probe_path, layers=[3])
         blocks = [_block(1, 0, 2), _block(2, 2, 4), _block(3, 4, 6)]
         # Block means of the first feature: 1.0, 3.0, 2.0.
-        engine.stub_rows(0, {3: rows_with_first_feature([1, 1, 3, 3, 2, 2])})
+        engine.stub_rows(0, {4: rows_with_first_feature([1, 1, 3, 3, 2, 2])})
         scorer.absorb_last_decode(blocks)
         assert scorer.score(blocks[0]) == pytest.approx(0.0)
         assert scorer.score(blocks[1]) == pytest.approx(1.0)
@@ -106,7 +108,7 @@ class TestJLensScorer:
         engine = FakeEngine()
         scorer = JLensScorer(engine, probe_path=probe_path, layers=[3])
         block = _block(1, 0, 3)
-        engine.stub_rows(0, {3: rows_with_first_feature([-2, -2, -2])})
+        engine.stub_rows(0, {4: rows_with_first_feature([-2, -2, -2])})
         scorer.absorb_last_decode([block])
         assert scorer.score(block) == pytest.approx(1.0)
 
@@ -115,11 +117,11 @@ class TestJLensScorer:
         scorer = JLensScorer(engine, probe_path=probe_path, layers=[3])
         block_a = _block(1, 0, 4)
         block_b = _block(2, 4, 6)
-        engine.stub_rows(0, {3: rows_with_first_feature([0, 0])})
+        engine.stub_rows(0, {4: rows_with_first_feature([0, 0])})
         scorer.absorb_last_decode([block_a])
         # Second batch finishes block_a (mean 0+0+4+4 -> 2.0) and fills
         # block_b (mean 1.0): a should outrank b.
-        engine.stub_rows(2, {3: rows_with_first_feature([4, 4, 1, 1])})
+        engine.stub_rows(2, {4: rows_with_first_feature([4, 4, 1, 1])})
         scorer.absorb_last_decode([block_a, block_b])
         assert scorer.score(block_a) == pytest.approx(1.0)
         assert scorer.score(block_b) == pytest.approx(0.0)
@@ -129,7 +131,7 @@ class TestJLensScorer:
         scorer = JLensScorer(engine, probe_path=probe_path, layers=[3], block_agg="max")
         blocks = [_block(1, 0, 2), _block(2, 2, 4)]
         # Maxes: block 1 -> 5.0, block 2 -> 2.0; means would tie at 2.0.
-        engine.stub_rows(0, {3: rows_with_first_feature([5, -1, 2, 2])})
+        engine.stub_rows(0, {4: rows_with_first_feature([5, -1, 2, 2])})
         scorer.absorb_last_decode(blocks)
         assert scorer.score(blocks[0]) == pytest.approx(1.0)
         assert scorer.score(blocks[1]) == pytest.approx(0.0)
@@ -142,7 +144,7 @@ class TestJLensScorer:
         rows_l5 = np.zeros((2, D), dtype=np.float32)
         rows_l5[:, 1] = [1, 9]  # layer-5 predictions: 2.0, 10.0
         # Layer means: block 1 -> (4+2)/2 = 3, block 2 -> (0+10)/2 = 5.
-        engine.stub_rows(0, {3: rows_l3, 5: rows_l5})
+        engine.stub_rows(0, {4: rows_l3, 6: rows_l5})
         scorer.absorb_last_decode(blocks)
         assert scorer.score(blocks[1]) == pytest.approx(1.0)
         assert scorer.score(blocks[0]) == pytest.approx(0.0)
@@ -152,7 +154,7 @@ class TestJLensScorer:
         scorer = JLensScorer(engine, probe_path=probe_path, layers=[3])
         blocks = [_block(1, 0, 4), _block(2, 4, 8)]
         # Batch covers positions 2..6: rows land 2 in each block.
-        engine.stub_rows(2, {3: rows_with_first_feature([1, 1, 7, 7])})
+        engine.stub_rows(2, {4: rows_with_first_feature([1, 1, 7, 7])})
         scorer.absorb_last_decode(blocks)
         assert scorer.score(blocks[0]) == pytest.approx(0.0)
         assert scorer.score(blocks[1]) == pytest.approx(1.0)
@@ -162,9 +164,9 @@ class TestJLensScorer:
         scorer = JLensScorer(engine, probe_path=probe_path, layers=[3])
         old = _block(1, 0, 2)
         new = _block(2, 2, 4)
-        engine.stub_rows(0, {3: rows_with_first_feature([6, 6])})
+        engine.stub_rows(0, {4: rows_with_first_feature([6, 6])})
         scorer.absorb_last_decode([old])
-        engine.stub_rows(2, {3: rows_with_first_feature([1, 1])})
+        engine.stub_rows(2, {4: rows_with_first_feature([1, 1])})
         scorer.absorb_last_decode([old, new])
         assert scorer.score(old) == pytest.approx(1.0)
         assert scorer.score(new) == pytest.approx(0.0)
@@ -179,7 +181,7 @@ class TestJLensScorer:
         engine = FakeEngine()
         scorer = JLensScorer(engine, probe_path=probe_path, layers=[3])
         blocks = [_block(1, 0, 2), _block(2, 2, 4)]
-        engine.stub_rows(0, {3: rows_with_first_feature([1, 1, 3, 3])})
+        engine.stub_rows(0, {4: rows_with_first_feature([1, 1, 3, 3])})
         scorer.absorb_last_decode(blocks)
         scorer.forget(1)
         assert scorer.score(blocks[0]) is None

@@ -49,17 +49,22 @@ class JLensScorer:
         for layer in self._layers:
             if layer not in available:
                 raise KeyError(f"layer {layer} not in probe artifact (has {available})")
+        # Probe layers are HF block indices whose recorder captured each
+        # block's OUTPUT; llama.cpp's capture reads the residual entering a
+        # layer, so block L's output must be read at capture id L + 1. Keys
+        # of _w/_b are capture ids so absorb can index rows directly.
+        self._capture_ids = [layer + 1 for layer in self._layers]
         self._w = {
-            layer: artifact[f"L{layer}_{stat}_w"].astype(np.float32) for layer in self._layers
+            layer + 1: artifact[f"L{layer}_{stat}_w"].astype(np.float32) for layer in self._layers
         }
-        self._b = {layer: float(artifact[f"L{layer}_{stat}_b"]) for layer in self._layers}
+        self._b = {layer + 1: float(artifact[f"L{layer}_{stat}_b"]) for layer in self._layers}
         self._block_agg = block_agg
         self._engine = engine
         # mean agg needs the running sum and count; max agg reuses _sum as
         # the running max with _count as a presence marker.
         self._sum: dict[int, float] = {}
         self._count: dict[int, int] = {}
-        engine.layer_inp_capture_enable(self._layers)
+        engine.layer_inp_capture_enable(self._capture_ids)
 
     def detach(self) -> None:
         self._engine.layer_inp_capture_enable([])
@@ -77,15 +82,15 @@ class JLensScorer:
             return
         start, rows_by_layer = captured
         preds = None
-        for layer in self._layers:
-            rows = rows_by_layer.get(layer)
+        for cid in self._capture_ids:
+            rows = rows_by_layer.get(cid)
             if rows is None:
                 continue
-            p = rows.astype(np.float32) @ self._w[layer] + self._b[layer]
+            p = rows.astype(np.float32) @ self._w[cid] + self._b[cid]
             preds = p if preds is None else preds + p
         if preds is None:
             return
-        preds = preds / len(self._layers)
+        preds = preds / len(self._capture_ids)
         n = preds.shape[0]
 
         for block in blocks:
