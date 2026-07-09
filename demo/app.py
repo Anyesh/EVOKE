@@ -10,6 +10,7 @@ import httpx
 
 EVOKE_URL = os.environ.get("EVOKE_SERVER_URL", "http://127.0.0.1:8000")
 DISCARD_URL = os.environ.get("DISCARD_SERVER_URL", "http://127.0.0.1:8001")
+JLENS_URL = os.environ.get("JLENS_SERVER_URL", "http://127.0.0.1:8002")
 
 _SYSTEM = (
     "You are a helpful assistant in a multi-turn conversation. "
@@ -49,6 +50,8 @@ _SUGGESTED = [
 
 
 def _server(arm: str) -> str:
+    if "workspace" in arm:
+        return JLENS_URL
     return EVOKE_URL if "EVOKE" in arm else DISCARD_URL
 
 
@@ -69,7 +72,7 @@ async def _fetch_stats(base: str) -> dict:
 
 async def _set_budget(tokens: int) -> None:
     async with httpx.AsyncClient(timeout=10.0) as client:
-        for base in (EVOKE_URL, DISCARD_URL):
+        for base in (EVOKE_URL, DISCARD_URL, JLENS_URL):
             try:
                 await client.post(f"{base}/admin/set_budget", json={"tokens": tokens})
             except httpx.RequestError:
@@ -156,7 +159,7 @@ async def on_budget_change(tokens: int) -> tuple:
 
 
 async def wait_for_servers(timeout: float = 120.0) -> None:
-    for base in (EVOKE_URL, DISCARD_URL):
+    for base in (EVOKE_URL, DISCARD_URL, JLENS_URL):
         deadline = asyncio.get_event_loop().time() + timeout
         while asyncio.get_event_loop().time() < deadline:
             try:
@@ -174,15 +177,22 @@ _OUTPUTS = None
 with gr.Blocks(title="EVOKE: Live KV Cache Recovery") as demo:
     gr.Markdown(
         "# EVOKE: Live KV Cache Recovery\n"
-        "Chat with Qwen 2.5 3B running under a tight KV budget. "
+        "Chat with Qwen3-4B running under a tight KV budget. "
         "The **EVOKE** arm saves evicted cache blocks to RAM and splices them back on demand. "
-        "The **Evict, no recovery** arm just loses them. "
+        "The **EVOKE + workspace eviction** arm additionally scores blocks with a probe "
+        "distilled from the model's Jacobian-lens workspace, so content the model will "
+        "read from later tends not to be evicted in the first place. "
+        "The **Evict, no recovery** arm just loses evicted blocks. "
         "Follow the suggested flow below to see the difference."
     )
 
     with gr.Row():
         arm = gr.Radio(
-            choices=["EVOKE (kv_restore)", "Evict, no recovery"],
+            choices=[
+                "EVOKE (kv_restore)",
+                "EVOKE + workspace eviction",
+                "Evict, no recovery",
+            ],
             value="EVOKE (kv_restore)",
             label="Recovery policy",
             info="Switching resets the conversation.",

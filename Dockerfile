@@ -13,13 +13,13 @@ ENV PATH="/root/.local/bin:$PATH"
 # Built locally to avoid cmake timing out on HF's free build hardware (~30 min cap).
 COPY lib/ /usr/local/lib/evoke/
 RUN cd /usr/local/lib/evoke && \
-    ln -sf libllama.so.0.0.9627     libllama.so.0   && \
+    ln -sf libllama.so.0.0.9953     libllama.so.0   && \
     ln -sf libllama.so.0            libllama.so     && \
-    ln -sf libggml.so.0.15.1        libggml.so.0    && \
+    ln -sf libggml.so.0.15.3        libggml.so.0    && \
     ln -sf libggml.so.0             libggml.so      && \
-    ln -sf libggml-base.so.0.15.1   libggml-base.so.0 && \
+    ln -sf libggml-base.so.0.15.3   libggml-base.so.0 && \
     ln -sf libggml-base.so.0        libggml-base.so && \
-    ln -sf libggml-cpu.so.0.15.1    libggml-cpu.so.0 && \
+    ln -sf libggml-cpu.so.0.15.3    libggml-cpu.so.0 && \
     ln -sf libggml-cpu.so.0         libggml-cpu.so  && \
     ldconfig /usr/local/lib/evoke
 
@@ -37,7 +37,9 @@ RUN uv python install 3.12 && uv venv --python 3.12 && \
       --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu && \
     uv sync --extra server --extra demo
 
-ENV EVOKE_MODEL_PATH=/models/qwen2.5-3b-instruct-q4_k_m.gguf
+# Qwen3-4B: dense attention with a released Jacobian lens, so the workspace
+# (jlens) arm can run its distilled probe; the server strips thinking traces.
+ENV EVOKE_MODEL_PATH=/models/Qwen3-4B-Q4_K_M.gguf
 ENV EVOKE_HOST=127.0.0.1
 ENV EVOKE_N_CTX=8192
 ENV EVOKE_BUDGET=384
@@ -45,6 +47,7 @@ ENV EVOKE_RECOVERY_MODE=kv_restore
 ENV EVOKE_POLICY=evoke
 ENV EVOKE_SERVER_URL=http://127.0.0.1:8000
 ENV DISCARD_SERVER_URL=http://127.0.0.1:8001
+ENV JLENS_SERVER_URL=http://127.0.0.1:8002
 
 EXPOSE 7860
 
@@ -53,8 +56,8 @@ CMD ["bash", "-c", "\
   uv run python -c \"\
 import os; from huggingface_hub import hf_hub_download; \
 os.makedirs('/models', exist_ok=True); \
-hf_hub_download(repo_id='Qwen/Qwen2.5-3B-Instruct-GGUF', \
-                filename='qwen2.5-3b-instruct-q4_k_m.gguf', \
+hf_hub_download(repo_id='Qwen/Qwen3-4B-GGUF', \
+                filename='Qwen3-4B-Q4_K_M.gguf', \
                 local_dir='/models')\" && \
   echo 'Starting EVOKE server (port 8000)...' && \
   EVOKE_PORT=8000 EVOKE_POLICY=evoke EVOKE_RECOVERY_MODE=kv_restore \
@@ -68,6 +71,14 @@ hf_hub_download(repo_id='Qwen/Qwen2.5-3B-Instruct-GGUF', \
     uv run python scripts/evoke_serve.py & \
   echo 'Waiting for discard server...' && \
   until curl -sf http://127.0.0.1:8001/health; do sleep 3; done && \
+  echo 'Starting workspace (jlens) server (port 8002)...' && \
+  EVOKE_PORT=8002 EVOKE_POLICY=evoke EVOKE_RECOVERY_MODE=kv_restore \
+    EVOKE_RECOVERY_MATCH=identity EVOKE_RECOVERY_PROTECT_THRESHOLD=0.5 \
+    EVOKE_BUDGET=384 EVOKE_W_JLENS=0.6 \
+    EVOKE_JLENS_PROBE=/evoke/demo/probe_qwen3-4b.npz \
+    uv run python scripts/evoke_serve.py & \
+  echo 'Waiting for jlens server...' && \
+  until curl -sf http://127.0.0.1:8002/health; do sleep 3; done && \
   echo 'Backends ready. Starting Gradio...' && \
   uv run python demo/app.py \
 "]
