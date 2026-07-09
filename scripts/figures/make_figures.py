@@ -52,7 +52,7 @@ def fig_recovery_fidelity(data: dict) -> None:
     models = ["Qwen3-14B", "Qwen3.5-9B-hybrid"]
     labels = ["Qwen3-14B\n(attention)", "Qwen3.5-9B\n(hybrid)"]
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.7), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(9.6, 2.6), sharey=True)
     panels = [
         (
             axes[0],
@@ -266,6 +266,7 @@ C_RECENCY = "#4a3aa7"
 JLENS_MODELS = [
     ("analysis_qwen2.5-7b-instruct.json", "eviction_eval_qwen2.5-7b-instruct.json", "Qwen 2.5 7B"),
     ("analysis_qwen3-8b.json", "eviction_eval_qwen3-8b.json", "Qwen3-8B"),
+    ("analysis_qwen3-4b.json", "eviction_eval_qwen3-4b.json", "Qwen3-4B"),
 ]
 
 
@@ -277,8 +278,8 @@ def fig_jlens_signal() -> None:
         ("SnapKV", C_SNAPKV, lambda a: a["fact_auc"]["snapkv"]),
         ("workspace", C_WORKSPACE, lambda a: a["fact_auc"][a["best_workspace_signal"]]),
     ]
-    fig, ax = plt.subplots(figsize=(4.6, 2.6))
-    x = [0.0, 1.0]
+    fig, ax = plt.subplots(figsize=(5.6, 2.6))
+    x = [float(i) for i in range(len(JLENS_MODELS))]
     w = 0.26
     for i, (label, color, get) in enumerate(series):
         vals = [get(_load(af)) for af, _, _ in JLENS_MODELS]
@@ -287,8 +288,8 @@ def fig_jlens_signal() -> None:
         for p, v in zip(pos, vals):
             ax.text(p, v + 0.02, f"{v:.2f}", ha="center", fontsize=7.5)
     ax.axhline(0.5, color="#999999", linewidth=0.8, linestyle="--", zorder=2)
-    ax.set_xlim(-0.5, 1.78)
-    ax.text(1.76, 0.512, "chance", fontsize=7, color="#666666", va="bottom", ha="right")
+    ax.set_xlim(-0.5, 2.78)
+    ax.text(2.76, 0.512, "chance", fontsize=7, color="#666666", va="bottom", ha="right")
     ax.set_xticks(x)
     ax.set_xticklabels([m for _, _, m in JLENS_MODELS], fontsize=9)
     ax.set_ylim(0, 1.0)
@@ -311,7 +312,7 @@ def fig_jlens_eviction() -> None:
         ("SnapKV", "snapkv", C_SNAPKV, "s"),
         ("recency", "recency", C_RECENCY, "^"),
     ]
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.7), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(9.6, 2.6), sharey=True)
     for ax, (_, ef, title) in zip(axes, JLENS_MODELS):
         res = _load(ef)["results"]
         for label, key, color, marker in series:

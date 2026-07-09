@@ -1,0 +1,120 @@
+{
+ "model": "Qwen/Qwen3-4B",
+ "n_episodes": 36,
+ "fact_auc": {
+  "recency": 0.48091269621165894,
+  "snapkv": 0.5407121859226802,
+  "ws_L12_kurtosis_max": 0.7513034555438461,
+  "ws_L12_kurtosis_mean": 0.536801819291142,
+  "ws_L12_topk_mass_max": 0.5434438959454213,
+  "ws_L12_topk_mass_mean": 0.5821315658106384,
+  "ws_L12_transport_ratio_max": 0.9392922513727884,
+  "ws_L12_transport_ratio_mean": 0.4629624493870986,
+  "ws_L30_kurtosis_max": 0.6776859504132231,
+  "ws_L30_kurtosis_mean": 0.8533612513173221,
+  "ws_L30_topk_mass_max": 0.4993621387764158,
+  "ws_L30_topk_mass_mean": 0.7446336457928893,
+  "ws_L30_transport_ratio_max": 0.5803150479782573,
+  "ws_L30_transport_ratio_mean": 0.8730240168617227,
+  "ws_L31_kurtosis_max": 0.649439791447113,
+  "ws_L31_kurtosis_mean": 0.8454018525708581,
+  "ws_L31_topk_mass_max": 0.4398954462255255,
+  "ws_L31_topk_mass_mean": 0.6413555937655999,
+  "ws_L31_transport_ratio_max": 0.6423539852459925,
+  "ws_L31_transport_ratio_mean": 0.8598507959398747
+ },
+ "best_workspace_signal": "ws_L12_transport_ratio_max",
+ "combined_auc_base": 0.45541904709079817,
+ "combined_auc_with_workspace": 0.9463919241222476,
+ "auc_lift_points": 49.09728770314494,
+ "gen_mass_auc": {
+  "recency": 0.4292716141085376,
+  "snapkv": 0.9294160457979757,
+  "ws_L12_kurtosis_max": 0.44173212986097043,
+  "ws_L12_kurtosis_mean": 0.5326528162303704,
+  "ws_L12_topk_mass_max": 0.5204080101439815,
+  "ws_L12_topk_mass_mean": 0.6224743211710597,
+  "ws_L12_transport_ratio_max": 0.6779998649469917,
+  "ws_L12_transport_ratio_mean": 0.5747555915696911,
+  "ws_L30_kurtosis_max": 0.5646116100569474,
+  "ws_L30_kurtosis_mean": 0.7096135233078983,
+  "ws_L30_topk_mass_max": 0.4326723238871257,
+  "ws_L30_topk_mass_mean": 0.575063212310832,
+  "ws_L30_transport_ratio_max": 0.6325320188173857,
+  "ws_L30_transport_ratio_mean": 0.8304484510170242,
+  "ws_L31_kurtosis_max": 0.5640563921339126,
+  "ws_L31_kurtosis_mean": 0.7138902019042475,
+  "ws_L31_topk_mass_max": 0.40966079186080534,
+  "ws_L31_topk_mass_mean": 0.37231113211935685,
+  "ws_L31_transport_ratio_max": 0.6785250710904029,
+  "ws_L31_transport_ratio_mean": 0.8276348466773209
+ },
+ "lobo_spearman": {
+  "recency": 0.053668392108176366,
+  "snapkv": 0.10813337850622001,
+  "ws_L12_kurtosis_max": 0.15745431301879628,
+  "ws_L12_kurtosis_mean": -0.006700698291687247,
+  "ws_L12_topk_mass_max": -0.0019960630200014937,
+  "ws_L12_topk_mass_mean": -0.03896556863581584,
+  "ws_L12_transport_ratio_max": 0.17453931471614964,
+  "ws_L12_transport_ratio_mean": 0.03394277263493906,
+  "ws_L30_kurtosis_max": 0.1074028244977812,
+  "ws_L30_kurtosis_mean": 0.14284228407858032,
+  "ws_L30_topk_mass_max": 0.1000169090058077,
+  "ws_L30_topk_mass_mean": 0.06396617045317582,
+  "ws_L30_transport_ratio_max": 0.09547724188859709,
+  "ws_L30_transport_ratio_mean": 0.1710136800468527,
+  "ws_L31_kurtosis_max": 0.10971830119595646,
+  "ws_L31_kurtosis_mean": 0.13271462334730733,
+  "ws_L31_topk_mass_max": -0.050361449904597136,
+  "ws_L31_topk_mass_mean": 0.036885861640364025,
+  "ws_L31_transport_ratio_max": 0.10961109002328948,
+  "ws_L31_transport_ratio_mean": 0.19348153650638483
+ },
+ "fact_survival": {
+  "recency": {
+   "0.25": 0.2222222222222222,
+   "0.5": 0.3333333333333333,
+   "0.75": 0.6666666666666666
+  },
+  "snapkv": {
+   "0.25": 0.3055555555555556,
+   "0.5": 0.75,
+   "0.75": 0.9444444444444444
+  },
+  "workspace": {
+   "0.25": 0.9444444444444444,
+   "0.5": 0.9444444444444444,
+   "0.75": 0.9722222222222222
+  },
+  "snapkv+workspace": {
+   "0.25": 0.9166666666666666,
+   "0.5": 0.9444444444444444,
+   "0.75": 0.9722222222222222
+  },
+  "recency+workspace": {
+   "0.25": 0.8611111111111112,
+   "0.5": 0.8888888888888888,
+   "0.75": 1.0
+  }
+ },
+ "policies": {
+  "recency": {
+   "recency": 1.0
+  },
+  "snapkv": {
+   "snapkv": 1.0
+  },
+  "workspace": {
+   "ws_L12_transport_ratio_max": 1.0
+  },
+  "snapkv+workspace": {
+   "snapkv": 0.5,
+   "ws_L12_transport_ratio_max": 0.5
+  },
+  "recency+workspace": {
+   "recency": 0.5,
+   "ws_L12_transport_ratio_max": 0.5
+  }
+ }
+}
