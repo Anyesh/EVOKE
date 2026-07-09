@@ -1,0 +1,120 @@
+{
+ "model": "Qwen/Qwen2.5-7B-Instruct",
+ "n_episodes": 36,
+ "fact_auc": {
+  "recency": 0.48091269621165894,
+  "snapkv": 0.6222197570580732,
+  "ws_L19_kurtosis_max": 0.450995618170725,
+  "ws_L19_kurtosis_mean": 0.7318348216761884,
+  "ws_L19_topk_mass_max": 0.5351655665871652,
+  "ws_L19_topk_mass_mean": 0.7905596538909534,
+  "ws_L19_transport_ratio_max": 0.5591824283099451,
+  "ws_L19_transport_ratio_mean": 0.366354207110766,
+  "ws_L21_kurtosis_max": 0.8781130401020578,
+  "ws_L21_kurtosis_mean": 0.8269177436352544,
+  "ws_L21_topk_mass_max": 0.8531948527372566,
+  "ws_L21_topk_mass_mean": 0.8642187586665927,
+  "ws_L21_transport_ratio_max": 0.5416828443063952,
+  "ws_L21_transport_ratio_mean": 0.5676271562482667,
+  "ws_L23_kurtosis_max": 0.8870569637805757,
+  "ws_L23_kurtosis_mean": 0.8911753286371955,
+  "ws_L23_topk_mass_max": 0.7570580731044428,
+  "ws_L23_topk_mass_mean": 0.811401076044151,
+  "ws_L23_transport_ratio_max": 0.5457734760663375,
+  "ws_L23_transport_ratio_mean": 0.26388041488712627
+ },
+ "best_workspace_signal": "ws_L23_kurtosis_mean",
+ "combined_auc_base": 0.41985135060180817,
+ "combined_auc_with_workspace": 0.9140135337511787,
+ "auc_lift_points": 49.41621831493705,
+ "gen_mass_auc": {
+  "recency": 0.6198389117728709,
+  "snapkv": 0.9209377180543364,
+  "ws_L19_kurtosis_max": 0.6073071180438322,
+  "ws_L19_kurtosis_mean": 0.570058748058613,
+  "ws_L19_topk_mass_max": 0.37926073483842404,
+  "ws_L19_topk_mass_mean": 0.5788934656852814,
+  "ws_L19_transport_ratio_max": 0.5463344362662345,
+  "ws_L19_transport_ratio_mean": 0.5925413224690691,
+  "ws_L21_kurtosis_max": 0.6663402885632611,
+  "ws_L21_kurtosis_mean": 0.6225868653446477,
+  "ws_L21_topk_mass_max": 0.6040320825924175,
+  "ws_L21_topk_mass_mean": 0.5541299960234392,
+  "ws_L21_transport_ratio_max": 0.5516015035901591,
+  "ws_L21_transport_ratio_mean": 0.6857316496724964,
+  "ws_L23_kurtosis_max": 0.7388299907713778,
+  "ws_L23_kurtosis_mean": 0.6834244941139398,
+  "ws_L23_topk_mass_max": 0.5248478777920333,
+  "ws_L23_topk_mass_mean": 0.6059303276536041,
+  "ws_L23_transport_ratio_max": 0.5438997306442779,
+  "ws_L23_transport_ratio_mean": 0.4980417313795664
+ },
+ "lobo_spearman": {
+  "recency": -0.033819604476884084,
+  "snapkv": 0.13123341443301995,
+  "ws_L19_kurtosis_max": -0.14632565040671372,
+  "ws_L19_kurtosis_mean": -0.026963024554561378,
+  "ws_L19_topk_mass_max": -0.08191279672566827,
+  "ws_L19_topk_mass_mean": 0.09845558214515343,
+  "ws_L19_transport_ratio_max": 0.10651199554574131,
+  "ws_L19_transport_ratio_mean": -0.009613669479763649,
+  "ws_L21_kurtosis_max": -0.01007604582868181,
+  "ws_L21_kurtosis_mean": -0.02973566474114439,
+  "ws_L21_topk_mass_max": 0.043009424891371176,
+  "ws_L21_topk_mass_mean": 0.06310512862236711,
+  "ws_L21_transport_ratio_max": -0.0074499565872420785,
+  "ws_L21_transport_ratio_mean": 0.039025730873983144,
+  "ws_L23_kurtosis_max": 0.0045615500653303,
+  "ws_L23_kurtosis_mean": 0.07660612431717514,
+  "ws_L23_topk_mass_max": 0.07952397488926982,
+  "ws_L23_topk_mass_mean": 0.06351829049093025,
+  "ws_L23_transport_ratio_max": -0.0002479781332689727,
+  "ws_L23_transport_ratio_mean": -0.011503155529977537
+ },
+ "fact_survival": {
+  "recency": {
+   "0.25": 0.2222222222222222,
+   "0.5": 0.3333333333333333,
+   "0.75": 0.6666666666666666
+  },
+  "snapkv": {
+   "0.25": 0.6388888888888888,
+   "0.5": 0.9166666666666666,
+   "0.75": 0.9722222222222222
+  },
+  "workspace": {
+   "0.25": 0.8611111111111112,
+   "0.5": 0.9166666666666666,
+   "0.75": 0.9722222222222222
+  },
+  "snapkv+workspace": {
+   "0.25": 0.8611111111111112,
+   "0.5": 0.8888888888888888,
+   "0.75": 0.9722222222222222
+  },
+  "recency+workspace": {
+   "0.25": 0.7777777777777778,
+   "0.5": 0.8888888888888888,
+   "0.75": 0.9444444444444444
+  }
+ },
+ "policies": {
+  "recency": {
+   "recency": 1.0
+  },
+  "snapkv": {
+   "snapkv": 1.0
+  },
+  "workspace": {
+   "ws_L23_kurtosis_mean": 1.0
+  },
+  "snapkv+workspace": {
+   "snapkv": 0.5,
+   "ws_L23_kurtosis_mean": 0.5
+  },
+  "recency+workspace": {
+   "recency": 0.5,
+   "ws_L23_kurtosis_mean": 0.5
+  }
+ }
+}

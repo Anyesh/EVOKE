@@ -257,6 +257,83 @@ def fig_crossarch(fd: dict) -> None:
     plt.close(fig)
 
 
+
+
+C_WORKSPACE = "#2a78d6"
+C_SNAPKV = "#eb6834"
+C_RECENCY = "#4a3aa7"
+
+JLENS_MODELS = [
+    ("analysis_qwen2.5-7b-instruct.json", "eviction_eval_qwen2.5-7b-instruct.json", "Qwen 2.5 7B"),
+    ("analysis_qwen3-8b.json", "eviction_eval_qwen3-8b.json", "Qwen3-8B"),
+]
+
+
+def fig_jlens_signal() -> None:
+    # Offline fact-AUC of eviction signals on both models. Full 0-1 axis with
+    # the 0.5 chance line so the bar geometry cannot exaggerate the gap.
+    series = [
+        ("recency", C_RECENCY, lambda a: a["fact_auc"]["recency"]),
+        ("SnapKV", C_SNAPKV, lambda a: a["fact_auc"]["snapkv"]),
+        ("workspace", C_WORKSPACE, lambda a: a["fact_auc"][a["best_workspace_signal"]]),
+    ]
+    fig, ax = plt.subplots(figsize=(4.6, 2.6))
+    x = [0.0, 1.0]
+    w = 0.26
+    for i, (label, color, get) in enumerate(series):
+        vals = [get(_load(af)) for af, _, _ in JLENS_MODELS]
+        pos = [xi + (i - 1) * (w + 0.02) for xi in x]
+        ax.bar(pos, vals, width=w, color=color, label=label, zorder=3)
+        for p, v in zip(pos, vals):
+            ax.text(p, v + 0.02, f"{v:.2f}", ha="center", fontsize=7.5)
+    ax.axhline(0.5, color="#999999", linewidth=0.8, linestyle="--", zorder=2)
+    ax.set_xlim(-0.5, 1.78)
+    ax.text(1.76, 0.512, "chance", fontsize=7, color="#666666", va="bottom", ha="right")
+    ax.set_xticks(x)
+    ax.set_xticklabels([m for _, _, m in JLENS_MODELS], fontsize=9)
+    ax.set_ylim(0, 1.0)
+    ax.set_ylabel("fact block AUC")
+    ax.set_title("Which signal ranks the fact block highly?")
+    ax.legend(loc="upper left", fontsize=7.5, frameon=False, ncol=1)
+    ax.grid(axis="y", color="#e6e6e6", linewidth=0.5, zorder=0)
+    fig.savefig(OUT / "jlens_signal_auc.pdf")
+    plt.close(fig)
+
+
+def fig_jlens_eviction() -> None:
+    # Probe accuracy after masked eviction at three retention budgets, per
+    # signal, both models; Wilson 95% bands. The workspace ranking keeps the
+    # fact answerable at 25% where attention-history signals collapse.
+    budgets = ["0.25", "0.5", "0.75"]
+    xs = [25, 50, 75]
+    series = [
+        ("workspace", "workspace", C_WORKSPACE, "o"),
+        ("SnapKV", "snapkv", C_SNAPKV, "s"),
+        ("recency", "recency", C_RECENCY, "^"),
+    ]
+    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.7), sharey=True)
+    for ax, (_, ef, title) in zip(axes, JLENS_MODELS):
+        res = _load(ef)["results"]
+        for label, key, color, marker in series:
+            rates = [100 * res[key][b]["rate"] for b in budgets]
+            lo = [100 * res[key][b]["wilson95"][0] for b in budgets]
+            hi = [100 * res[key][b]["wilson95"][1] for b in budgets]
+            ax.fill_between(xs, lo, hi, color=color, alpha=0.13, linewidth=0, zorder=2)
+            ax.plot(xs, rates, color=color, marker=marker, markersize=4.5,
+                    linewidth=1.6, label=label, zorder=3)
+        ax.set_title(title)
+        ax.set_xticks(xs)
+        ax.set_xticklabels(["25%", "50%", "75%"])
+        ax.set_xlabel("KV blocks retained")
+        ax.set_xlim(18, 82)
+        ax.set_ylim(0, 104)
+        ax.grid(axis="y", color="#e6e6e6", linewidth=0.5, zorder=0)
+    axes[0].set_ylabel("probe accuracy (%)")
+    axes[0].legend(loc="lower right", fontsize=7.5, frameon=False)
+    fig.savefig(OUT / "jlens_eviction.pdf")
+    plt.close(fig)
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     data = _load("session_evoke_metrics.json")
@@ -265,6 +342,8 @@ def main() -> int:
     fig_scale_wall(data)
     fig_infllm_budget(fd)
     fig_crossarch(fd)
+    fig_jlens_signal()
+    fig_jlens_eviction()
     print(f"wrote: {sorted(p.name for p in OUT.glob('*.pdf'))}")
     return 0
 
