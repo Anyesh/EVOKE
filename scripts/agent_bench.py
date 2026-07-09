@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from evoke.attention_scorer import AttentionScorer
 from evoke.config import EvokeConfig
+from evoke.jlens_scorer import JLensScorer
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
 
@@ -91,12 +92,8 @@ STRATEGIES: dict[str, dict] = {
         high_watermark=1.0,
         low_watermark=1.0,
     ),
-    "recency": dict(
-        w_recency=1.0, w_coherence=0.0, sink_count=0, recovery_mode="discard"
-    ),
-    "streaming_llm": dict(
-        w_recency=1.0, w_coherence=0.0, sink_count=4, recovery_mode="discard"
-    ),
+    "recency": dict(w_recency=1.0, w_coherence=0.0, sink_count=0, recovery_mode="discard"),
+    "streaming_llm": dict(w_recency=1.0, w_coherence=0.0, sink_count=4, recovery_mode="discard"),
     "evoke_discard": dict(recovery_mode="discard"),
     "evoke_breadcrumb": dict(recovery_mode="breadcrumb"),
     "evoke_kv_restore": dict(recovery_mode="kv_restore"),
@@ -161,6 +158,34 @@ STRATEGIES: dict[str, dict] = {
         low_watermark=0.3,
         recent_tail_protect_frac=0.25,
     ),
+    # J-lens workspace signal (j-space phase 3): a distilled ridge probe over
+    # residuals captured at prefill predicts which blocks hold workspace
+    # content the model will later read from (offline fact-AUC 0.891 vs
+    # SnapKV 0.622 on Qwen2.5-7B). Content-based and forward-looking, so the
+    # score exists before any decode history. Discard recovery and the same
+    # hard-eviction + tail-guard pattern as h2o/snapkv for a clean head-to-
+    # head. Requires the fork's residual export plus EVOKE_JLENS_PROBE.
+    "jlens": dict(
+        recovery_mode="discard",
+        w_recency=0.0,
+        w_coherence=0.0,
+        w_jlens=1.0,
+        recent_tail_protect_frac=0.1,
+        eviction_policy="hard",
+    ),
+    # Workspace signal mixed with H2O's cumulative attention at equal
+    # weight: tests whether the content signal adds lift over the
+    # attention-history heavy hitters rather than replacing them.
+    "jlens_h2o": dict(
+        recovery_mode="discard",
+        w_recency=0.0,
+        w_coherence=0.0,
+        w_attention=0.5,
+        w_jlens=0.5,
+        attention_score_mode="cumulative",
+        recent_tail_protect_frac=0.1,
+        eviction_policy="hard",
+    ),
 }
 
 
@@ -175,9 +200,7 @@ class Result:
     answer: str
 
 
-def run_strategy(
-    engine: LlamaCppEngine, name: str, overrides: dict, budget: int
-) -> Result:
+def run_strategy(engine: LlamaCppEngine, name: str, overrides: dict, budget: int) -> Result:
     engine.reset()
     config_kwargs: dict = dict(
         max_active_tokens=budget,
@@ -197,7 +220,21 @@ def run_strategy(
             score_mode=config.attention_score_mode,
             snapkv_observation_window=config.snapkv_observation_window,
         )
-    mgr = EvokeManager(engine, config, attention_scorer=attn_scorer)
+    jlens_scorer: JLensScorer | None = None
+    if config.w_jlens > 0:
+        # Fail loud rather than fall back: a jlens run scored by recency
+        # would silently mislabel the strategy, same rationale as the
+        # needs_kv_block SKIP in main().
+        probe = os.environ.get("EVOKE_JLENS_PROBE", "")
+        if not probe:
+            raise RuntimeError("set EVOKE_JLENS_PROBE to the probe artifact npz")
+        layers_env = os.environ.get("EVOKE_JLENS_LAYERS", "")
+        jlens_scorer = JLensScorer(
+            engine,
+            probe_path=probe,
+            layers=[int(x) for x in layers_env.split(",")] if layers_env else None,
+        )
+    mgr = EvokeManager(engine, config, attention_scorer=attn_scorer, jlens_scorer=jlens_scorer)
 
     session = build_session()
     fact_text = next(item.text for item in session if item.key == FACT_KEY)
@@ -237,18 +274,14 @@ def main() -> int:
     if not model:
         print("set EVOKE_MODEL_PATH")
         return 1
-    budgets = [
-        int(b) for b in os.environ.get("EVOKE_BUDGETS", "512,1024,2048").split(",")
-    ]
+    budgets = [int(b) for b in os.environ.get("EVOKE_BUDGETS", "512,1024,2048").split(",")]
 
     kv_quant = os.environ.get("EVOKE_KV_QUANT", "").lower().strip()
     engine_kwargs: dict = {}
     if kv_quant and kv_quant not in ("f16", "none"):
         engine_kwargs["type_k"] = kv_quant
         engine_kwargs["type_v"] = kv_quant
-    engine = LlamaCppEngine(
-        model, n_ctx=16384, n_gpu_layers=-1, verbose=False, **engine_kwargs
-    )
+    engine = LlamaCppEngine(model, n_ctx=16384, n_gpu_layers=-1, verbose=False, **engine_kwargs)
     print(f"agentic eval | model={Path(model).stem}")
     if kv_quant and kv_quant not in ("f16", "none"):
         print(f"kv cache quantization: type_k=type_v={kv_quant}")
@@ -269,6 +302,8 @@ def main() -> int:
                     "h2o",
                     "snapkv",
                     "infllm",
+                    "jlens",
+                    "jlens_h2o",
                 )
                 if needs_kv_block and not engine.supports_kv_block:
                     # These baselines all depend on the fork's attention capture
