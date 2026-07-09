@@ -50,6 +50,27 @@ class EvokeConfig:
     # entries — the default 8M elements covers obs_window=32 across all
     # benchmark budgets up to ~8K tokens of n_kv for Qwen 2.5 7B.
     snapkv_observation_window: int = 32
+    # Weight on the J-lens workspace signal (jlens_scorer.py): a distilled
+    # probe over captured residuals predicts which blocks hold workspace
+    # content the model will later read from. 0.0 disables the term; > 0
+    # makes Session construct a JLensScorer (requires the EVOKE fork's
+    # layer-input capture plus a probe artifact from the j-space project).
+    # Content-based and available from prefill, so it also scores blocks
+    # in the cold-start window where attention signals are still empty.
+    w_jlens: float = 0.0
+    # Path to the probe artifact npz (per-layer w/b from j-space phase 2).
+    # Empty means "not configured"; Session then skips the scorer even if
+    # w_jlens > 0.
+    jlens_probe_path: str = ""
+    # Which capture layers to score with. None uses every layer present in
+    # the probe artifact; predictions are averaged across scored layers.
+    jlens_layers: tuple[int, ...] | None = None
+    # Which distilled statistic to use. kurtosis won phase 1 on
+    # Qwen2.5-7B-Instruct (fact-AUC 0.891 vs SnapKV 0.622).
+    jlens_stat: str = "kurtosis"
+    # Per-block aggregation of per-position predictions: "mean" (phase-1
+    # winner) or "max" (guards sparse workspace content in large blocks).
+    jlens_block_agg: str = "mean"
     # H2O protects a recent window R against eviction unconditionally (their
     # default is 10% of cache budget). Setting > 0 excludes any block whose
     # logical_end falls inside the last int(max_active_tokens *

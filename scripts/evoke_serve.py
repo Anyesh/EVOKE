@@ -53,6 +53,19 @@ def main() -> int:
     # apply them). Defaults preserve pre-multi-signal behavior.
     w_attention = float(os.environ.get("EVOKE_W_ATTENTION", "0.0"))
     attention_capture_layer = int(os.environ.get("EVOKE_ATTN_LAYER", "20"))
+    # J-lens workspace signal knobs. w_jlens > 0 plus a probe path makes
+    # Session build a JLensScorer over the fork's residual capture; layers
+    # default to every layer in the probe artifact.
+    w_jlens = float(os.environ.get("EVOKE_W_JLENS", "0.0"))
+    jlens_probe_path = os.environ.get("EVOKE_JLENS_PROBE", "")
+    jlens_layers_env = os.environ.get("EVOKE_JLENS_LAYERS", "")
+    jlens_layers = (
+        tuple(int(x) for x in jlens_layers_env.split(",") if x.strip())
+        if jlens_layers_env
+        else None
+    )
+    jlens_stat = os.environ.get("EVOKE_JLENS_STAT", "kurtosis")
+    jlens_block_agg = os.environ.get("EVOKE_JLENS_BLOCK_AGG", "mean")
     ram_budget_env = os.environ.get("EVOKE_KV_RESTORE_RAM_BUDGET_BYTES")
     kv_restore_ram_budget_bytes = int(ram_budget_env) if ram_budget_env else None
     kv_restore_spill_path = os.environ.get("EVOKE_KV_RESTORE_SPILL_PATH") or None
@@ -77,9 +90,7 @@ def main() -> int:
     # recovery_strength_init and tick_turn decays by recovery_decay each turn.
     # See decision-recovery-aware-eviction in the wiki for the design.
     w_recovery = float(os.environ.get("EVOKE_W_RECOVERY", "0.0"))
-    recovery_strength_init = float(
-        os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT", "1.0")
-    )
+    recovery_strength_init = float(os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT", "1.0"))
     recovery_decay = float(os.environ.get("EVOKE_RECOVERY_DECAY", "0.7"))
     # Hard-protect a freshly recovered block from the eviction pass that fires
     # later in the same turn (when the new tail is decoded and the watermark
@@ -87,9 +98,7 @@ def main() -> int:
     # low-recency position before the model attends to it, so under a tight
     # budget the recovered fact is gone again by generation time. Decays via
     # tick_turn so the protection lifts once the block goes cold.
-    recovery_protect_threshold = float(
-        os.environ.get("EVOKE_RECOVERY_PROTECT_THRESHOLD", "0.0")
-    )
+    recovery_protect_threshold = float(os.environ.get("EVOKE_RECOVERY_PROTECT_THRESHOLD", "0.0"))
     # Position mode + recovery trigger for the live path. Identity gap-fill (the
     # north-star recovery) splices evicted K/V back in place by content identity
     # and requires sparse holes, so identity defaults position_mode to sparse.
@@ -141,6 +150,11 @@ def main() -> int:
                 recovery_mode=recovery_mode,
                 w_attention=w_attention,
                 attention_capture_layer=attention_capture_layer,
+                w_jlens=w_jlens,
+                jlens_probe_path=jlens_probe_path,
+                jlens_layers=jlens_layers,
+                jlens_stat=jlens_stat,
+                jlens_block_agg=jlens_block_agg,
                 kv_restore_ram_budget_bytes=kv_restore_ram_budget_bytes,
                 kv_restore_spill_path=kv_restore_spill_path,
                 suppress_thinking_strip=suppress_thinking_strip,
@@ -157,6 +171,7 @@ def main() -> int:
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
                 f" w_attention={w_attention} attn_layer={attention_capture_layer}"
+                f" w_jlens={w_jlens} jlens_probe={jlens_probe_path}"
                 f" kv_ram_budget={kv_restore_ram_budget_bytes}"
                 f" kv_spill={kv_restore_spill_path}"
                 f" sr_k={smart_recover_k}"

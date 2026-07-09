@@ -33,9 +33,11 @@ class RelevanceScorer:
         self,
         config: EvokeConfig,
         attention_scorer: AttentionScorerProtocol | None = None,
+        jlens_scorer: AttentionScorerProtocol | None = None,
     ):
         self._config = config
         self._attention_scorer = attention_scorer
+        self._jlens_scorer = jlens_scorer
         # Task-boundary-aware coherence: instead of averaging the last N
         # message embeddings (which lags on topic shifts and conflates two
         # tasks running in the same session), maintain a single "task focus"
@@ -46,9 +48,7 @@ class RelevanceScorer:
         self._force_boundary = False
         # Kept for ABI compatibility with code that introspects scorer state
         # for debugging; not used in the score path anymore.
-        self._context_history: deque[np.ndarray] = deque(
-            maxlen=config.context_history_size
-        )
+        self._context_history: deque[np.ndarray] = deque(maxlen=config.context_history_size)
 
     def signal_task_boundary(self) -> None:
         # Harness-driven explicit reset. The next update_recent_context call
@@ -76,10 +76,11 @@ class RelevanceScorer:
         alpha = self._config.task_focus_ema_alpha
         self._task_focus = alpha * self._task_focus + (1.0 - alpha) * embedding
 
-    def set_attention_scorer(
-        self, attention_scorer: AttentionScorerProtocol | None
-    ) -> None:
+    def set_attention_scorer(self, attention_scorer: AttentionScorerProtocol | None) -> None:
         self._attention_scorer = attention_scorer
+
+    def set_jlens_scorer(self, jlens_scorer: AttentionScorerProtocol | None) -> None:
+        self._jlens_scorer = jlens_scorer
 
     def score(self, block: ActiveBlock, current_pos: int, context_length: int) -> float:
         cfg = self._config
@@ -89,41 +90,35 @@ class RelevanceScorer:
         recency = self._score_recency(block, current_pos, context_length)
         coherence = self._score_coherence(block)
         attn = self._score_attention(block)
+        jlens = self._score_jlens(block)
         # Recovery-aware term: the model already signaled this block matters
         # by recovering it; protect it from eviction until the decay schedule
         # in tick_turn() has thinned the signal back to noise.
         recovery = block.recovery_strength
 
-        # Multi-signal combination. When attention is available (cfg.w_attention
-        # > 0 and the AttentionScorer returned a value for this block), it's
-        # the dominant signal — the model's actual record of what it attended
-        # to in recent decode steps. Recency and coherence are stability priors
-        # that prevent thrashing on a single high-attention spike. When
-        # attention is unavailable, fall back to the recency+coherence weighted
-        # combination (preserves pre-rework behavior at default config). The
-        # recovery term joins the weighted sum at w_recovery and the denominator
-        # so default w_recovery=0.0 is a no-op for existing policies.
+        # Multi-signal combination. Model-derived signals (attention: what
+        # the model actually attended to recently; jlens: whether the block
+        # holds workspace content later computation reads from) join the
+        # weighted sum only when their scorer returned a value for this
+        # block, so blocks without a signal yet fall back to the recency +
+        # coherence stability priors. Each absent signal also leaves the
+        # denominator, which reproduces the historical two-branch behavior
+        # exactly when only attention exists and keeps default weights
+        # (w_attention=0, w_jlens=0, w_recovery=0) a strict no-op.
+        parts = [
+            (cfg.w_recency, recency),
+            (cfg.w_coherence, coherence),
+            (cfg.w_recovery, recovery),
+        ]
         if attn is not None and cfg.w_attention > 0:
-            total = cfg.w_attention + cfg.w_recency + cfg.w_coherence + cfg.w_recovery
-            if total == 0:
-                raw = recency
-            else:
-                raw = (
-                    cfg.w_attention * attn
-                    + cfg.w_recency * recency
-                    + cfg.w_coherence * coherence
-                    + cfg.w_recovery * recovery
-                ) / total
+            parts.append((cfg.w_attention, attn))
+        if jlens is not None and cfg.w_jlens > 0:
+            parts.append((cfg.w_jlens, jlens))
+        total = sum(w for w, _ in parts)
+        if total == 0:
+            raw = recency
         else:
-            total = cfg.w_recency + cfg.w_coherence + cfg.w_recovery
-            if total == 0:
-                raw = recency
-            else:
-                raw = (
-                    cfg.w_recency * recency
-                    + cfg.w_coherence * coherence
-                    + cfg.w_recovery * recovery
-                ) / total
+            raw = sum(w * v for w, v in parts) / total
 
         # Source-type floors: USER and ASSISTANT turns are conversation
         # backbone; even when their coherence drops they shouldn't be evicted
@@ -147,14 +142,17 @@ class RelevanceScorer:
             return None
         return self._attention_scorer.score(block)
 
+    def _score_jlens(self, block: ActiveBlock) -> float | None:
+        if self._jlens_scorer is None:
+            return None
+        return self._jlens_scorer.score(block)
+
     def score_blocks(
         self, blocks: list[ActiveBlock], current_pos: int, context_length: int
     ) -> dict[int, float]:
         return {b.block_id: self.score(b, current_pos, context_length) for b in blocks}
 
-    def _score_recency(
-        self, block: ActiveBlock, current_pos: int, context_length: int
-    ) -> float:
+    def _score_recency(self, block: ActiveBlock, current_pos: int, context_length: int) -> float:
         if context_length == 0:
             return 1.0
         distance = (current_pos - block.logical_end) / context_length

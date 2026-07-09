@@ -354,3 +354,89 @@ class TestAttentionScorerSlot:
         scorer.set_attention_scorer(FixedAttention(0.95))
         s_with_attn = scorer.score(block, current_pos=5000, context_length=5000)
         assert s_with_attn > s_initial
+
+
+class TestJLensScorerSlot:
+    def test_no_jlens_scorer_falls_back_to_heuristic(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.4,
+            w_coherence=0.6,
+            w_jlens=0.5,
+        )
+        scorer = RelevanceScorer(config)
+        block = _make_block(1, 100, 200)
+        s = scorer.score(block, current_pos=1000, context_length=1000)
+        assert 0.0 <= s <= 1.0
+
+    def test_jlens_scorer_shifts_score(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.2,
+            w_coherence=0.2,
+            w_jlens=0.6,
+            conversation_score_floor=0.0,
+        )
+
+        class HighJLens:
+            def score(self, block):
+                return 1.0
+
+        class LowJLens:
+            def score(self, block):
+                return 0.0
+
+        block = _make_block(1, 100, 200)
+        high = RelevanceScorer(config, jlens_scorer=HighJLens())
+        low = RelevanceScorer(config, jlens_scorer=LowJLens())
+        s_high = high.score(block, current_pos=5000, context_length=5000)
+        s_low = low.score(block, current_pos=5000, context_length=5000)
+        assert s_high > s_low
+        assert s_high - s_low > 0.4
+
+    def test_jlens_none_signal_drops_from_mix(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.5,
+            w_coherence=0.5,
+            w_jlens=0.9,
+            conversation_score_floor=0.0,
+        )
+
+        class NoSignal:
+            def score(self, block):
+                return None
+
+        block = _make_block(1, 100, 200)
+        with_scorer = RelevanceScorer(config, jlens_scorer=NoSignal())
+        without = RelevanceScorer(config)
+        pos = dict(current_pos=5000, context_length=5000)
+        assert with_scorer.score(block, **pos) == without.score(block, **pos)
+
+    def test_jlens_and_attention_combine(self):
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            w_recency=0.0,
+            w_coherence=0.0,
+            w_attention=0.5,
+            w_jlens=0.5,
+            conversation_score_floor=0.0,
+        )
+
+        class Fixed:
+            def __init__(self, v):
+                self._v = v
+
+            def score(self, block):
+                return self._v
+
+        block = _make_block(1, 100, 200)
+        scorer = RelevanceScorer(
+            config, attention_scorer=Fixed(1.0), jlens_scorer=Fixed(0.0)
+        )
+        s = scorer.score(block, current_pos=5000, context_length=5000)
+        assert abs(s - 0.5) < 1e-9

@@ -17,13 +17,17 @@ class EvokeManager:
         config: EvokeConfig | None = None,
         *,
         attention_scorer=None,
+        jlens_scorer=None,
         retrieval_embedder=None,
     ):
         self._engine = engine
         self._config = config or EvokeConfig()
         self._attention_scorer = attention_scorer
+        self._jlens_scorer = jlens_scorer
         self._retrieval_embedder = retrieval_embedder
-        self._scorer = RelevanceScorer(self._config, attention_scorer=attention_scorer)
+        self._scorer = RelevanceScorer(
+            self._config, attention_scorer=attention_scorer, jlens_scorer=jlens_scorer
+        )
         self._recovery = make_recovery_backend(
             self._config.recovery_mode,
             engine,
@@ -47,10 +51,13 @@ class EvokeManager:
     def _absorb_attention(self) -> None:
         # Hook called after every engine decode (process_tokens or
         # generate_next) to pull the last-decode attention weights into the
-        # AttentionScorer's per-block sliding window. No-op when attention
-        # scorer is unconfigured.
+        # AttentionScorer's per-block sliding window, and the last-decode
+        # residual capture into the JLensScorer's per-block workspace
+        # scores. No-op for whichever scorer is unconfigured.
         if self._attention_scorer is not None:
             self._attention_scorer.absorb_last_decode(self._positions.active_blocks)
+        if self._jlens_scorer is not None:
+            self._jlens_scorer.absorb_last_decode(self._positions.active_blocks)
 
     def _new_block_id(self) -> int:
         bid = self._next_block_id
@@ -166,9 +173,7 @@ class EvokeManager:
         stop = stop_token_ids or set()
 
         if think_close is not None:
-            return self._generate_thinking(
-                think_close, thinking_budget, answer_budget, stop, eos
-            )
+            return self._generate_thinking(think_close, thinking_budget, answer_budget, stop, eos)
 
         gen_start = self._engine.next_write_pos
         n_ctx = self._engine.n_ctx
@@ -297,9 +302,7 @@ class EvokeManager:
         # uses the question-window scores; for other score modes it is a
         # no-op.
         self._absorb_attention()
-        if self._attention_scorer is not None and hasattr(
-            self._attention_scorer, "snapshot"
-        ):
+        if self._attention_scorer is not None and hasattr(self._attention_scorer, "snapshot"):
             self._attention_scorer.snapshot()
         self._enforce_budget()
 
@@ -411,9 +414,7 @@ class EvokeManager:
         )
         self._positions.append_block(block, new_p0)
         self._total_recoveries += 1
-        self._events.append(
-            EvokeEvent(step=self._step, event_type="recovery", block_ids=[bid])
-        )
+        self._events.append(EvokeEvent(step=self._step, event_type="recovery", block_ids=[bid]))
         if not defer_budget:
             self._enforce_budget()
         return True
@@ -501,15 +502,9 @@ class EvokeManager:
             # Protect the contiguous decode head so max_cached stays
             # next_write_pos-1; internal holes below it decode fine. Compact mode
             # recompacts positions, so it does not need this.
-            if (
-                self._config.position_mode == "sparse"
-                and block.logical_end >= current_pos
-            ):
+            if self._config.position_mode == "sparse" and block.logical_end >= current_pos:
                 continue
-            if (
-                recent_protect_n > 0
-                and block.logical_end >= current_pos - recent_protect_n
-            ):
+            if recent_protect_n > 0 and block.logical_end >= current_pos - recent_protect_n:
                 continue
             # pin_generated protects the model's just-decoded output (an
             # ASSISTANT block) from being immediately evicted by the same
@@ -549,6 +544,9 @@ class EvokeManager:
         if self._attention_scorer is not None:
             for bid in block_ids:
                 self._attention_scorer.forget(bid)
+        if self._jlens_scorer is not None:
+            for bid in block_ids:
+                self._jlens_scorer.forget(bid)
 
         self._total_evictions += len(blocks)
         self._events.append(
@@ -570,9 +568,7 @@ class EvokeManager:
             key=f"user#{bid}",
         )
         self._positions.append_block(block, start_pos)
-        block.representative_embedding = self._last_token_embedding(
-            start_pos, len(tokens)
-        )
+        block.representative_embedding = self._last_token_embedding(start_pos, len(tokens))
         # Conversation blocks must use the same embedding space as document
         # blocks; otherwise smart-recovery's cosine cross-dimensional explodes
         # (LM hidden state is e.g. 3584-dim, bge-small is 384-dim) when

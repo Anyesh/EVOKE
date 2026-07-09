@@ -25,6 +25,7 @@ import numpy as np
 
 from evoke.attention_scorer import AttentionScorer
 from evoke.config import EvokeConfig
+from evoke.jlens_scorer import JLensScorer
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
 from evoke.templates import parse_qwen_response
@@ -64,9 +65,7 @@ class SessionPool:
         self._config = config
         self._max_sessions = max_sessions
         self._sessions: dict[str, Session] = {}
-        self._snapshots: dict[
-            str, tuple[bytes, int, int, dict[int, np.ndarray]] | None
-        ] = {}
+        self._snapshots: dict[str, tuple[bytes, int, int, dict[int, np.ndarray]] | None] = {}
         self._lru: list[str] = []  # most-recent-last
         self._active: str | None = None
         self._evicted_count = 0
@@ -214,8 +213,12 @@ class Session:
         self._engine = engine
         self._config = config or self._default_config(engine.n_ctx)
         self._attention_scorer = self._maybe_build_attention_scorer()
+        self._jlens_scorer = self._maybe_build_jlens_scorer()
         self._manager = EvokeManager(
-            engine, self._config, attention_scorer=self._attention_scorer
+            engine,
+            self._config,
+            attention_scorer=self._attention_scorer,
+            jlens_scorer=self._jlens_scorer,
         )
         self._cached_tokens: list[int] = []
         self._turn_id = 0
@@ -252,6 +255,30 @@ class Session:
             # If the binding fails (stale fork, ctypes mismatch, buffer
             # alloc error), fall back. The session can still serve with
             # recency+coherence scoring.
+            return None
+
+    def _maybe_build_jlens_scorer(self) -> JLensScorer | None:
+        # Same gating pattern as the attention scorer: the config must ask
+        # for the signal (w_jlens > 0, probe path set) and the engine must
+        # expose the fork's capture primitives; otherwise scoring falls back
+        # to the remaining signals.
+        if self._config.w_jlens <= 0 or not self._config.jlens_probe_path:
+            return None
+        if not getattr(self._engine, "supports_kv_block", False):
+            return None
+        try:
+            return JLensScorer(
+                self._engine,
+                probe_path=self._config.jlens_probe_path,
+                layers=list(self._config.jlens_layers)
+                if self._config.jlens_layers is not None
+                else None,
+                stat=self._config.jlens_stat,
+                block_agg=self._config.jlens_block_agg,
+            )
+        except (OSError, RuntimeError, ValueError, KeyError):
+            # Missing or malformed probe artifact, or a stale fork without
+            # the capture symbols. The session still serves without jlens.
             return None
 
     @staticmethod
@@ -296,7 +323,17 @@ class Session:
 
     def reset(self) -> None:
         self._engine.reset()
-        self._manager = EvokeManager(self._engine, self._config)
+        # Rebuild the model-signal scorers: block ids restart at 0 after a
+        # reset, so stale score maps keyed by old ids would mislabel the new
+        # session's blocks.
+        self._attention_scorer = self._maybe_build_attention_scorer()
+        self._jlens_scorer = self._maybe_build_jlens_scorer()
+        self._manager = EvokeManager(
+            self._engine,
+            self._config,
+            attention_scorer=self._attention_scorer,
+            jlens_scorer=self._jlens_scorer,
+        )
         self._cached_tokens.clear()
         self._turn_id = 0
         self._total_prompt_tokens = 0
@@ -477,13 +514,8 @@ class Session:
         # carries the common-mode noise (cosine floor ~0.85 against any
         # paragraph in the corpus) that prevented smart-recovery from
         # distinguishing needle blocks from haystack noise on NIAH.
-        if (
-            self._manager._retrieval_embedder is not None
-            and self._manager._last_user_text
-        ):
-            return self._manager._retrieval_embedder.embed(
-                self._manager._last_user_text
-            )
+        if self._manager._retrieval_embedder is not None and self._manager._last_user_text:
+            return self._manager._retrieval_embedder.embed(self._manager._last_user_text)
         pos = self._engine.next_write_pos
         if pos == 0:
             return None
@@ -501,9 +533,7 @@ class Session:
             return None
         return avg / norm
 
-    def _identity_gap_fill(
-        self, prompt_tokens: list[int], cursor: int
-    ) -> tuple[int, int]:
+    def _identity_gap_fill(self, prompt_tokens: list[int], cursor: int) -> tuple[int, int]:
         # Identity-keyed in-place recovery. Sparse eviction leaves a hole at a
         # block's original position and the kv_restore backend holds its K/V keyed
         # by content. When the client re-sends that exact content at that exact
@@ -517,9 +547,7 @@ class Session:
         peek = getattr(backend, "peek", None)
         if peek is None:
             return cursor, 0
-        resident_by_start = {
-            b.logical_start: b for b in self._manager._positions.active_blocks
-        }
+        resident_by_start = {b.logical_start: b for b in self._manager._positions.active_blocks}
         saved_by_start: dict[int, tuple[str, list[int]]] = {}
         for crumb in self._manager.get_breadcrumbs():
             sb = peek(crumb.key)
@@ -577,9 +605,7 @@ class Session:
                 if tok_match:
                     ok = self._manager.recover(key, defer_budget=True)
                     if _debug:
-                        sys.stderr.write(
-                            f"[identity_gap_fill] recover({key}) -> {ok}\n"
-                        )
+                        sys.stderr.write(f"[identity_gap_fill] recover({key}) -> {ok}\n")
                         sys.stderr.flush()
                     if ok:
                         recovered += 1
@@ -642,14 +668,11 @@ class Session:
         # divergence so the logic below operates on what genuinely remains new.
         # Requires sparse mode; otherwise it falls through to the similarity path.
         identity_match = (
-            self._config.recovery_match == "identity"
-            and self._config.position_mode == "sparse"
+            self._config.recovery_match == "identity" and self._config.position_mode == "sparse"
         )
         recovered = 0
         if identity_match and divergence < len(prompt_tokens):
-            gapfill_cursor, recovered = self._identity_gap_fill(
-                prompt_tokens, divergence
-            )
+            gapfill_cursor, recovered = self._identity_gap_fill(prompt_tokens, divergence)
             if recovered:
                 # Gap-fill rebuilt the prefix in place without enforcing the
                 # budget, so [0, gapfill_cursor) is contiguous in the cache and
@@ -688,9 +711,7 @@ class Session:
                 # cursor past the removed range and the decode at stale
                 # positions crashed llama_decode with -1 live); its shift
                 # pass is a no-op because no survivors sit past the range.
-                if self._resident_tiling_contiguous(
-                    divergence
-                ) and self._engine.evict_ranges(
+                if self._resident_tiling_contiguous(divergence) and self._engine.evict_ranges(
                     [(divergence, self._engine.next_write_pos)]
                 ):
                     self._manager.trim_blocks_at(divergence)
@@ -746,11 +767,7 @@ class Session:
             tail_text = self._engine.detokenize(tail)
             if tail_text:
                 self._manager._last_user_text = tail_text
-            if (
-                tail_text
-                and self._config.smart_recover_before_decode
-                and not identity_match
-            ):
+            if tail_text and self._config.smart_recover_before_decode and not identity_match:
                 recovered = self._smart_recover(k=self._recovery_k)
             self._manager.add_context_tokens(
                 tail,
@@ -760,11 +777,7 @@ class Session:
             )
             self._turn_id += 1
             self._cached_tokens.extend(tail)
-            if (
-                tail_text
-                and not self._config.smart_recover_before_decode
-                and not identity_match
-            ):
+            if tail_text and not self._config.smart_recover_before_decode and not identity_match:
                 recovered = self._smart_recover(k=self._recovery_k)
 
         self._total_prompt_tokens += len(prompt_tokens)
@@ -810,9 +823,7 @@ class Session:
                 # cached_tokens intact so they stay aligned with the engine.
                 # The next request's prefix-match will diverge against the
                 # post-stripped assistant message and reset cleanly.
-                if self._engine.evict_ranges(
-                    [(gen_start, gen_start + len(output_tokens))]
-                ):
+                if self._engine.evict_ranges([(gen_start, gen_start + len(output_tokens))]):
                     self._cached_tokens = self._cached_tokens[:gen_start]
                     return []
                 return output_tokens
@@ -822,9 +833,7 @@ class Session:
         think_end_abs = gen_start + close_idx + 1
         if think_end_abs > gen_start:
             if self._engine.evict_ranges([(gen_start, think_end_abs)]):
-                self._cached_tokens = self._cached_tokens[:gen_start] + list(
-                    answer_tokens
-                )
+                self._cached_tokens = self._cached_tokens[:gen_start] + list(answer_tokens)
             else:
                 return output_tokens
         return answer_tokens
@@ -840,9 +849,7 @@ class Session:
                 self._manager._track_generated_block(kept, answer_start)
         self._manager._enforce_budget()
 
-    def _canonicalize_assistant(
-        self, answer_tokens: list[int], answer_start: int
-    ) -> list[int]:
+    def _canonicalize_assistant(self, answer_tokens: list[int], answer_start: int) -> list[int]:
         # Make the cached assistant emit match what the next request's
         # Jinja-then-tokenize will produce. The model can emit non-canonical
         # BPE (e.g. token('**') + token(':\n') for text the canonical tokenizer
@@ -932,9 +939,7 @@ class Session:
 
         self._cached_tokens.extend(output_tokens)
         self._track_and_enforce(output_tokens, gen_start)
-        return GenerationResult(
-            text=text, output_tokens=output_tokens, finish_reason=finish
-        )
+        return GenerationResult(text=text, output_tokens=output_tokens, finish_reason=finish)
 
     def stream_generate(
         self,
