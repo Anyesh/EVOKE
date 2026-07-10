@@ -19,9 +19,13 @@ from evoke.server import _stream_completion
 from evoke.session import SessionPool
 
 
-def _stream_content(
-    gen_text: str, *, starts_in_think: bool, suppress: bool = False
-) -> str:
+def _stream_raw(
+    gen_text: str,
+    *,
+    starts_in_think: bool,
+    suppress: bool = False,
+    keepalive_interval: float | None = None,
+) -> list[str]:
     engine = MockEngine(n_ctx=4096)
     cfg = EvokeConfig(
         max_active_tokens=1_000_000,
@@ -34,8 +38,11 @@ def _stream_content(
     prompt_tokens = engine.tokenize("prompt")
     engine.queue_tokens([ord(c) for c in gen_text] + [engine.eos_token])
 
-    async def run() -> str:
+    async def run() -> list[str]:
         lock = asyncio.Lock()
+        kwargs = {}
+        if keepalive_interval is not None:
+            kwargs["keepalive_interval"] = keepalive_interval
         gen = _stream_completion(
             pool,
             "s1",
@@ -48,20 +55,33 @@ def _stream_content(
             0,
             "model",
             starts_in_think=starts_in_think,
+            **kwargs,
         )
-        parts: list[str] = []
-        async for raw in gen:
-            if not raw.startswith("data: "):
-                continue
-            body = raw[len("data: ") :].strip()
-            if body == "[DONE]":
-                continue
-            delta = json.loads(body)["choices"][0]["delta"]
-            if delta.get("content"):
-                parts.append(delta["content"])
-        return "".join(parts)
+        return [raw async for raw in gen]
 
     return asyncio.run(run())
+
+
+def _content(raw_lines: list[str]) -> str:
+    parts: list[str] = []
+    for raw in raw_lines:
+        if not raw.startswith("data: "):
+            continue
+        body = raw[len("data: ") :].strip()
+        if body == "[DONE]":
+            continue
+        delta = json.loads(body)["choices"][0]["delta"]
+        if delta.get("content"):
+            parts.append(delta["content"])
+    return "".join(parts)
+
+
+def _stream_content(
+    gen_text: str, *, starts_in_think: bool, suppress: bool = False
+) -> str:
+    return _content(
+        _stream_raw(gen_text, starts_in_think=starts_in_think, suppress=suppress)
+    )
 
 
 REASONING = "The user asks my name. I should answer plainly."
@@ -100,3 +120,18 @@ class TestStreamThinkSuppression:
         assert REASONING in content
         assert "</think>" in content
         assert ANSWER in content
+
+
+class TestStreamThinkKeepalive:
+    def test_keepalive_flows_while_think_is_suppressed(self):
+        # A slow decode inside <think> emits no content deltas, and the
+        # queue-quiet keepalive never fires because chunks keep arriving.
+        # The gate must emit its own keepalives so clients on a read
+        # timeout (the HF demo app among them) do not abort the stream.
+        raw = _stream_raw(
+            f"{REASONING}\n</think>\n\n{ANSWER}",
+            starts_in_think=True,
+            keepalive_interval=0.0,
+        )
+        assert any(line.startswith(": keepalive") for line in raw)
+        assert _content(raw) == ANSWER

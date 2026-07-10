@@ -545,11 +545,13 @@ def create_app(
             # us mid-request. The lock is held for the full prompt-tokenize +
             # decode + generate cycle.
             msgs = [m.model_dump(exclude_none=True) for m in req.messages]
-            if req.tools:
+            if req.tools or enable_thinking is not None:
                 # Render via Python jinja2 against the GGUF's own chat
-                # template, which understands tools. Falls back to our
-                # handwritten format_qwen_chat only if the model has no
-                # embedded template or the render fails outright.
+                # template, which understands tools and enable_thinking
+                # (the C path cannot carry either, so an explicit thinking
+                # flag must route here or it is silently dropped). Falls
+                # back to our handwritten format_qwen_chat only if the
+                # model has no embedded template or the render fails.
                 try:
                     prompt = engine.apply_chat_template_with_tools(
                         msgs,
@@ -736,10 +738,12 @@ async def _stream_completion(
     tools: list[dict[str, Any]] | None = None,
     engine_lock: threading.Lock | None = None,
     starts_in_think: bool = False,
+    keepalive_interval: float = 5.0,
 ):
     yield _sse(
         _chunk_payload(completion_id, created, model_name, {"role": "assistant"})
     )
+    last_emit = time.monotonic()
 
     in_think = starts_in_think
     tool_locked = False
@@ -805,6 +809,7 @@ async def _stream_completion(
                     item = await asyncio.wait_for(chunk_q.get(), timeout=10.0)
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
+                    last_emit = time.monotonic()
                     continue
                 if item is _DONE:
                     break
@@ -814,6 +819,15 @@ async def _stream_completion(
                 full_text = chunk.full_text
                 if chunk.finish_reason is not None:
                     finish_reason = chunk.finish_reason
+
+                # A suppressed think block consumes chunks without emitting
+                # anything, and the queue-quiet keepalive above never fires
+                # because the engine keeps producing. Clients enforcing a
+                # read timeout (the HF demo app) would abort the stream, so
+                # starved iterations must emit their own keepalive.
+                if time.monotonic() - last_emit >= keepalive_interval:
+                    yield ": keepalive\n\n"
+                    last_emit = time.monotonic()
 
                 if tool_locked:
                     continue
@@ -846,6 +860,7 @@ async def _stream_completion(
                                 completion_id, created, model_name, {"content": pre}
                             )
                         )
+                        last_emit = time.monotonic()
                     tool_locked = True
                     emit_end = tc_idx
                     continue
@@ -858,6 +873,7 @@ async def _stream_completion(
                                 completion_id, created, model_name, {"content": pre}
                             )
                         )
+                        last_emit = time.monotonic()
                     in_think = True
                     emit_end = think_idx
                     continue
@@ -876,6 +892,7 @@ async def _stream_completion(
                             completion_id, created, model_name, {"content": delta}
                         )
                     )
+                    last_emit = time.monotonic()
     finally:
         abort.set()
 

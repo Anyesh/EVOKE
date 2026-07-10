@@ -1,5 +1,6 @@
 import os
 
+from evoke.llama_engine import LlamaCppEngine
 from evoke.templates import render_gguf_chat_template
 
 FIXTURE = os.path.join(
@@ -221,3 +222,43 @@ class TestRenderGgufChatTemplate:
         except RuntimeError:
             return
         raise AssertionError("expected RuntimeError")
+
+
+class _StubEngine:
+    bos_token = -1
+    eos_token = -1
+
+    def __init__(self, template: str):
+        self._template = template
+        self.c_path_calls = 0
+
+    def get_chat_template_string(self) -> str:
+        return self._template
+
+    def detokenize(self, tokens: list[int]) -> str:
+        return ""
+
+    def apply_chat_template(
+        self, messages: list[dict], add_generation_prompt: bool = True
+    ) -> str:
+        self.c_path_calls += 1
+        return "C-PATH"
+
+
+class TestEngineTemplateRouting:
+    def test_enable_thinking_routes_jinja_even_without_tools(self):
+        # The C llama_chat_apply_template API cannot carry enable_thinking,
+        # so an explicit flag must route through the jinja renderer or the
+        # EVOKE_ENABLE_THINKING env is silently a no-op for tool-less clients.
+        stub = _StubEngine(_qwen3_template())
+        out = LlamaCppEngine.apply_chat_template_with_tools(
+            stub, MESSAGES, None, enable_thinking=False
+        )
+        assert stub.c_path_calls == 0
+        assert out.endswith("<think>\n\n</think>\n\n")
+
+    def test_no_tools_no_flag_keeps_c_path(self):
+        stub = _StubEngine(_qwen3_template())
+        out = LlamaCppEngine.apply_chat_template_with_tools(stub, MESSAGES, None)
+        assert out == "C-PATH"
+        assert stub.c_path_calls == 1

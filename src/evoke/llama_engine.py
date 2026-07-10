@@ -122,7 +122,9 @@ def _bind_kv_block_primitives() -> ctypes.CDLL | None:
                 ctypes.POINTER(ctypes.c_int32),
             ]
             getattr(lib, f"llama_{_stem}_capture_get_written").restype = ctypes.c_size_t
-            getattr(lib, f"llama_{_stem}_capture_get_written").argtypes = [ctypes.c_void_p]
+            getattr(lib, f"llama_{_stem}_capture_get_written").argtypes = [
+                ctypes.c_void_p
+            ]
         # EVOKE per-layer residual capture (J-lens workspace scoring). Guarded
         # separately so fork builds that predate the C-linkage export keep
         # every other primitive working.
@@ -250,7 +252,9 @@ class LlamaCppEngine:
         self._attn_capture_buf: np.ndarray | None = None
         chain_params = llama_cpp.llama_sampler_chain_default_params()
         self._sampler = llama_cpp.llama_sampler_chain_init(chain_params)
-        llama_cpp.llama_sampler_chain_add(self._sampler, llama_cpp.llama_sampler_init_greedy())
+        llama_cpp.llama_sampler_chain_add(
+            self._sampler, llama_cpp.llama_sampler_init_greedy()
+        )
 
     def get_chat_template_string(self) -> str | None:
         # Return the raw Jinja chat template string embedded in the GGUF, or
@@ -273,12 +277,13 @@ class LlamaCppEngine:
         enable_thinking: bool | None = None,
     ) -> str:
         # Render the GGUF chat template via Python jinja2 so we can pass
-        # the tools array (which the C API can't). Falls back to the
-        # tools-less C path when tools is None/empty so we keep the
-        # byte-identical path that's already verified against opencode's
-        # templating. Raises RuntimeError on render failure; the caller
-        # should fall back to format_qwen_chat in that case.
-        if not tools:
+        # the tools array and enable_thinking (which the C API can't; an
+        # explicit thinking flag must take this path or it is silently
+        # dropped). Falls back to the tools-less C path when neither is
+        # set so we keep the byte-identical path that's already verified
+        # against opencode's templating. Raises RuntimeError on render
+        # failure; the caller should fall back to format_qwen_chat.
+        if not tools and enable_thinking is None:
             return self.apply_chat_template(messages, add_generation_prompt)
         template_str = self.get_chat_template_string()
         if template_str is None:
@@ -443,7 +448,9 @@ class LlamaCppEngine:
             if not ok:
                 if _kv_block_lib is None:
                     return False
-                if not _kv_block_lib.llama_kv_block_seq_rm(self._ctx, 0, pos_start, pos_end):
+                if not _kv_block_lib.llama_kv_block_seq_rm(
+                    self._ctx, 0, pos_start, pos_end
+                ):
                     return False
                 attn_only = True
             removed += pos_end - pos_start
@@ -502,7 +509,9 @@ class LlamaCppEngine:
         if needed == 0:
             return b""
         buf = ctypes.create_string_buffer(needed)
-        written = _kv_block_lib.llama_kv_block_save(self._ctx, seq_id, p0, p1, buf, needed)
+        written = _kv_block_lib.llama_kv_block_save(
+            self._ctx, seq_id, p0, p1, buf, needed
+        )
         return buf.raw[:written]
 
     def kv_block_load(self, data: bytes, new_p0: int, seq_id: int = 0) -> bool:
@@ -510,7 +519,11 @@ class LlamaCppEngine:
             raise RuntimeError(
                 "KV block primitives unavailable; set LLAMA_CPP_LIB to the EVOKE llama.cpp build"
             )
-        ok = bool(_kv_block_lib.llama_kv_block_load(self._ctx, seq_id, data, len(data), new_p0))
+        ok = bool(
+            _kv_block_lib.llama_kv_block_load(
+                self._ctx, seq_id, data, len(data), new_p0
+            )
+        )
         if ok and len(data) >= 4:
             # the first 4 bytes of the buffer are the cell count (uint32) written
             # by block_write; advance our position tracking past the spliced span
@@ -536,7 +549,9 @@ class LlamaCppEngine:
             self._token_count -= p1 - p0
         return ok
 
-    def seq_add_attention_only(self, p0: int, p1: int, delta: int, seq_id: int = 0) -> None:
+    def seq_add_attention_only(
+        self, p0: int, p1: int, delta: int, seq_id: int = 0
+    ) -> None:
         # Shift only the attention-layer cell positions in [p0, p1) by delta,
         # leaving the recurrent state untouched. Pairs with seq_rm_attention_only
         # to recompact attention KV on hybrid models.
@@ -582,7 +597,9 @@ class LlamaCppEngine:
             self._attn_capture_buf = None
             return
         if buf.dtype != np.float32 or not buf.flags["C_CONTIGUOUS"]:
-            raise ValueError("attn_capture_set_buffer expects a contiguous float32 numpy array")
+            raise ValueError(
+                "attn_capture_set_buffer expects a contiguous float32 numpy array"
+            )
         self._attn_capture_buf = buf  # keep alive for the C side
         _kv_block_lib.llama_attn_capture_set_buffer(
             self._ctx, buf.ctypes.data_as(ctypes.c_void_p), buf.size
@@ -620,7 +637,9 @@ class LlamaCppEngine:
 
     def _capture_set_buffer(self, stem: str, buf: np.ndarray | None) -> None:
         if _kv_block_lib is None:
-            raise RuntimeError("q/k capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB")
+            raise RuntimeError(
+                "q/k capture requires the EVOKE llama.cpp build; set LLAMA_CPP_LIB"
+            )
         fn = getattr(_kv_block_lib, f"llama_{stem}_capture_set_buffer")
         if buf is None:
             fn(self._ctx, None, 0)
@@ -638,7 +657,9 @@ class LlamaCppEngine:
         return self._read_capture("key")
 
     def layer_inp_capture_enable(self, layers: list[int]) -> None:
-        if _kv_block_lib is None or not hasattr(_kv_block_lib, "llama_set_embeddings_layer_inp"):
+        if _kv_block_lib is None or not hasattr(
+            _kv_block_lib, "llama_set_embeddings_layer_inp"
+        ):
             raise RuntimeError(
                 "layer-input capture requires the EVOKE llama.cpp build with "
                 "C-linkage residual export; set LLAMA_CPP_LIB to a current fork build"
@@ -686,7 +707,9 @@ class LlamaCppEngine:
             layers &= set(rows)
         if not layers:
             return None
-        merged = {lid: np.concatenate([rows[lid] for _, rows in segments]) for lid in layers}
+        merged = {
+            lid: np.concatenate([rows[lid] for _, rows in segments]) for lid in layers
+        }
         return (start, merged)
 
     def _read_capture(self, stem: str) -> np.ndarray | None:
@@ -700,7 +723,9 @@ class LlamaCppEngine:
         buf = getattr(self, f"_{stem}_capture_buf", None)
         if buf is None:
             return None
-        written = int(getattr(_kv_block_lib, f"llama_{stem}_capture_get_written")(self._ctx))
+        written = int(
+            getattr(_kv_block_lib, f"llama_{stem}_capture_get_written")(self._ctx)
+        )
         if written == 0:
             return None
         d0, d1, d2 = ctypes.c_int32(0), ctypes.c_int32(0), ctypes.c_int32(0)
