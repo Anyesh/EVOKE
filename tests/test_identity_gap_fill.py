@@ -170,3 +170,32 @@ def test_similarity_flag_redecodes_tail():
     s2 = session.sync_prefix(prompt)
     # The similarity path does not identity-splice; the diverged tail is decoded.
     assert s2.new_tokens_decoded > 0
+
+
+def test_divergence_overshoot_into_glue_still_recovers():
+    # The compact token view splices the post-hole resident directly after
+    # the matching prefix, and distinct conversation turns open with the
+    # same template glue tokens, so the raw common-prefix scan can run a
+    # few tokens PAST the hole boundary into look-alike content. The walk
+    # must snap back to the block boundary and verify from there; the old
+    # behavior found no candidate at the overshot cursor, recovered
+    # nothing, and reset the session (live failure: workspace demo arm
+    # lost the planted fact at step 5).
+    engine = RecordingEngine()
+    session = Session(engine, config=_identity_config())
+    glue = 99
+    prompt = [0, 1, 2, 3, 4, 5, 6, 7]
+    prompt += [glue, 30, 31, 32]  # block at 8: evicted turn
+    prompt += [glue, 40, 41, 42]  # block at 12: shares the glue opener
+    prompt += [16, 17, 18, 19]
+    session.sync_prefix(prompt)
+    mid = next(
+        b for b in session._manager._positions.active_blocks if b.logical_start == 8
+    )
+    session._manager.force_evict([mid.block_id])
+
+    s2 = session.sync_prefix(prompt)
+
+    assert s2.blocks_recovered == 1
+    assert s2.new_tokens_decoded == 0
+    assert session._cached_tokens == prompt

@@ -65,7 +65,9 @@ class SessionPool:
         self._config = config
         self._max_sessions = max_sessions
         self._sessions: dict[str, Session] = {}
-        self._snapshots: dict[str, tuple[bytes, int, int, dict[int, np.ndarray]] | None] = {}
+        self._snapshots: dict[
+            str, tuple[bytes, int, int, dict[int, np.ndarray]] | None
+        ] = {}
         self._lru: list[str] = []  # most-recent-last
         self._active: str | None = None
         self._evicted_count = 0
@@ -224,6 +226,11 @@ class Session:
         self._turn_id = 0
         self._detok_every = detokenize_every
         self._recovery_k = recovery_k
+        self._think_prefill_tokens: list[int] | None = None
+        # (engine_start, view_start, n) of a template-injected empty think
+        # pair decoded this turn; engine and view coordinates are recorded
+        # separately because sparse holes below make them diverge.
+        self._prompt_think_prefill: tuple[int, int, int] | None = None
         # Cumulative instrumentation surfaced via /health: decode savings
         # (prompt tokens seen vs tokens actually decoded) and identity gap-fill
         # outcomes (recovered vs mismatched-at-position).
@@ -336,6 +343,7 @@ class Session:
         )
         self._cached_tokens.clear()
         self._turn_id = 0
+        self._prompt_think_prefill = None
         self._total_prompt_tokens = 0
         self._total_new_decoded = 0
         self._gapfill_recovered = 0
@@ -514,8 +522,13 @@ class Session:
         # carries the common-mode noise (cosine floor ~0.85 against any
         # paragraph in the corpus) that prevented smart-recovery from
         # distinguishing needle blocks from haystack noise on NIAH.
-        if self._manager._retrieval_embedder is not None and self._manager._last_user_text:
-            return self._manager._retrieval_embedder.embed(self._manager._last_user_text)
+        if (
+            self._manager._retrieval_embedder is not None
+            and self._manager._last_user_text
+        ):
+            return self._manager._retrieval_embedder.embed(
+                self._manager._last_user_text
+            )
         pos = self._engine.next_write_pos
         if pos == 0:
             return None
@@ -533,7 +546,9 @@ class Session:
             return None
         return avg / norm
 
-    def _identity_gap_fill(self, prompt_tokens: list[int], cursor: int) -> tuple[int, int]:
+    def _identity_gap_fill(
+        self, prompt_tokens: list[int], cursor: int
+    ) -> tuple[int, int]:
         # Identity-keyed in-place recovery. Sparse eviction leaves a hole at a
         # block's original position and the kv_restore backend holds its K/V keyed
         # by content. When the client re-sends that exact content at that exact
@@ -547,7 +562,9 @@ class Session:
         peek = getattr(backend, "peek", None)
         if peek is None:
             return cursor, 0
-        resident_by_start = {b.logical_start: b for b in self._manager._positions.active_blocks}
+        resident_by_start = {
+            b.logical_start: b for b in self._manager._positions.active_blocks
+        }
         saved_by_start: dict[int, tuple[str, list[int]]] = {}
         for crumb in self._manager.get_breadcrumbs():
             sb = peek(crumb.key)
@@ -562,6 +579,19 @@ class Session:
                 f"prompt_len={len(prompt_tokens)}\n"
             )
             sys.stderr.flush()
+        # The compact view splices post-hole residents directly after the
+        # matching prefix, and distinct turns open with the same template
+        # glue tokens, so the common-prefix scan can overrun a hole boundary
+        # into look-alike content. The walk keys candidates by block start,
+        # so an overshot cursor finds nothing and recovery silently skips.
+        # Snap back to the nearest boundary; every block is re-verified by
+        # exact token match, so a too-early cursor only costs the re-check.
+        if cursor not in resident_by_start and cursor not in saved_by_start:
+            below = [
+                s for s in set(resident_by_start) | set(saved_by_start) if s < cursor
+            ]
+            if below:
+                cursor = max(below)
         recovered = 0
         mismatched = 0
         n = len(prompt_tokens)
@@ -605,7 +635,9 @@ class Session:
                 if tok_match:
                     ok = self._manager.recover(key, defer_budget=True)
                     if _debug:
-                        sys.stderr.write(f"[identity_gap_fill] recover({key}) -> {ok}\n")
+                        sys.stderr.write(
+                            f"[identity_gap_fill] recover({key}) -> {ok}\n"
+                        )
                         sys.stderr.flush()
                     if ok:
                         recovered += 1
@@ -655,6 +687,12 @@ class Session:
         self._manager.tick_turn()
         if task_boundary:
             self._manager.signal_task_boundary()
+        # A think prefill decoded last turn is normally evicted at end of
+        # turn; if generation never ran (client abort between sync and
+        # generate) it is still at the top of the cache, unowned by any
+        # block, and must go before the view rebuild or view indices drift
+        # from engine positions.
+        self._strip_prompt_think_prefill()
         # Rebuild from the manager so prior-turn evictions and recoveries are
         # reflected. _cached_tokens is extended during generate() and trimmed
         # by canonicalize, but engine-internal evictions fired by
@@ -668,17 +706,25 @@ class Session:
         # divergence so the logic below operates on what genuinely remains new.
         # Requires sparse mode; otherwise it falls through to the similarity path.
         identity_match = (
-            self._config.recovery_match == "identity" and self._config.position_mode == "sparse"
+            self._config.recovery_match == "identity"
+            and self._config.position_mode == "sparse"
         )
         recovered = 0
         if identity_match and divergence < len(prompt_tokens):
-            gapfill_cursor, recovered = self._identity_gap_fill(prompt_tokens, divergence)
+            gapfill_cursor, recovered = self._identity_gap_fill(
+                prompt_tokens, divergence
+            )
+            # The walk's cursor is the genuine new-content boundary even
+            # when nothing was recovered: it may have snapped divergence
+            # back from glue-overshoot to the block boundary, and only a
+            # boundary keeps the tiling check below meaningful (an
+            # overshot divergence fails it and needlessly resets).
+            divergence = gapfill_cursor
             if recovered:
                 # Gap-fill rebuilt the prefix in place without enforcing the
-                # budget, so [0, gapfill_cursor) is contiguous in the cache and
-                # gapfill_cursor is the genuine new-content boundary. Decode the
-                # tail from there; end-of-turn enforcement trims afterward.
-                divergence = gapfill_cursor
+                # budget, so [0, gapfill_cursor) is contiguous in the cache.
+                # Decode the tail from there; end-of-turn enforcement trims
+                # afterward.
                 self._cached_tokens = self._manager.get_token_view()
                 if bool(os.environ.get("EVOKE_DEBUG_IDENTITY")):
                     resident_starts = sorted(
@@ -711,7 +757,9 @@ class Session:
                 # cursor past the removed range and the decode at stale
                 # positions crashed llama_decode with -1 live); its shift
                 # pass is a no-op because no survivors sit past the range.
-                if self._resident_tiling_contiguous(divergence) and self._engine.evict_ranges(
+                if self._resident_tiling_contiguous(
+                    divergence
+                ) and self._engine.evict_ranges(
                     [(divergence, self._engine.next_write_pos)]
                 ):
                     self._manager.trim_blocks_at(divergence)
@@ -752,6 +800,15 @@ class Session:
                     divergence = 0
 
         tail = prompt_tokens[divergence:]
+        # A trailing template-injected empty think pair (Qwen3 with
+        # enable_thinking=false) must not be absorbed into document blocks:
+        # the next request re-renders this assistant turn without it, so it
+        # is decoded raw here and evicted at end of turn like a generated
+        # thinking trace. Absorbing it would leave stale tokens in the last
+        # block's identity key after the eviction.
+        prefill = self._split_think_prefill(tail)
+        if prefill:
+            tail = tail[: -len(prefill)]
         # Smart recovery runs BEFORE decoding the new tail so recovered blocks
         # land EARLIER in cache position than the new tail. With the old order
         # (recover-after-decode), recovered blocks ended up positionally after
@@ -767,7 +824,11 @@ class Session:
             tail_text = self._engine.detokenize(tail)
             if tail_text:
                 self._manager._last_user_text = tail_text
-            if tail_text and self._config.smart_recover_before_decode and not identity_match:
+            if (
+                tail_text
+                and self._config.smart_recover_before_decode
+                and not identity_match
+            ):
                 recovered = self._smart_recover(k=self._recovery_k)
             self._manager.add_context_tokens(
                 tail,
@@ -777,18 +838,62 @@ class Session:
             )
             self._turn_id += 1
             self._cached_tokens.extend(tail)
-            if tail_text and not self._config.smart_recover_before_decode and not identity_match:
+            if (
+                tail_text
+                and not self._config.smart_recover_before_decode
+                and not identity_match
+            ):
                 recovered = self._smart_recover(k=self._recovery_k)
 
+        if prefill:
+            self._prompt_think_prefill = (
+                self._engine.next_write_pos,
+                len(self._cached_tokens),
+                len(prefill),
+            )
+            self._engine.process_tokens(prefill)
+            self._cached_tokens.extend(prefill)
+
         self._total_prompt_tokens += len(prompt_tokens)
-        self._total_new_decoded += len(tail)
+        self._total_new_decoded += len(tail) + len(prefill)
         stats = self._manager.get_stats()
         return SyncStats(
-            new_tokens_decoded=len(tail),
+            new_tokens_decoded=len(tail) + len(prefill),
             blocks_recovered=recovered,
             active_tokens_after=stats.active_tokens,
             active_blocks_after=stats.active_blocks,
         )
+
+    def _think_prefill(self) -> list[int]:
+        if self._think_prefill_tokens is None:
+            self._think_prefill_tokens = self._engine.tokenize(
+                "<think>\n\n</think>\n\n"
+            )
+        return self._think_prefill_tokens
+
+    def _split_think_prefill(self, tail: list[int]) -> list[int]:
+        if self._config.suppress_thinking_strip or not tail:
+            return []
+        pair = self._think_prefill()
+        if pair and len(tail) >= len(pair) and tail[-len(pair) :] == pair:
+            return pair
+        return []
+
+    def _strip_prompt_think_prefill(self) -> None:
+        # The template-injected empty think pair exists only at the
+        # generation position of the rendered prompt; the next request
+        # re-renders the same assistant turn without it, so the pair must
+        # leave the cache with the generated trace or the prefix diverges
+        # at the newest assistant message on every turn.
+        rec = self._prompt_think_prefill
+        if rec is None:
+            return
+        self._prompt_think_prefill = None
+        engine_start, view_start, n = rec
+        if self._cached_tokens[view_start : view_start + n] != self._think_prefill():
+            return
+        if self._engine.evict_ranges([(engine_start, engine_start + n)]):
+            del self._cached_tokens[view_start : view_start + n]
 
     def _strip_thinking(self, output_tokens: list[int], gen_start: int) -> list[int]:
         # If the model emitted <think>...</think>, the next chat request will
@@ -823,7 +928,9 @@ class Session:
                 # cached_tokens intact so they stay aligned with the engine.
                 # The next request's prefix-match will diverge against the
                 # post-stripped assistant message and reset cleanly.
-                if self._engine.evict_ranges([(gen_start, gen_start + len(output_tokens))]):
+                if self._engine.evict_ranges(
+                    [(gen_start, gen_start + len(output_tokens))]
+                ):
                     self._cached_tokens = self._cached_tokens[:gen_start]
                     return []
                 return output_tokens
@@ -833,13 +940,16 @@ class Session:
         think_end_abs = gen_start + close_idx + 1
         if think_end_abs > gen_start:
             if self._engine.evict_ranges([(gen_start, think_end_abs)]):
-                self._cached_tokens = self._cached_tokens[:gen_start] + list(answer_tokens)
+                self._cached_tokens = self._cached_tokens[:gen_start] + list(
+                    answer_tokens
+                )
             else:
                 return output_tokens
         return answer_tokens
 
     def _track_and_enforce(self, output_tokens: list[int], gen_start: int) -> None:
         kept = self._strip_thinking(output_tokens, gen_start)
+        self._strip_prompt_think_prefill()
         if kept:
             # gen_start may have shifted if thinking was evicted; recompute.
             answer_start = self._engine.next_write_pos - len(kept)
@@ -849,7 +959,9 @@ class Session:
                 self._manager._track_generated_block(kept, answer_start)
         self._manager._enforce_budget()
 
-    def _canonicalize_assistant(self, answer_tokens: list[int], answer_start: int) -> list[int]:
+    def _canonicalize_assistant(
+        self, answer_tokens: list[int], answer_start: int
+    ) -> list[int]:
         # Make the cached assistant emit match what the next request's
         # Jinja-then-tokenize will produce. The model can emit non-canonical
         # BPE (e.g. token('**') + token(':\n') for text the canonical tokenizer
@@ -939,7 +1051,9 @@ class Session:
 
         self._cached_tokens.extend(output_tokens)
         self._track_and_enforce(output_tokens, gen_start)
-        return GenerationResult(text=text, output_tokens=output_tokens, finish_reason=finish)
+        return GenerationResult(
+            text=text, output_tokens=output_tokens, finish_reason=finish
+        )
 
     def stream_generate(
         self,
