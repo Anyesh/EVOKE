@@ -40,6 +40,10 @@ RUN uv python install 3.12 && uv venv --python 3.12 && \
 # Qwen3-4B: dense attention with a released Jacobian lens, so the workspace
 # (jlens) arm can run its distilled probe; the server strips thinking traces.
 ENV EVOKE_MODEL_PATH=/models/Qwen3-4B-Q4_K_M.gguf
+# Thinking is disabled on cpu-basic: a think trace decodes at a few tokens
+# per second, so each turn spends minutes silent and the 512-token cap can
+# land mid-think, which returns an empty answer. GPU deployments keep it on.
+ENV EVOKE_ENABLE_THINKING=0
 ENV EVOKE_HOST=127.0.0.1
 ENV EVOKE_N_CTX=8192
 ENV EVOKE_BUDGET=384

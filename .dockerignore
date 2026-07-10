@@ -1,0 +1,10 @@
+.git
+archive
+assets
+docs
+examples
+models
+paper
+results
+tests
+*.log

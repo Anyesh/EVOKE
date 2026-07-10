@@ -101,7 +101,11 @@ async def respond(
     partial = ""
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        # Generous read timeout: on Space CPU hardware a turn can run for
+        # minutes, and the server spaces keepalives up to 10s apart during
+        # prefill, so a tight read window would abort healthy streams.
+        timeout = httpx.Timeout(30.0, read=300.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
                 f"{base}/v1/chat/completions",

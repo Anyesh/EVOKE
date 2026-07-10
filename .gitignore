@@ -59,3 +59,4 @@ paper/*.fdb_latexmk
 paper/*.md
 paper/neurips_*
 paper/*.tex
+.playwright-mcp/
