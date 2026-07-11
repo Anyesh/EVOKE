@@ -48,7 +48,9 @@ class RelevanceScorer:
         self._force_boundary = False
         # Kept for ABI compatibility with code that introspects scorer state
         # for debugging; not used in the score path anymore.
-        self._context_history: deque[np.ndarray] = deque(maxlen=config.context_history_size)
+        self._context_history: deque[np.ndarray] = deque(
+            maxlen=config.context_history_size
+        )
 
     def signal_task_boundary(self) -> None:
         # Harness-driven explicit reset. The next update_recent_context call
@@ -76,7 +78,9 @@ class RelevanceScorer:
         alpha = self._config.task_focus_ema_alpha
         self._task_focus = alpha * self._task_focus + (1.0 - alpha) * embedding
 
-    def set_attention_scorer(self, attention_scorer: AttentionScorerProtocol | None) -> None:
+    def set_attention_scorer(
+        self, attention_scorer: AttentionScorerProtocol | None
+    ) -> None:
         self._attention_scorer = attention_scorer
 
     def set_jlens_scorer(self, jlens_scorer: AttentionScorerProtocol | None) -> None:
@@ -122,11 +126,18 @@ class RelevanceScorer:
 
         # Source-type floors: USER and ASSISTANT turns are conversation
         # backbone; even when their coherence drops they shouldn't be evicted
-        # before lower-floor DOCUMENT blocks.
+        # before lower-floor DOCUMENT blocks. The floor rescales rather than
+        # clamps (a hard max(raw, floor) ties every decayed same-role block
+        # at exactly the floor, degenerating same-role eviction to insertion
+        # order); rescaling keeps the guaranteed minimum while staying
+        # strictly monotonic in the dynamic score.
         if block.source == BlockSource.USER:
-            raw = max(raw, cfg.conversation_score_floor)
+            raw = (
+                cfg.conversation_score_floor
+                + (1.0 - cfg.conversation_score_floor) * raw
+            )
         elif block.source == BlockSource.ASSISTANT:
-            raw = max(raw, cfg.assistant_score_floor)
+            raw = cfg.assistant_score_floor + (1.0 - cfg.assistant_score_floor) * raw
 
         # Harness priority is a final multiplier — a hint from the caller that
         # this block matters more (priority > 1.0) or less (priority < 1.0)
@@ -152,7 +163,9 @@ class RelevanceScorer:
     ) -> dict[int, float]:
         return {b.block_id: self.score(b, current_pos, context_length) for b in blocks}
 
-    def _score_recency(self, block: ActiveBlock, current_pos: int, context_length: int) -> float:
+    def _score_recency(
+        self, block: ActiveBlock, current_pos: int, context_length: int
+    ) -> float:
         if context_length == 0:
             return 1.0
         distance = (current_pos - block.logical_end) / context_length

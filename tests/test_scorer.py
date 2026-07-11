@@ -226,6 +226,33 @@ class TestSourceAwareScoring:
         score_user = scorer.score(user_block, current_pos=5000, context_length=5000)
         assert score_user > score_doc
 
+    def test_floor_preserves_ranking_among_same_role_blocks(self):
+        # A hard max(raw, floor) ties every decayed same-role block at
+        # exactly the floor, so eviction among them degenerates to
+        # insertion order; observed on the evoke-vllm skew benchmark as
+        # scored eviction byte-identical to stock LRU. The floor must stay
+        # a guaranteed minimum without erasing within-role ordering.
+        config = EvokeConfig(
+            sink_count=4,
+            block_size=128,
+            recency_decay=0.01,
+            w_recency=0.5,
+            w_coherence=0.5,
+            conversation_score_floor=0.6,
+        )
+        scorer = RelevanceScorer(config)
+        scorer.update_recent_context(np.array([1.0, 0.0, 0.0, 0.0]))
+
+        on_topic = _make_block(1, 100, 200, embedding=np.array([1.0, 0.0, 0.0, 0.0]))
+        on_topic.source = BlockSource.USER
+        off_topic = _make_block(2, 200, 300, embedding=np.array([0.0, 1.0, 0.0, 0.0]))
+        off_topic.source = BlockSource.USER
+
+        score_on = scorer.score(on_topic, current_pos=5000, context_length=5000)
+        score_off = scorer.score(off_topic, current_pos=5000, context_length=5000)
+        assert score_off >= 0.6
+        assert score_on > score_off
+
 
 class TestPriorityScaling:
     def test_priority_above_one_boosts_score(self):
