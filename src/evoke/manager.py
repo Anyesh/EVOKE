@@ -173,7 +173,9 @@ class EvokeManager:
         stop = stop_token_ids or set()
 
         if think_close is not None:
-            return self._generate_thinking(think_close, thinking_budget, answer_budget, stop, eos)
+            return self._generate_thinking(
+                think_close, thinking_budget, answer_budget, stop, eos
+            )
 
         gen_start = self._engine.next_write_pos
         n_ctx = self._engine.n_ctx
@@ -302,8 +304,19 @@ class EvokeManager:
         # uses the question-window scores; for other score modes it is a
         # no-op.
         self._absorb_attention()
-        if self._attention_scorer is not None and hasattr(self._attention_scorer, "snapshot"):
+        if self._attention_scorer is not None and hasattr(
+            self._attention_scorer, "snapshot"
+        ):
             self._attention_scorer.snapshot()
+        self._enforce_budget()
+
+    def set_budget(self, max_active_tokens: int) -> None:
+        # Lets a harness drive the budget off cumulative session length (e.g.
+        # 25% of tokens seen so far at each hibernation point) instead of the
+        # fixed value EvokeConfig was constructed with. Tightening the budget
+        # here immediately triggers eviction via _enforce_budget; loosening it
+        # just raises the threshold for the next add_context/generate call.
+        self._config.max_active_tokens = max_active_tokens
         self._enforce_budget()
 
     def get_stats(self) -> CacheStats:
@@ -414,7 +427,9 @@ class EvokeManager:
         )
         self._positions.append_block(block, new_p0)
         self._total_recoveries += 1
-        self._events.append(EvokeEvent(step=self._step, event_type="recovery", block_ids=[bid]))
+        self._events.append(
+            EvokeEvent(step=self._step, event_type="recovery", block_ids=[bid])
+        )
         if not defer_budget:
             self._enforce_budget()
         return True
@@ -502,9 +517,15 @@ class EvokeManager:
             # Protect the contiguous decode head so max_cached stays
             # next_write_pos-1; internal holes below it decode fine. Compact mode
             # recompacts positions, so it does not need this.
-            if self._config.position_mode == "sparse" and block.logical_end >= current_pos:
+            if (
+                self._config.position_mode == "sparse"
+                and block.logical_end >= current_pos
+            ):
                 continue
-            if recent_protect_n > 0 and block.logical_end >= current_pos - recent_protect_n:
+            if (
+                recent_protect_n > 0
+                and block.logical_end >= current_pos - recent_protect_n
+            ):
                 continue
             # pin_generated protects the model's just-decoded output (an
             # ASSISTANT block) from being immediately evicted by the same
@@ -568,7 +589,9 @@ class EvokeManager:
             key=f"user#{bid}",
         )
         self._positions.append_block(block, start_pos)
-        block.representative_embedding = self._last_token_embedding(start_pos, len(tokens))
+        block.representative_embedding = self._last_token_embedding(
+            start_pos, len(tokens)
+        )
         # Conversation blocks must use the same embedding space as document
         # blocks; otherwise smart-recovery's cosine cross-dimensional explodes
         # (LM hidden state is e.g. 3584-dim, bge-small is 384-dim) when

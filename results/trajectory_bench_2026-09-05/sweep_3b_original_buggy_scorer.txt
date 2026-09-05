@@ -1,0 +1,15 @@
+trajectory bench | model=Qwen2.5-3B-Instruct-Q4_K_M
+kv_block primitives available: True
+loaded 210 trajectories, 138 pass the filter
+
+=== regime: discard ===
+no_eviction      name=0.162 target=0.009 args=0.000 resume_tok=37232 resume_ms=216890.4
+recency          name=0.127 target=0.005 args=0.000 resume_tok=40638 resume_ms=214578.5
+h2o              name=0.174 target=0.068 args=0.000 resume_tok=37819 resume_ms=220410.6
+snapkv           name=0.239 target=0.073 args=0.000 resume_tok=37604 resume_ms=223833.4
+evoke_attention  name=0.267 target=0.068 args=0.000 resume_tok=36345 resume_ms=222523.1
+
+=== regime: recompute ===
+no_eviction      name=0.195 target=0.012 args=0.000 resume_tok=232240 resume_ms=1389097.1
+recency          name=0.251 target=0.024 args=0.000 resume_tok=203194 resume_ms=1292067.4
+h2o              name=0.201 target=0.076 args=0.000 resume_tok=230656 resume_ms=1410233.0
