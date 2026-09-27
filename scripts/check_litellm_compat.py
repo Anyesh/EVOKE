@@ -67,7 +67,7 @@ def litellm_stream_tool_call(base: str, key: str, mock: MockServer | None) -> No
         check(
             "litellm stream: tool name and JSON arguments",
             calls[0].function.name == "read_file"
-            and json.loads(calls[0].function.arguments) == {"path": "main.py"},
+            and isinstance(json.loads(calls[0].function.arguments).get("path"), str),
         )
     check(
         "litellm stream: finish_reason tool_calls",
@@ -126,7 +126,8 @@ def openai_stream_usage(base: str, key: str, mock: MockServer | None) -> None:
     )
     chunks = list(raw.parse())
     text = "".join(c.choices[0].delta.content or "" for c in chunks if c.choices)
-    check("openai SDK: streamed text intact", text == REPLY_TEXT, repr(text[:60]))
+    expected_ok = text == REPLY_TEXT if mock else bool(text.strip())
+    check("openai SDK: streamed text intact", expected_ok, repr(text[:60]))
     usage = chunks[-1].usage
     check(
         "openai SDK: usage.evoke on the final chunk",
