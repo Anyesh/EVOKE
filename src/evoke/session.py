@@ -152,7 +152,7 @@ class SessionPool:
         if self._active == session_id:
             self._engine.reset()
             self._active = None
-        self._sessions.pop(session_id, None)
+        self._sessions.pop(session_id).close()
         self._snapshots.pop(session_id, None)
         try:
             self._lru.remove(session_id)
@@ -182,7 +182,9 @@ class SessionPool:
                 if len(self._lru) == 1:
                     return
                 victim = self._lru.pop(0)
-            self._sessions.pop(victim, None)
+            dropped = self._sessions.pop(victim, None)
+            if dropped is not None:
+                dropped.close()
             self._snapshots.pop(victim, None)
             self._evicted_count += 1
 
@@ -328,7 +330,11 @@ class Session:
     def gapfill_mismatch(self) -> int:
         return self._gapfill_mismatch
 
+    def close(self) -> None:
+        self._manager.close()
+
     def reset(self) -> None:
+        self._manager.close()
         self._engine.reset()
         # Rebuild the model-signal scorers: block ids restart at 0 after a
         # reset, so stale score maps keyed by old ids would mislabel the new

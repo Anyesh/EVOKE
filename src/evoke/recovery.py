@@ -45,6 +45,8 @@ class RecoveryBackend(Protocol):
 
     def peek_embedding(self, key: str) -> np.ndarray | None: ...
 
+    def purge(self) -> None: ...
+
 
 class DiscardBackend:
     def on_evict(self, blocks: list[ActiveBlock], step: int) -> None:
@@ -60,6 +62,9 @@ class DiscardBackend:
         return None
 
     def peek_embedding(self, key: str) -> np.ndarray | None:
+        return None
+
+    def purge(self) -> None:
         return None
 
 
@@ -89,6 +94,10 @@ class BreadcrumbBackend:
 
     def peek_embedding(self, key: str) -> np.ndarray | None:
         return self._embeddings.get(key)
+
+    def purge(self) -> None:
+        self._crumbs.clear()
+        self._embeddings.clear()
 
 
 class KVRestoreBackend:
@@ -245,6 +254,17 @@ class KVRestoreBackend:
 
     def peek_embedding(self, key: str) -> np.ndarray | None:
         return self._embeddings.get(key)
+
+    def purge(self) -> None:
+        # Saved K/V encodes the session's context, so dropping a session must
+        # delete its spill files too, not just the in-memory index.
+        for fname, _ in self._spilled.values():
+            fname.unlink(missing_ok=True)
+        self._spilled.clear()
+        self._saved.clear()
+        self._breadcrumbs.clear()
+        self._embeddings.clear()
+        self._total_bytes = 0
 
     @property
     def total_bytes(self) -> int:

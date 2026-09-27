@@ -341,6 +341,9 @@ class EvokeManager:
     def peak_active_tokens(self) -> int:
         return self._peak_active_tokens
 
+    def close(self) -> None:
+        self._recovery.purge()
+
     @property
     def pinned_token_count(self) -> int:
         return sum(b.size for b in self._positions.active_blocks if b.pinned)

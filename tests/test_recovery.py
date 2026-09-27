@@ -264,3 +264,16 @@ class TestKVRestoreDiskSpill:
             backend.on_evict([_block(i, f"k#{i}")], step=i)
         assert backend.spill_evictions == 0
         assert backend.lru_evictions >= 2
+
+    def test_purge_deletes_spill_files_and_forgets_blocks(self, tmp_path):
+        engine = self._engine_with_payload_size(1000)
+        spill = tmp_path / "spill"
+        backend = KVRestoreBackend(engine, ram_budget_bytes=2500, spill_path=str(spill))
+        for i in range(4):
+            backend.on_evict([_block(i, f"k#{i}")], step=i)
+        assert any(spill.iterdir())
+        backend.purge()
+        assert not any(spill.iterdir())
+        assert backend.list_evicted() == []
+        assert backend.take("k#0") is None
+        assert backend.total_bytes == 0
