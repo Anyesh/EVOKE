@@ -748,8 +748,12 @@ class LlamaCppEngine:
         n = llama_cpp.llama_state_get_size(self._ctx)
         buf = (ctypes.c_uint8 * n)()
         written = llama_cpp.llama_state_get_data(self._ctx, buf, n)
+        # Slicing a c_uint8 array builds a Python list with one int per byte,
+        # which for a multi-GB KV snapshot took minutes per session swap. A
+        # memoryview copies in one memcpy; ctypes.string_at cannot be used
+        # because its size argument overflows past 2 GiB on Windows.
         return (
-            bytes(buf[:written]),
+            bytes(memoryview(buf)[:written]),
             self._next_write_pos,
             self._token_count,
             dict(self._emb_cache),
