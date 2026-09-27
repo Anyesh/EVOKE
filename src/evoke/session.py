@@ -674,6 +674,7 @@ class Session:
         priority: float = 1.0,
         pinned: bool = False,
         task_boundary: bool = False,
+        pin_prefix: int = 0,
     ) -> SyncStats:
         # Decay the previous turn's recovery_strength signal before any of
         # this turn's recoveries or evictions run. The decay must precede
@@ -830,13 +831,19 @@ class Session:
                 and not identity_match
             ):
                 recovered = self._smart_recover(k=self._recovery_k)
-            self._manager.add_context_tokens(
-                tail,
-                key=f"turn{self._turn_id}",
-                priority=priority,
-                pinned=pinned,
-            )
-            self._turn_id += 1
+            # Blocks never straddle the pin boundary, so the pinned head
+            # (the operator's fixed system prompt) is decoded as its own call.
+            pin_end = min(len(tail), max(0, pin_prefix - divergence))
+            for part, part_pinned in ((tail[:pin_end], True), (tail[pin_end:], pinned)):
+                if not part:
+                    continue
+                self._manager.add_context_tokens(
+                    part,
+                    key=f"turn{self._turn_id}",
+                    priority=priority,
+                    pinned=part_pinned,
+                )
+                self._turn_id += 1
             self._cached_tokens.extend(tail)
             if (
                 tail_text
