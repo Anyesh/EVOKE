@@ -539,3 +539,37 @@ class TestHarnessPriority:
         assert all(not b.pinned for b in evictable), (
             "pinned blocks must never appear as eviction candidates"
         )
+
+
+class TestTurnCounters:
+    def _manager(self, budget: int = 10000) -> EvokeManager:
+        config = EvokeConfig(
+            max_active_tokens=budget, block_size=128, recovery_mode="kv_restore"
+        )
+        return EvokeManager(MockEngine(), config)
+
+    def test_evicted_and_recovered_tokens_are_counted(self):
+        manager = self._manager()
+        manager.load_document(_make_long_text(512))
+        target = next(b for b in manager._positions.active_blocks if not b.is_sink)
+        size = target.size
+
+        manager.force_evict([target.block_id])
+        assert manager.get_stats().evicted_tokens == size
+
+        manager.recover(target.key)
+        assert manager.get_stats().recovered_tokens == size
+
+    def test_turn_peak_resets_to_current_residency_each_turn(self):
+        manager = self._manager()
+        manager.load_document(_make_long_text(512))
+        target = next(b for b in manager._positions.active_blocks if not b.is_sink)
+        manager.force_evict([target.block_id])
+        resident = manager.get_stats().active_tokens
+
+        manager.tick_turn()
+        assert manager.turn_peak_active_tokens == resident
+        assert manager.peak_active_tokens >= 512
+
+        manager.add_context_tokens(list(range(300)), key="t1")
+        assert manager.turn_peak_active_tokens == resident + 300

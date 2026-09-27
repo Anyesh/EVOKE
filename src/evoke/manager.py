@@ -39,7 +39,10 @@ class EvokeManager:
         self._step = 0
         self._total_evictions = 0
         self._total_recoveries = 0
+        self._total_evicted_tokens = 0
+        self._total_recovered_tokens = 0
         self._peak_active_tokens = 0
+        self._turn_peak_active_tokens = 0
         self._next_block_id = 0
         self._current_turn_start_id = 0
         # Last user-message text, captured so the retrieval embedder can
@@ -265,6 +268,7 @@ class EvokeManager:
         # eligibility. Called once at the start of each user turn from both
         # the standalone-manager flow (process_user_message) and the server
         # flow (Session.sync_prefix). decay >= 1.0 disables decay entirely.
+        self._turn_peak_active_tokens = self._positions.active_token_count
         decay = self._config.recovery_decay
         if decay >= 1.0:
             return
@@ -329,11 +333,21 @@ class EvokeManager:
             budget_utilization=active_tokens / budget if budget > 0 else 0,
             total_evictions=self._total_evictions,
             total_recoveries=self._total_recoveries,
+            evicted_tokens=self._total_evicted_tokens,
+            recovered_tokens=self._total_recovered_tokens,
         )
 
     @property
     def peak_active_tokens(self) -> int:
         return self._peak_active_tokens
+
+    @property
+    def pinned_token_count(self) -> int:
+        return sum(b.size for b in self._positions.active_blocks if b.pinned)
+
+    @property
+    def turn_peak_active_tokens(self) -> int:
+        return max(self._turn_peak_active_tokens, self._positions.active_token_count)
 
     def get_event_log(self) -> list[EvokeEvent]:
         return list(self._events)
@@ -427,6 +441,7 @@ class EvokeManager:
         )
         self._positions.append_block(block, new_p0)
         self._total_recoveries += 1
+        self._total_recovered_tokens += len(saved.token_ids)
         self._events.append(
             EvokeEvent(step=self._step, event_type="recovery", block_ids=[bid])
         )
@@ -454,6 +469,8 @@ class EvokeManager:
         # gap-fill rebuild) even when end-of-turn enforcement brings it back down.
         if active_tokens > self._peak_active_tokens:
             self._peak_active_tokens = active_tokens
+        if active_tokens > self._turn_peak_active_tokens:
+            self._turn_peak_active_tokens = active_tokens
 
         if cfg.eviction_policy == "watermark":
             threshold = int(cfg.max_active_tokens * cfg.high_watermark)
@@ -570,6 +587,7 @@ class EvokeManager:
                 self._jlens_scorer.forget(bid)
 
         self._total_evictions += len(blocks)
+        self._total_evicted_tokens += sum(b.size for b in blocks)
         self._events.append(
             EvokeEvent(
                 step=self._step,

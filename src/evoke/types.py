@@ -55,6 +55,8 @@ class CacheStats:
     budget_utilization: float
     total_evictions: int
     total_recoveries: int = 0
+    evicted_tokens: int = 0
+    recovered_tokens: int = 0
 
 
 @dataclass
