@@ -25,7 +25,14 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from evoke.auth import NAMESPACE_SEP, ApiKey, KeyRing
+from evoke.auth import (
+    NAMESPACE_SEP,
+    ApiKey,
+    InvalidKeyId,
+    KeyExists,
+    KeyRing,
+    StaticKey,
+)
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.scheduler import QueueTimeout, SessionBusy, TurnScheduler
@@ -45,6 +52,7 @@ _ERROR_TYPES = {
     403: "permission_error",
     404: "not_found_error",
     409: "conflict_error",
+    501: "not_implemented_error",
     422: "invalid_request_error",
     503: "overloaded_error",
 }
@@ -229,6 +237,10 @@ def _chunk_payload(
 
 class LoadModelRequest(BaseModel):
     model: str
+
+
+class IssueKeyRequest(BaseModel):
+    key_id: str
 
 
 def create_app(
@@ -703,6 +715,70 @@ def create_app(
             session.reset()
         return {"status": "reset", "session_id": sid}
 
+    def _issuing_keyring() -> KeyRing:
+        if keyring is None or not keyring.issuance_enabled:
+            raise ApiError(
+                501,
+                "evoke_key_issuance_disabled",
+                "key issuance needs EVOKE_API_KEYS_FILE and EVOKE_ISSUED_KEYS_FILE",
+            )
+        return keyring
+
+    @app.post("/admin/keys", status_code=201, dependencies=[Depends(_admin)])
+    async def issue_key(req: IssueKeyRequest) -> dict[str, Any]:
+        ring = _issuing_keyring()
+        try:
+            token = ring.issue(req.key_id)
+        except InvalidKeyId as exc:
+            raise ApiError(400, "evoke_key_id_invalid", str(exc)) from exc
+        except KeyExists as exc:
+            raise ApiError(
+                409, "evoke_key_exists", f"key {req.key_id!r} exists"
+            ) from exc
+        created = next(k.created for k in ring.issued_keys() if k.key_id == req.key_id)
+        return {"key_id": req.key_id, "token": token, "created": created}
+
+    @app.get("/admin/keys", dependencies=[Depends(_admin)])
+    async def list_keys() -> dict[str, Any]:
+        ring = _issuing_keyring()
+        return {
+            "static": ring.static_key_ids(),
+            "issued": [
+                {"key_id": k.key_id, "created": k.created} for k in ring.issued_keys()
+            ],
+        }
+
+    def _drop_owned_blocking(key_id: str) -> int:
+        with engine_lock:
+            owned = [sid for sid in pool.session_ids() if _owner_of(sid) == key_id]
+            for sid in owned:
+                pool.drop(sid)
+            return len(owned)
+
+    @app.delete("/admin/keys/{key_id}", dependencies=[Depends(_admin)])
+    async def revoke_key(key_id: str) -> dict[str, Any]:
+        ring = _issuing_keyring()
+        try:
+            revoked = ring.revoke(key_id)
+        except StaticKey as exc:
+            raise ApiError(
+                409,
+                "evoke_key_static",
+                "static keys are revoked by editing the key file",
+            ) from exc
+        if not revoked:
+            raise ApiError(404, "evoke_key_not_found", f"no issued key {key_id!r}")
+        # Taking the engine lock waits out a turn already running for this key;
+        # turns still queued re-check the key when they start and are refused.
+        async with lock:
+            dropped = await asyncio.to_thread(_drop_owned_blocking, key_id)
+        return {"status": "revoked", "key_id": key_id, "sessions_dropped": dropped}
+
+    def _still_authorized(caller: ApiKey | None) -> Callable[[], bool] | None:
+        if caller is None or keyring is None:
+            return None
+        return lambda: keyring.is_active(caller.key_id)
+
     @app.post("/admin/set_budget", dependencies=[Depends(_admin)])
     async def set_budget(req: Request) -> dict[str, Any]:
         nonlocal config
@@ -880,6 +956,7 @@ def create_app(
                     starts_in_think,
                     scheduler=scheduler,
                     owner=caller.key_id if caller else None,
+                    authorized=_still_authorized(caller),
                     session_label=label,
                     pin_prefix=pin_n,
                     include_usage=bool(
@@ -938,6 +1015,11 @@ def create_app(
                     session_id, owner=caller.key_id if caller else None
                 ) as waited:
                     async with lock:
+                        authorized = _still_authorized(caller)
+                        if authorized is not None and not authorized():
+                            raise ApiError(
+                                401, "invalid_api_key", "API key was revoked"
+                            )
                         result, suppress, metrics = await asyncio.to_thread(
                             _run_turn, waited
                         )
@@ -1064,6 +1146,7 @@ async def _stream_completion(
     *,
     scheduler: TurnScheduler | None = None,
     owner: str | None = None,
+    authorized: Callable[[], bool] | None = None,
     session_label: str | None = None,
     pin_prefix: int = 0,
     include_usage: bool = False,
@@ -1134,6 +1217,10 @@ async def _stream_completion(
             holds_turn = True
             waited = time.monotonic() - wait_start
         async with lock:
+            if authorized is not None and not authorized():
+                yield _sse_error(401, "invalid_api_key", "API key was revoked")
+                yield "data: [DONE]\n\n"
+                return
             # Resolve the session inside the lock so any other request that
             # raced us through the pool gets to swap us in cleanly.
             session = pool.get(session_id)

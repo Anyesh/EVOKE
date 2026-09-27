@@ -7,7 +7,7 @@ import json
 
 from fastapi.testclient import TestClient
 
-from evoke.auth import KeyRing
+from evoke.auth import IssuedKeyStore, KeyRing
 from evoke.mock_engine import MockEngine
 from evoke.server import create_app
 
@@ -295,3 +295,103 @@ def test_a_key_past_its_session_cap_loses_only_its_own_oldest_session():
     assert client.get("/v1/sessions", headers=_auth(OTHER)).json()["sessions"] == [
         "acme/o1"
     ]
+
+
+def _issuing_client(tmp_path) -> TestClient:
+    keyring = KeyRing.from_tokens(
+        {"loomd": (OPS, True)}, issued_store=IssuedKeyStore(tmp_path / "issued.json")
+    )
+    return TestClient(
+        create_app(MockEngine(n_ctx=16384), "evoke-mock", keyring=keyring)
+    )
+
+
+def _issue(client: TestClient, key_id: str) -> str:
+    resp = client.post("/admin/keys", json={"key_id": key_id}, headers=_auth(OPS))
+    assert resp.status_code == 201
+    assert resp.json()["key_id"] == key_id
+    return resp.json()["token"]
+
+
+def test_admin_issues_a_per_person_key_that_can_chat(tmp_path):
+    client = _issuing_client(tmp_path)
+    token = _issue(client, "loom@acme@u1")
+    resp = client.post(
+        "/v1/chat/completions", json=_body(), headers=_auth(token, "acme/s1")
+    )
+    assert resp.status_code == 200
+    listed = client.get("/admin/keys", headers=_auth(OPS)).json()
+    assert [k["key_id"] for k in listed["issued"]] == ["loom@acme@u1"]
+    assert listed["static"] == ["loomd"]
+    assert token not in json.dumps(listed)
+
+
+def test_issued_keys_cannot_manage_keys(tmp_path):
+    client = _issuing_client(tmp_path)
+    token = _issue(client, "loom@acme@u1")
+    resp = client.post("/admin/keys", json={"key_id": "x"}, headers=_auth(token))
+    assert resp.status_code == 403
+    assert (
+        client.delete("/admin/keys/loom@acme@u1", headers=_auth(token)).status_code
+        == 403
+    )
+    assert client.get("/admin/keys", headers=_auth(token)).status_code == 403
+
+
+def test_revoking_a_key_drops_its_sessions_and_rejects_its_token(tmp_path):
+    client = _issuing_client(tmp_path)
+    u1 = _issue(client, "loom@acme@u1")
+    u2 = _issue(client, "loom@acme@u2")
+    for token, sid in ((u1, "acme/s1"), (u1, "acme/s2"), (u2, "acme/s1")):
+        client.post("/v1/chat/completions", json=_body(), headers=_auth(token, sid))
+    resp = client.delete("/admin/keys/loom@acme@u1", headers=_auth(OPS))
+    assert resp.status_code == 200
+    assert resp.json()["sessions_dropped"] == 2
+    again = client.post(
+        "/v1/chat/completions", json=_body(), headers=_auth(u1, "acme/s1")
+    )
+    assert again.status_code == 401
+    assert client.get("/v1/sessions", headers=_auth(OPS)).json()["sessions"] == [
+        "loom@acme@u2|acme/s1"
+    ]
+
+
+def test_key_management_errors(tmp_path):
+    client = _issuing_client(tmp_path)
+    _issue(client, "loom@acme@u1")
+    cases = [
+        (
+            client.post(
+                "/admin/keys", json={"key_id": "loom@acme@u1"}, headers=_auth(OPS)
+            ),
+            409,
+            "evoke_key_exists",
+        ),
+        (
+            client.post("/admin/keys", json={"key_id": "a|b"}, headers=_auth(OPS)),
+            400,
+            "evoke_key_id_invalid",
+        ),
+        (
+            client.delete("/admin/keys/loomd", headers=_auth(OPS)),
+            409,
+            "evoke_key_static",
+        ),
+        (
+            client.delete("/admin/keys/nobody", headers=_auth(OPS)),
+            404,
+            "evoke_key_not_found",
+        ),
+    ]
+    for resp, status, code in cases:
+        assert resp.status_code == status
+        assert resp.json()["error"]["code"] == code
+
+
+def test_issuance_without_a_store_is_501():
+    client = _client()
+    resp = client.post(
+        "/admin/keys", json={"key_id": "loom@acme@u1"}, headers=_auth(OPS)
+    )
+    assert resp.status_code == 501
+    assert resp.json()["error"]["code"] == "evoke_key_issuance_disabled"

@@ -99,3 +99,28 @@ def test_abandoned_queued_stream_leaves_no_waiter():
         return sched.waiting, sched.running
 
     assert asyncio.run(main()) == (0, "other")
+
+
+def test_turn_from_a_revoked_key_is_refused_when_it_starts():
+    engine, pool = _setup()
+
+    async def main():
+        gen = _stream_completion(
+            pool,
+            "s1",
+            engine,
+            asyncio.Lock(),
+            engine.tokenize("prompt"),
+            ["<|im_end|>"],
+            64,
+            "cid",
+            0,
+            "model",
+            scheduler=TurnScheduler(),
+            authorized=lambda: False,
+        )
+        return [line async for line in gen]
+
+    raw = asyncio.run(main())
+    assert json.loads(raw[-2][len("data: ") :])["error"]["code"] == "invalid_api_key"
+    assert pool.session_ids() == []

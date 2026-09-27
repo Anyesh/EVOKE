@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import uvicorn
 
-from evoke.auth import KeyRing
+from evoke.auth import IssuedKeyStore, KeyRing
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.server import create_app
@@ -224,14 +224,25 @@ def main() -> int:
         )
 
     keys_file = os.environ.get("EVOKE_API_KEYS_FILE")
-    keyring = KeyRing.from_file(keys_file) if keys_file else None
+    issued_file = os.environ.get("EVOKE_ISSUED_KEYS_FILE")
+    if issued_file and not keys_file:
+        raise ValueError("EVOKE_ISSUED_KEYS_FILE needs EVOKE_API_KEYS_FILE")
+    keyring = (
+        KeyRing.from_file(
+            keys_file,
+            issued_store=IssuedKeyStore(issued_file) if issued_file else None,
+        )
+        if keys_file
+        else None
+    )
     pin_system_prompt = os.environ.get("EVOKE_PIN_SYSTEM_PROMPT", "0") == "1"
     queue_env = os.environ.get("EVOKE_QUEUE_TIMEOUT")
     queue_timeout = float(queue_env) if queue_env else None
     max_waiting = int(os.environ.get("EVOKE_MAX_WAITING_PER_SESSION", "1"))
     max_per_key = int(os.environ.get("EVOKE_MAX_SESSIONS_PER_KEY", "2"))
     print(
-        f"  auth={'keys' if keyring else 'open'}  pin_system_prompt={pin_system_prompt}"
+        f"  auth={'keys' if keyring else 'open'}  issued_keys={bool(issued_file)}"
+        f"  pin_system_prompt={pin_system_prompt}"
         f"  queue_timeout={queue_timeout}  max_waiting_per_session={max_waiting}"
         f"  max_sessions_per_key={max_per_key}"
     )
