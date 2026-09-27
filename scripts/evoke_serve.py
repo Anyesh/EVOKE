@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import uvicorn
 
+from evoke.auth import KeyRing
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
 from evoke.server import create_app
@@ -218,6 +219,17 @@ def main() -> int:
             **kv_engine_kwargs,
         )
 
+    keys_file = os.environ.get("EVOKE_API_KEYS_FILE")
+    keyring = KeyRing.from_file(keys_file) if keys_file else None
+    pin_system_prompt = os.environ.get("EVOKE_PIN_SYSTEM_PROMPT", "0") == "1"
+    queue_env = os.environ.get("EVOKE_QUEUE_TIMEOUT")
+    queue_timeout = float(queue_env) if queue_env else None
+    max_waiting = int(os.environ.get("EVOKE_MAX_WAITING_PER_SESSION", "1"))
+    print(
+        f"  auth={'keys' if keyring else 'open'}  pin_system_prompt={pin_system_prompt}"
+        f"  queue_timeout={queue_timeout}  max_waiting_per_session={max_waiting}"
+    )
+
     app = create_app(
         engine,
         model_name,
@@ -227,6 +239,10 @@ def main() -> int:
         model_path=model_path,
         engine_factory=engine_factory,
         idle_timeout=idle_timeout,
+        keyring=keyring,
+        pin_system_prompt=pin_system_prompt,
+        queue_timeout=queue_timeout,
+        max_waiting_per_session=max_waiting,
     )
     print(f"serving on http://{host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info")

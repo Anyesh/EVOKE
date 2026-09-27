@@ -9,27 +9,71 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import os
+import re
 import threading
 import time
 import uuid
 from pathlib import Path as FsPath
 from typing import Any, Callable
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, model_validator
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from fastapi import Header
-
+from evoke.auth import NAMESPACE_SEP, ApiKey, KeyRing
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
-from evoke.session import Session, SessionPool
+from evoke.scheduler import QueueTimeout, SessionBusy, TurnScheduler
+from evoke.session import Session, SessionPool, SyncStats
 from evoke.templates import ParsedResponse, format_qwen_chat, parse_qwen_response
+from evoke.turn_metrics import TurnMetrics, measure_turn
+from evoke.types import CacheStats
 
 DEFAULT_SESSION_ID = "default"
+SESSION_HEADER_RE = re.compile(r"[A-Za-z0-9._:@/+=-]{1,256}")
+# A user message no real prompt starts with, so the rendered system-only
+# conversation diverges from the real prompt right after the system turn.
+_PIN_SENTINEL = "\uffff"
+_ERROR_TYPES = {
+    400: "invalid_request_error",
+    401: "authentication_error",
+    403: "permission_error",
+    404: "not_found_error",
+    409: "conflict_error",
+    422: "invalid_request_error",
+    503: "overloaded_error",
+}
+
+
+class ApiError(Exception):
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        message: str,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
+        self.headers = headers
+
+
+def _error_body(status: int, message: str, code: str | None) -> dict[str, Any]:
+    return {
+        "error": {
+            "message": message,
+            "type": _ERROR_TYPES.get(status, "server_error"),
+            "code": code,
+            "param": None,
+        }
+    }
 
 
 class ChatMessage(BaseModel):
@@ -81,6 +125,7 @@ class ChatCompletionRequest(BaseModel):
     top_p: float | None = None
     stop: list[str] | str | None = None
     stream: bool = False
+    stream_options: dict[str, Any] | None = None
     # EVOKE extensions for harness-aware scoring. These are not part of the
     # OpenAI spec; a harness like opencode or Claude Code can set them to
     # signal which turns are central to the current task and which are
@@ -131,6 +176,7 @@ def _completion_payload(
     parsed: ParsedResponse,
     prompt_token_count: int,
     completion_token_count: int,
+    metrics: TurnMetrics | None = None,
 ) -> dict[str, Any]:
     return {
         "id": completion_id,
@@ -146,12 +192,23 @@ def _completion_payload(
                 ),
             }
         ],
-        "usage": {
-            "prompt_tokens": prompt_token_count,
-            "completion_tokens": completion_token_count,
-            "total_tokens": prompt_token_count + completion_token_count,
-        },
+        "usage": _usage(prompt_token_count, completion_token_count, metrics),
     }
+
+
+def _usage(
+    prompt_token_count: int,
+    completion_token_count: int,
+    metrics: TurnMetrics | None,
+) -> dict[str, Any]:
+    usage: dict[str, Any] = {
+        "prompt_tokens": prompt_token_count,
+        "completion_tokens": completion_token_count,
+        "total_tokens": prompt_token_count + completion_token_count,
+    }
+    if metrics is not None:
+        usage["evoke"] = metrics.as_usage()
+    return usage
 
 
 def _chunk_payload(
@@ -185,6 +242,10 @@ def create_app(
     model_path: str | None = None,
     engine_factory: Callable[[str], LlamaCppEngine] | None = None,
     idle_timeout: float | None = None,
+    keyring: KeyRing | None = None,
+    pin_system_prompt: bool = False,
+    queue_timeout: float | None = None,
+    max_waiting_per_session: int = 1,
 ) -> FastAPI:
     @contextlib.asynccontextmanager
     async def _lifespan(_: FastAPI):
@@ -211,6 +272,63 @@ def create_app(
         enable_thinking = {"1": True, "true": True, "0": False, "false": False}.get(
             os.environ.get("EVOKE_ENABLE_THINKING", "").lower()
         )
+    # With keys configured, every session is namespaced by key id, so the
+    # headerless prefix-affinity router would have to match across tenants;
+    # it is disabled and the session header becomes mandatory.
+    require_session = keyring is not None
+
+    @app.exception_handler(ApiError)
+    async def _api_error(_: Request, exc: ApiError):
+        return JSONResponse(
+            status_code=exc.status,
+            content=_error_body(exc.status, exc.message, exc.code),
+            headers=exc.headers,
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_error(_: Request, exc: StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_error_body(exc.status_code, str(exc.detail), None),
+            headers=getattr(exc, "headers", None),
+        )
+
+    @app.exception_handler(Exception)
+    async def _engine_error(_: Request, exc: Exception):
+        print(f"[500] {exc!r}", flush=True)
+        return JSONResponse(
+            status_code=500, content=_error_body(500, str(exc), "evoke_engine_error")
+        )
+
+    def _caller(authorization: str | None = Header(default=None)) -> ApiKey | None:
+        if keyring is None:
+            return None
+        key = keyring.authenticate(authorization)
+        if key is None:
+            raise ApiError(401, "invalid_api_key", "missing or invalid API key")
+        return key
+
+    def _admin(caller: ApiKey | None = Depends(_caller)) -> ApiKey | None:
+        if caller is not None and not caller.admin:
+            raise ApiError(403, "admin_required", "this endpoint needs an admin key")
+        return caller
+
+    def _pool_id(caller: ApiKey | None, header: str) -> str:
+        if caller is None:
+            return header
+        if not SESSION_HEADER_RE.fullmatch(header):
+            raise ApiError(
+                400,
+                "evoke_session_invalid",
+                "X-Evoke-Session must be 1-256 chars of [A-Za-z0-9._:@/+=-]",
+            )
+        return f"{caller.key_id}{NAMESPACE_SEP}{header}"
+
+    def _visible_id(caller: ApiKey | None, pool_id: str) -> str | None:
+        if caller is None or caller.admin:
+            return pool_id
+        prefix = f"{caller.key_id}{NAMESPACE_SEP}"
+        return pool_id[len(prefix) :] if pool_id.startswith(prefix) else None
 
     @app.exception_handler(RequestValidationError)
     async def _log_422(request: Request, exc: RequestValidationError):
@@ -231,7 +349,11 @@ def create_app(
         )
         return JSONResponse(
             status_code=422,
-            content={"detail": exc.errors(), "body_excerpt": body_excerpt[:500]},
+            content={
+                **_error_body(422, str(exc.errors())[:1000], "invalid_request"),
+                "detail": exc.errors(),
+                "body_excerpt": body_excerpt[:500],
+            },
         )
 
     pool = SessionPool(engine, config=config, max_sessions=max_sessions)
@@ -246,6 +368,10 @@ def create_app(
     # released if a streaming client disconnects while the producer thread
     # is still driving the engine.
     engine_lock = threading.Lock()
+    scheduler = TurnScheduler(
+        max_waiting_per_session=max_waiting_per_session, timeout=queue_timeout
+    )
+    pin_cache: dict[str, int] = {}
 
     # Idle unload state. n_ctx and supports_kv_block are cached at load time
     # because reading them off a closed engine dereferences a freed
@@ -319,7 +445,33 @@ def create_app(
                 ):
                     await _unload_locked(f"idle {idle_timeout:g}s")
 
-    @app.get("/v1/models")
+    def _budget() -> int:
+        return (pool._config or Session._default_config(active_n_ctx)).max_active_tokens
+
+    @app.get("/healthz")
+    async def healthz() -> dict[str, Any]:
+        # Lock-free on purpose: a stream holds the engine lock for its whole
+        # duration, and a doctor probe must answer while a turn is running.
+        # Carries no session ids, so it is safe without a key.
+        return {
+            "status": "ok",
+            "model": model_name,
+            "model_loaded": engine_loaded,
+            "kv_cells": active_n_ctx,
+            "logical_window": active_n_ctx,
+            "budget": _budget(),
+            "pin_system_prompt": pin_system_prompt,
+            "auth_required": keyring is not None,
+            "session_required": require_session,
+            "kv_block_primitives": active_kv_block,
+            "queue": {
+                "running": scheduler.running is not None,
+                "waiting": scheduler.waiting,
+            },
+            "version": app.version,
+        }
+
+    @app.get("/v1/models", dependencies=[Depends(_caller)])
     async def list_models() -> dict[str, Any]:
         return {
             "object": "list",
@@ -329,6 +481,12 @@ def create_app(
                     "object": "model",
                     "created": 0,
                     "owned_by": "evoke",
+                    "context_length": active_n_ctx,
+                    "evoke": {
+                        "kv_cells": active_n_ctx,
+                        "logical_window": active_n_ctx,
+                        "budget": _budget(),
+                    },
                 }
             ],
         }
@@ -343,7 +501,7 @@ def create_app(
             if "mmproj" not in p.stem.lower()
         )
 
-    @app.get("/models")
+    @app.get("/models", dependencies=[Depends(_caller)])
     async def native_models() -> dict[str, Any]:
         # llama-server manager shape: clients like calcifer read the model
         # list from data[].id and the live context window / vision support
@@ -368,7 +526,7 @@ def create_app(
             ]
         }
 
-    @app.post("/models/load")
+    @app.post("/models/load", dependencies=[Depends(_admin)])
     async def load_model(req: LoadModelRequest) -> dict[str, Any]:
         nonlocal engine_loaded
         if model_dir is None or engine_factory is None:
@@ -406,7 +564,7 @@ def create_app(
             print(f"[models] switched to {model_name} ({model_path})", flush=True)
         return {"status": "ok", "model": model_name, "loaded": True}
 
-    @app.post("/models/unload")
+    @app.post("/models/unload", dependencies=[Depends(_admin)])
     async def unload_model() -> dict[str, Any]:
         if engine_factory is None or model_path is None:
             raise HTTPException(
@@ -423,11 +581,19 @@ def create_app(
     @app.get("/health")
     async def health(
         x_evoke_session: str | None = Header(default=None),
+        caller: ApiKey | None = Depends(_caller),
     ) -> dict[str, Any]:
         async with lock:
             # peek, never get(): a poll must not create a session or swap
             # engine state away from a generation in flight.
-            sid = x_evoke_session or pool.active_session_id or DEFAULT_SESSION_ID
+            if x_evoke_session:
+                sid = _pool_id(caller, x_evoke_session)
+            elif caller is None or caller.admin:
+                sid = pool.active_session_id or DEFAULT_SESSION_ID
+            else:
+                raise ApiError(
+                    400, "evoke_session_required", "X-Evoke-Session header is required"
+                )
             session = pool.peek(sid)
             base = {
                 "status": "ok",
@@ -472,20 +638,32 @@ def create_app(
             }
 
     @app.get("/v1/sessions")
-    async def list_sessions() -> dict[str, Any]:
+    async def list_sessions(
+        caller: ApiKey | None = Depends(_caller),
+    ) -> dict[str, Any]:
         async with lock:
+            visible = [_visible_id(caller, sid) for sid in pool.session_ids()]
+            active = pool.active_session_id
             return {
-                "active": pool.active_session_id,
-                "sessions": pool.session_ids(),
+                "active": _visible_id(caller, active) if active else None,
+                "sessions": [sid for sid in visible if sid is not None],
                 "n_sessions": pool.n_sessions,
                 "max_sessions": max_sessions,
                 "evicted_count": pool.evicted_count,
             }
 
-    @app.delete("/v1/sessions/{session_id}")
-    async def delete_session(session_id: str) -> dict[str, Any]:
+    @app.delete("/v1/sessions/{session_id:path}")
+    async def delete_session(
+        session_id: str,
+        caller: ApiKey | None = Depends(_caller),
+    ) -> dict[str, Any]:
+        target = (
+            session_id
+            if caller is None or caller.admin
+            else _pool_id(caller, session_id)
+        )
         async with lock:
-            dropped = pool.drop(session_id)
+            dropped = pool.drop(target)
         return {
             "status": "dropped" if dropped else "not_found",
             "session_id": session_id,
@@ -494,22 +672,37 @@ def create_app(
     @app.post("/admin/reset")
     async def reset_session(
         x_evoke_session: str | None = Header(default=None),
+        caller: ApiKey | None = Depends(_caller),
     ) -> dict[str, Any]:
+        if caller is not None and not x_evoke_session:
+            raise ApiError(
+                400, "evoke_session_required", "X-Evoke-Session header is required"
+            )
         async with lock:
-            sid = x_evoke_session or pool.active_session_id or DEFAULT_SESSION_ID
+            if x_evoke_session:
+                sid = _pool_id(caller, x_evoke_session)
+            else:
+                sid = pool.active_session_id or DEFAULT_SESSION_ID
             if not engine_loaded:
                 return {"status": "reset", "session_id": sid}
             session = pool.get(sid)
             session.reset()
         return {"status": "reset", "session_id": sid}
 
-    @app.post("/admin/set_budget")
+    @app.post("/admin/set_budget", dependencies=[Depends(_admin)])
     async def set_budget(req: Request) -> dict[str, Any]:
+        nonlocal config
         body = await req.json()
-        tokens = int(body.get("tokens", pool._config.max_active_tokens))
+        tokens = int(body.get("tokens", _budget()))
         if tokens < 32:
             raise HTTPException(status_code=400, detail="budget must be >= 32")
         async with lock:
+            # Without an explicit config every session derives its own from
+            # n_ctx; materialise one so the new budget reaches new sessions
+            # and survives a pool rebuild on model reload.
+            if pool._config is None:
+                pool._config = Session._default_config(active_n_ctx)
+                config = pool._config
             pool._config.max_active_tokens = tokens
             for sid in pool.session_ids():
                 s = pool.peek(sid)
@@ -517,13 +710,83 @@ def create_app(
                     s.reset()
         return {"status": "ok", "max_active_tokens": tokens}
 
+    def _render(msgs: list[dict[str, Any]], tools: list[dict[str, Any]] | None) -> str:
+        if tools or enable_thinking is not None:
+            # Render via Python jinja2 against the GGUF's own chat
+            # template, which understands tools and enable_thinking
+            # (the C path cannot carry either, so an explicit thinking
+            # flag must route here or it is silently dropped). Falls
+            # back to our handwritten format_qwen_chat only if the
+            # model has no embedded template or the render fails.
+            try:
+                return engine.apply_chat_template_with_tools(
+                    msgs,
+                    tools=tools,
+                    add_generation_prompt=True,
+                    enable_thinking=enable_thinking,
+                )
+            except RuntimeError as exc:
+                print(
+                    f"[tmpl] gguf template render failed ({exc}); "
+                    "falling back to format_qwen_chat",
+                    flush=True,
+                )
+                return format_qwen_chat(msgs, tools=tools, add_generation_prompt=True)
+        try:
+            return engine.apply_chat_template(msgs, add_generation_prompt=True)
+        except RuntimeError as exc:
+            # Model has no embedded chat template; fall back to ours.
+            print(
+                f"[tmpl] C template path failed ({exc}); "
+                "falling back to format_qwen_chat",
+                flush=True,
+            )
+            return format_qwen_chat(msgs, tools=None, add_generation_prompt=True)
+
+    def _pin_length(
+        msgs: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        prompt_tokens: list[int],
+    ) -> int:
+        if not pin_system_prompt:
+            return 0
+        n_sys = 0
+        while n_sys < len(msgs) and msgs[n_sys].get("role") == "system":
+            n_sys += 1
+        if n_sys == 0:
+            return 0
+        key = hashlib.sha256(
+            json.dumps([msgs[:n_sys], tools], sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        cached = pin_cache.get(key)
+        if cached is None:
+            probe = engine.tokenize(
+                _render(
+                    msgs[:n_sys] + [{"role": "user", "content": _PIN_SENTINEL}], tools
+                )
+            )
+            cached = _common_prefix_len(probe, prompt_tokens)
+            if len(pin_cache) >= 64:
+                pin_cache.clear()
+            pin_cache[key] = cached
+        return cached
+
     @app.post("/v1/chat/completions")
     async def chat_completions(
         req: ChatCompletionRequest,
         x_evoke_session: str | None = Header(default=None),
+        caller: ApiKey | None = Depends(_caller),
     ):
         if not req.messages:
-            raise HTTPException(status_code=400, detail="messages must not be empty")
+            raise ApiError(400, "messages_empty", "messages must not be empty")
+        if x_evoke_session:
+            session_id: str | None = _pool_id(caller, x_evoke_session)
+        elif require_session:
+            raise ApiError(
+                400, "evoke_session_required", "X-Evoke-Session header is required"
+            )
+        else:
+            session_id = None
 
         # In-flight accounting gates the idle watcher and the explicit
         # unload endpoint: the engine must not be closed between here and
@@ -540,59 +803,18 @@ def create_app(
         try:
             await _ensure_loaded()
 
-            # Resolve session under the pool lock so a concurrent request to
-            # another session_id doesn't swap the engine state out from under
-            # us mid-request. The lock is held for the full prompt-tokenize +
-            # decode + generate cycle.
             msgs = [m.model_dump(exclude_none=True) for m in req.messages]
-            if req.tools or enable_thinking is not None:
-                # Render via Python jinja2 against the GGUF's own chat
-                # template, which understands tools and enable_thinking
-                # (the C path cannot carry either, so an explicit thinking
-                # flag must route here or it is silently dropped). Falls
-                # back to our handwritten format_qwen_chat only if the
-                # model has no embedded template or the render fails.
-                try:
-                    prompt = engine.apply_chat_template_with_tools(
-                        msgs,
-                        tools=req.tools,
-                        add_generation_prompt=True,
-                        enable_thinking=enable_thinking,
-                    )
-                except RuntimeError as exc:
-                    print(
-                        f"[tmpl] gguf template render failed ({exc}); "
-                        "falling back to format_qwen_chat",
-                        flush=True,
-                    )
-                    prompt = format_qwen_chat(
-                        msgs, tools=req.tools, add_generation_prompt=True
-                    )
-            else:
-                try:
-                    prompt = engine.apply_chat_template(
-                        msgs, add_generation_prompt=True
-                    )
-                except RuntimeError as exc:
-                    # Model has no embedded chat template; fall back to ours.
-                    print(
-                        f"[tmpl] C template path failed ({exc}); "
-                        "falling back to format_qwen_chat",
-                        flush=True,
-                    )
-                    prompt = format_qwen_chat(
-                        msgs, tools=None, add_generation_prompt=True
-                    )
+            prompt = _render(msgs, req.tools)
             prompt_tokens = engine.tokenize(prompt)
             prompt_n = len(prompt_tokens)
             if prompt_n >= engine.n_ctx:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"prompt is {prompt_n} tokens but n_ctx is {engine.n_ctx}; "
-                        "it cannot be decoded"
-                    ),
+                raise ApiError(
+                    400,
+                    "context_length_exceeded",
+                    f"prompt is {prompt_n} tokens but n_ctx is {engine.n_ctx}; "
+                    "it cannot be decoded",
                 )
+            pin_n = _pin_length(msgs, req.tools, prompt_tokens)
 
             starts_in_think = _prompt_opens_think(prompt)
 
@@ -603,18 +825,24 @@ def create_app(
             max_new = req.max_tokens or 2048
             completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
             created = int(time.time())
-            # Explicit header wins; otherwise route by longest shared token
-            # prefix so an interleaved side-request (title generation) cannot
-            # land on the agent session and reset away its recovery archive.
-            if x_evoke_session:
-                session_id = x_evoke_session
-            else:
+            if session_id is None:
+                # Open mode only: route by longest shared token prefix so an
+                # interleaved side-request (title generation) cannot land on
+                # the agent session and reset away its recovery archive.
                 async with lock:
                     session_id = pool.route_id(prompt_tokens)
+            label = x_evoke_session or session_id
+            if not scheduler.admissible(session_id):
+                raise ApiError(
+                    409,
+                    "evoke_session_busy",
+                    "a turn for this session is running and another is queued",
+                )
             print(
                 f"[req {completion_id}] msgs={len(msgs)} tools={len(req.tools or [])} "
                 f"stream={req.stream} max_new={max_new} prompt_chars={len(prompt)} "
-                f"prompt_tokens={prompt_n} session={session_id} stops={stops}",
+                f"prompt_tokens={prompt_n} pinned={pin_n} session={session_id} "
+                f"stops={stops}",
                 flush=True,
             )
 
@@ -636,6 +864,12 @@ def create_app(
                     req.tools,
                     engine_lock,
                     starts_in_think,
+                    scheduler=scheduler,
+                    session_label=label,
+                    pin_prefix=pin_n,
+                    include_usage=bool(
+                        req.stream_options and req.stream_options.get("include_usage")
+                    ),
                 )
 
                 async def _stream_with_release():
@@ -654,22 +888,55 @@ def create_app(
                 return StreamingResponse(
                     _stream_with_release(),
                     media_type="text/event-stream",
+                    headers={
+                        "X-EVOKE-Session": label,
+                        "X-EVOKE-Request-Id": completion_id,
+                    },
                 )
 
-            def _run_turn():
+            def _run_turn(waited: float):
                 with engine_lock:
                     session = pool.get(session_id)
-                    session.sync_prefix(
+                    before = session.manager.get_stats()
+                    sync = session.sync_prefix(
                         prompt_tokens,
                         priority=req.evoke_priority,
                         pinned=req.evoke_pinned,
                         task_boundary=req.evoke_task_boundary,
+                        pin_prefix=pin_n,
                     )
                     result = session.generate(max_tokens=max_new, stop_strings=stops)
-                    return result, session._config.suppress_thinking_strip
+                    metrics = _measure(
+                        session,
+                        engine.n_ctx,
+                        label,
+                        before,
+                        sync,
+                        prompt_n,
+                        len(result.output_tokens),
+                        waited,
+                    )
+                    return result, session._config.suppress_thinking_strip, metrics
 
-            async with lock:
-                result, suppress = await asyncio.to_thread(_run_turn)
+            try:
+                async with scheduler.turn(session_id) as waited:
+                    async with lock:
+                        result, suppress, metrics = await asyncio.to_thread(
+                            _run_turn, waited
+                        )
+            except SessionBusy as exc:
+                raise ApiError(
+                    409,
+                    "evoke_session_busy",
+                    "a turn for this session is running and another is queued",
+                ) from exc
+            except QueueTimeout as exc:
+                raise ApiError(
+                    503,
+                    "evoke_queue_timeout",
+                    "timed out waiting for the engine; another session is generating",
+                    headers={"Retry-After": "5"},
+                ) from exc
 
             parsed = parse_qwen_response(
                 result.text,
@@ -682,19 +949,57 @@ def create_app(
                     f"head={result.text[:160]!r} tail={result.text[-160:]!r}",
                     flush=True,
                 )
-            return _completion_payload(
-                completion_id,
-                created,
-                model_name,
-                parsed,
-                prompt_n,
-                len(result.output_tokens),
+            return JSONResponse(
+                _completion_payload(
+                    completion_id,
+                    created,
+                    model_name,
+                    parsed,
+                    prompt_n,
+                    len(result.output_tokens),
+                    metrics,
+                ),
+                headers=metrics.as_headers(),
             )
         finally:
             if not handed_off:
                 _release()
 
     return app
+
+
+def _common_prefix_len(a: list[int], b: list[int]) -> int:
+    n = min(len(a), len(b))
+    i = 0
+    while i < n and a[i] == b[i]:
+        i += 1
+    return i
+
+
+def _measure(
+    session: Session,
+    n_ctx: int,
+    label: str,
+    before: CacheStats,
+    sync: SyncStats,
+    prompt_n: int,
+    completion_n: int,
+    waited: float,
+) -> TurnMetrics:
+    manager = session.manager
+    return measure_turn(
+        session=label,
+        before=before,
+        after=manager.get_stats(),
+        peak_resident_tokens=manager.turn_peak_active_tokens,
+        pinned_tokens=manager.pinned_token_count,
+        prompt_tokens=prompt_n,
+        prompt_tokens_decoded=sync.new_tokens_decoded,
+        completion_tokens=completion_n,
+        kv_cells=n_ctx,
+        logical_window=n_ctx,
+        queue_wait_s=waited,
+    )
 
 
 _MARKERS = ("<think>", "</think>", "<tool_call>", "</tool_call>", "<|im_end|>")
@@ -739,6 +1044,11 @@ async def _stream_completion(
     engine_lock: threading.Lock | None = None,
     starts_in_think: bool = False,
     keepalive_interval: float = 5.0,
+    *,
+    scheduler: TurnScheduler | None = None,
+    session_label: str | None = None,
+    pin_prefix: int = 0,
+    include_usage: bool = False,
 ):
     yield _sse(
         _chunk_payload(completion_id, created, model_name, {"role": "assistant"})
@@ -768,8 +1078,43 @@ async def _stream_completion(
     # producer thread stops generating instead of grinding out the rest of
     # a response nobody will read while retries queue up behind the lock.
     abort = threading.Event()
+    waited = 0.0
+    metrics: TurnMetrics | None = None
+    acquire: asyncio.Future[None] | None = None
+    holds_turn = False
 
     try:
+        if scheduler is not None:
+            # Wait for this session's turn with keepalives on the wire: the
+            # response has already started, and a silent queue wait behind
+            # another session's generation would trip client read timeouts.
+            wait_start = time.monotonic()
+            acquire = asyncio.ensure_future(scheduler.acquire(session_id))
+            while not acquire.done():
+                await asyncio.wait({acquire}, timeout=keepalive_interval)
+                if not acquire.done():
+                    yield ": keepalive\n\n"
+                    last_emit = time.monotonic()
+            try:
+                acquire.result()
+            except SessionBusy:
+                yield _sse_error(
+                    409,
+                    "evoke_session_busy",
+                    "a turn for this session is running and another is queued",
+                )
+                yield "data: [DONE]\n\n"
+                return
+            except QueueTimeout:
+                yield _sse_error(
+                    503,
+                    "evoke_queue_timeout",
+                    "timed out waiting for the engine; another session is generating",
+                )
+                yield "data: [DONE]\n\n"
+                return
+            holds_turn = True
+            waited = time.monotonic() - wait_start
         async with lock:
             # Resolve the session inside the lock so any other request that
             # raced us through the pool gets to swap us in cleanly.
@@ -785,18 +1130,33 @@ async def _stream_completion(
                 ctx = engine_lock if engine_lock is not None else threading.Lock()
                 try:
                     with ctx:
-                        session.sync_prefix(
+                        before = session.manager.get_stats()
+                        sync = session.sync_prefix(
                             prompt_tokens,
                             priority=evoke_priority,
                             pinned=evoke_pinned,
                             task_boundary=evoke_task_boundary,
+                            pin_prefix=pin_prefix,
                         )
+                        n_out = 0
                         for chunk in session.stream_generate(
                             max_tokens=max_new,
                             stop_strings=stops,
                             abort_event=abort,
                         ):
+                            n_out = len(chunk.output_tokens)
                             loop.call_soon_threadsafe(chunk_q.put_nowait, chunk)
+                        turn = _measure(
+                            session,
+                            engine.n_ctx,
+                            session_label or session_id,
+                            before,
+                            sync,
+                            len(prompt_tokens),
+                            n_out,
+                            waited,
+                        )
+                        loop.call_soon_threadsafe(chunk_q.put_nowait, turn)
                     loop.call_soon_threadsafe(chunk_q.put_nowait, _DONE)
                 except BaseException as exc:  # noqa: BLE001
                     loop.call_soon_threadsafe(chunk_q.put_nowait, exc)
@@ -814,7 +1174,15 @@ async def _stream_completion(
                 if item is _DONE:
                     break
                 if isinstance(item, BaseException):
-                    raise item
+                    print(
+                        f"[stream {completion_id}] engine error: {item!r}", flush=True
+                    )
+                    yield _sse_error(500, "evoke_engine_error", str(item))
+                    yield "data: [DONE]\n\n"
+                    return
+                if isinstance(item, TurnMetrics):
+                    metrics = item
+                    continue
                 chunk = item
                 full_text = chunk.full_text
                 if chunk.finish_reason is not None:
@@ -895,6 +1263,13 @@ async def _stream_completion(
                     last_emit = time.monotonic()
     finally:
         abort.set()
+        if acquire is not None:
+            if holds_turn:
+                scheduler.release()
+            elif not acquire.done():
+                acquire.cancel()
+            elif not acquire.cancelled() and acquire.exception() is None:
+                scheduler.release()
 
     parsed = parse_qwen_response(
         full_text,
@@ -955,8 +1330,25 @@ async def _stream_completion(
             completion_id, created, model_name, {}, finish_reason=final_reason
         )
     )
+    if include_usage:
+        prompt_n = len(prompt_tokens)
+        completion_n = metrics.logical_tokens - prompt_n if metrics else 0
+        yield _sse(
+            {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model_name,
+                "choices": [],
+                "usage": _usage(prompt_n, completion_n, metrics),
+            }
+        )
     yield "data: [DONE]\n\n"
 
 
 def _sse(payload: dict[str, Any]) -> str:
     return f"data: {json.dumps(payload)}\n\n"
+
+
+def _sse_error(status: int, code: str, message: str) -> str:
+    return _sse(_error_body(status, message, code))
