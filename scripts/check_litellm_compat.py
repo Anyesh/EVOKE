@@ -16,16 +16,18 @@ from importlib.metadata import version
 import threading
 import time
 
+import httpx
 import litellm
 import openai
 
 from record_loom_fixtures import (
-    MOCK_TOKEN,
+    MOCK_ADMIN_TOKEN,
     REPLY_TEXT,
     SYSTEM_PROMPT,
     TOOL_CALL_TEXT,
     TOOLS,
     MockServer,
+    issue_key,
 )
 
 MODEL = "evoke-qwen3-8b"
@@ -198,14 +200,17 @@ def run(base: str, key: str, mock: MockServer | None) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url")
-    parser.add_argument("--api-key", default=MOCK_TOKEN)
+    parser.add_argument("--api-key", help="a non-admin key, for --base-url runs")
     args = parser.parse_args()
     print(f"litellm {version('litellm')}  openai {openai.__version__}")
     if args.base_url:
         run(args.base_url.rstrip("/"), args.api_key, None)
     else:
         with MockServer() as mock:
-            run(f"http://127.0.0.1:{mock.port}", MOCK_TOKEN, mock)
+            base = f"http://127.0.0.1:{mock.port}"
+            with httpx.Client() as client:
+                token = issue_key(client, base, MOCK_ADMIN_TOKEN, "loom@acme@litellm")
+            run(base, token.json()["token"], mock)
     print(f"{len(failures)} failure(s)" if failures else "all checks passed")
     return 1 if failures else 0
 

@@ -1,7 +1,8 @@
 """Record wire fixtures of the EVOKE server for Loom's provider integration.
 
-Against a live server:  --base-url http://host:port --api-key TOKEN
-Without --base-url the script serves create_app over a MockEngine on a local
+Against a live server:  --base-url http://host:port --admin-key TOKEN
+The admin key issues a per-person key the way loomd does, every turn runs
+under that key, and the key is revoked at the end. Without --base-url the script serves create_app over a MockEngine on a local
 port, so the fixtures carry the real server's framing and headers while the
 token counts come from the mock's one-char-per-token tokenizer.
 """
@@ -10,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import socket
 import sys
 import tempfile
@@ -23,12 +23,13 @@ import uvicorn
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from evoke.auth import KeyRing
+from evoke.auth import IssuedKeyStore, KeyRing
 from evoke.config import EvokeConfig
 from evoke.mock_engine import MockEngine
 from evoke.server import create_app
 
-MOCK_TOKEN = "loom-fixture-token"
+MOCK_ADMIN_TOKEN = "loomd-fixture-admin-token"
+FIXTURE_KEY_ID = "loom@tenant-acme@user-0001"
 SYSTEM_PROMPT = (
     "You are Loom's coding agent. Work in /work, call tools to read and edit "
     "files, and answer briefly. " * 12
@@ -76,11 +77,11 @@ class MockServer:
             recovery_match="identity",
             position_mode="sparse",
         )
-        keys = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
-        json.dump({"loom": {"token": MOCK_TOKEN}}, keys)
-        keys.close()
-        keyring = KeyRing.from_file(keys.name)
-        os.unlink(keys.name)
+        self._store_dir = tempfile.TemporaryDirectory()
+        keyring = KeyRing.from_tokens(
+            {"loomd": (MOCK_ADMIN_TOKEN, True)},
+            issued_store=IssuedKeyStore(Path(self._store_dir.name) / "issued.json"),
+        )
         app = create_app(
             self.engine,
             "evoke-qwen3-8b",
@@ -106,6 +107,7 @@ class MockServer:
     def __exit__(self, *_exc) -> None:
         self._server.should_exit = True
         self._thread.join(timeout=5)
+        self._store_dir.cleanup()
 
     def script(self, text: str) -> None:
         self.engine.queue_tokens([ord(c) for c in text] + [self.engine.eos_token])
@@ -131,6 +133,23 @@ def _record(resp: httpx.Response, body) -> dict:
     return {"status": resp.status_code, "headers": _evoke_headers(resp), "body": body}
 
 
+def issue_key(
+    client: httpx.Client, base_url: str, admin_key: str, key_id: str
+) -> httpx.Response:
+    return client.post(
+        f"{base_url}/admin/keys",
+        json={"key_id": key_id},
+        headers={"Authorization": f"Bearer {admin_key}"},
+    )
+
+
+def _redacted(record: dict) -> dict:
+    body = dict(record["body"])
+    if "token" in body:
+        body["token"] = body["token"][:4] + "<redacted>"
+    return {**record, "body": body}
+
+
 def _messages(*extra: dict) -> list[dict]:
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -139,10 +158,9 @@ def _messages(*extra: dict) -> list[dict]:
     ]
 
 
-def record(base_url: str, api_key: str, out: Path, mock: MockServer | None) -> None:
+def record(base_url: str, admin_key: str, out: Path, mock: MockServer | None) -> None:
     out.mkdir(parents=True, exist_ok=True)
-    auth = {"Authorization": f"Bearer {api_key}"}
-    session = {"X-Evoke-Session": "tenant-acme/session-0001", **auth}
+    admin = {"Authorization": f"Bearer {admin_key}"}
     chat = f"{base_url}/v1/chat/completions"
     with httpx.Client(timeout=600) as client:
         _write(
@@ -150,6 +168,12 @@ def record(base_url: str, api_key: str, out: Path, mock: MockServer | None) -> N
             "healthz.json",
             _record(r := client.get(f"{base_url}/healthz"), r.json()),
         )
+
+        r = issue_key(client, base_url, admin_key, FIXTURE_KEY_ID)
+        issued = _record(r, r.json())
+        _write(out, "admin_issue_key.json", _redacted(issued))
+        auth = {"Authorization": f"Bearer {issued['body']['token']}"}
+        session = {"X-Evoke-Session": "tenant-acme/session-0001", **auth}
 
         r = client.get(f"{base_url}/v1/models", headers=auth)
         _write(out, "models.json", _record(r, r.json()))
@@ -215,18 +239,23 @@ def record(base_url: str, api_key: str, out: Path, mock: MockServer | None) -> N
         r = client.post(chat, json=turn3, headers=session)
         _write(out, "nonstream_turn3.json", _record(r, r.json()))
 
+        r = client.delete(f"{base_url}/admin/keys/{FIXTURE_KEY_ID}", headers=admin)
+        _write(out, "admin_revoke_key.json", _record(r, r.json()))
+        r = client.post(chat, json=turn3, headers=session)
+        _write(out, "revoked_key_rejection.json", _record(r, r.json()))
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url")
-    parser.add_argument("--api-key", default=MOCK_TOKEN)
+    parser.add_argument("--admin-key", default=MOCK_ADMIN_TOKEN)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     if args.base_url:
-        record(args.base_url.rstrip("/"), args.api_key, args.out, None)
+        record(args.base_url.rstrip("/"), args.admin_key, args.out, None)
         return 0
     with MockServer() as mock:
-        record(f"http://127.0.0.1:{mock.port}", MOCK_TOKEN, args.out, mock)
+        record(f"http://127.0.0.1:{mock.port}", MOCK_ADMIN_TOKEN, args.out, mock)
     return 0
 
 
