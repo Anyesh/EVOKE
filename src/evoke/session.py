@@ -19,7 +19,7 @@ import os
 import sys
 import threading
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Callable, Iterator
 
 import numpy as np
 
@@ -60,10 +60,17 @@ class SessionPool:
         *,
         config: EvokeConfig | None = None,
         max_sessions: int = 8,
+        max_sessions_per_owner: int | None = None,
+        owner_of: Callable[[str], str | None] | None = None,
     ) -> None:
         self._engine = engine
         self._config = config
         self._max_sessions = max_sessions
+        # Per-owner cap: an owner past it loses its own oldest session, so one
+        # key opening sessions cannot push every other key's sessions out of
+        # the global LRU.
+        self._max_per_owner = max_sessions_per_owner
+        self._owner_of = owner_of
         self._sessions: dict[str, Session] = {}
         self._snapshots: dict[
             str, tuple[bytes, int, int, dict[int, np.ndarray]] | None
@@ -135,6 +142,7 @@ class SessionPool:
         self._snapshots[session_id] = None
         self._active = session_id
         self._lru.append(session_id)
+        self._maybe_evict_owner(session_id)
         self._maybe_evict_lru()
         return new
 
@@ -171,6 +179,17 @@ class SessionPool:
         else:
             self._engine.state_restore(snap)
         self._active = session_id
+
+    def _maybe_evict_owner(self, session_id: str) -> None:
+        if self._max_per_owner is None or self._owner_of is None:
+            return
+        owner = self._owner_of(session_id)
+        if owner is None:
+            return
+        owned = [sid for sid in self._lru if self._owner_of(sid) == owner]
+        for victim in owned[: max(0, len(owned) - self._max_per_owner)]:
+            if victim != self._active:
+                self.drop(victim)
 
     def _maybe_evict_lru(self) -> None:
         while len(self._sessions) > self._max_sessions and self._lru:

@@ -91,7 +91,9 @@ def main() -> int:
     # recovery_strength_init and tick_turn decays by recovery_decay each turn.
     # See decision-recovery-aware-eviction in the wiki for the design.
     w_recovery = float(os.environ.get("EVOKE_W_RECOVERY", "0.0"))
-    recovery_strength_init = float(os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT", "1.0"))
+    recovery_strength_init = float(
+        os.environ.get("EVOKE_RECOVERY_STRENGTH_INIT", "1.0")
+    )
     recovery_decay = float(os.environ.get("EVOKE_RECOVERY_DECAY", "0.7"))
     # Hard-protect a freshly recovered block from the eviction pass that fires
     # later in the same turn (when the new tail is decoded and the watermark
@@ -99,7 +101,9 @@ def main() -> int:
     # low-recency position before the model attends to it, so under a tight
     # budget the recovered fact is gone again by generation time. Decays via
     # tick_turn so the protection lifts once the block goes cold.
-    recovery_protect_threshold = float(os.environ.get("EVOKE_RECOVERY_PROTECT_THRESHOLD", "0.0"))
+    recovery_protect_threshold = float(
+        os.environ.get("EVOKE_RECOVERY_PROTECT_THRESHOLD", "0.0")
+    )
     # Position mode + recovery trigger for the live path. Identity gap-fill (the
     # north-star recovery) splices evicted K/V back in place by content identity
     # and requires sparse holes, so identity defaults position_mode to sparse.
@@ -225,9 +229,11 @@ def main() -> int:
     queue_env = os.environ.get("EVOKE_QUEUE_TIMEOUT")
     queue_timeout = float(queue_env) if queue_env else None
     max_waiting = int(os.environ.get("EVOKE_MAX_WAITING_PER_SESSION", "1"))
+    max_per_key = int(os.environ.get("EVOKE_MAX_SESSIONS_PER_KEY", "2"))
     print(
         f"  auth={'keys' if keyring else 'open'}  pin_system_prompt={pin_system_prompt}"
         f"  queue_timeout={queue_timeout}  max_waiting_per_session={max_waiting}"
+        f"  max_sessions_per_key={max_per_key}"
     )
 
     app = create_app(
@@ -243,6 +249,7 @@ def main() -> int:
         pin_system_prompt=pin_system_prompt,
         queue_timeout=queue_timeout,
         max_waiting_per_session=max_waiting,
+        max_sessions_per_key=max_per_key,
     )
     print(f"serving on http://{host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info")

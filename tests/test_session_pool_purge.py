@@ -54,3 +54,22 @@ def test_session_reset_deletes_the_previous_archive(tmp_path):
     assert any(spill.iterdir())
     pool.get("a").reset()
     assert not any(spill.iterdir())
+
+
+def _owner(session_id: str) -> str | None:
+    return session_id.split("|", 1)[0] if "|" in session_id else None
+
+
+def test_owner_cap_evicts_only_that_owners_oldest_session(tmp_path):
+    engine = MockEngine()
+    pool = SessionPool(
+        engine,
+        config=EvokeConfig(max_active_tokens=4096, recovery_mode="discard"),
+        max_sessions=8,
+        max_sessions_per_owner=2,
+        owner_of=_owner,
+    )
+    pool.get("b|1")
+    for sid in ("a|1", "a|2", "a|3"):
+        pool.get(sid)
+    assert sorted(pool.session_ids()) == ["a|2", "a|3", "b|1"]

@@ -246,6 +246,7 @@ def create_app(
     pin_system_prompt: bool = False,
     queue_timeout: float | None = None,
     max_waiting_per_session: int = 1,
+    max_sessions_per_key: int = 2,
 ) -> FastAPI:
     @contextlib.asynccontextmanager
     async def _lifespan(_: FastAPI):
@@ -356,7 +357,20 @@ def create_app(
             },
         )
 
-    pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+    def _owner_of(session_id: str) -> str | None:
+        owner, sep, _ = session_id.partition(NAMESPACE_SEP)
+        return owner if sep else None
+
+    def _new_pool() -> SessionPool:
+        return SessionPool(
+            engine,
+            config=config,
+            max_sessions=max_sessions,
+            max_sessions_per_owner=max_sessions_per_key if keyring else None,
+            owner_of=_owner_of if keyring else None,
+        )
+
+    pool = _new_pool()
     # Single global lock: SessionPool swaps engine state on every
     # cross-session transition; concurrent requests against the same
     # engine context would race. Per-session concurrency would require
@@ -396,7 +410,7 @@ def create_app(
         # full history, so a reloaded server rebuilds state by prefill.
         nonlocal pool, engine_loaded
         await asyncio.to_thread(_close_engine_blocking)
-        pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+        pool = _new_pool()
         engine_loaded = False
         print(f"[models] unloaded {model_name} ({reason})", flush=True)
 
@@ -407,7 +421,7 @@ def create_app(
         engine = await asyncio.to_thread(engine_factory, path)
         model_name = name
         model_path = path
-        pool = SessionPool(engine, config=config, max_sessions=max_sessions)
+        pool = _new_pool()
         active_n_ctx = engine.n_ctx
         active_kv_block = engine.supports_kv_block
         engine_loaded = True

@@ -281,3 +281,17 @@ def test_validation_error_carries_an_openai_error_object():
     )
     assert resp.status_code == 422
     assert resp.json()["error"]["type"] == "invalid_request_error"
+
+
+def test_a_key_past_its_session_cap_loses_only_its_own_oldest_session():
+    client = _client(max_sessions_per_key=2)
+    client.post("/v1/chat/completions", json=_body(), headers=_auth(OTHER, "acme/o1"))
+    for sid in ("acme/s1", "acme/s2", "acme/s3"):
+        client.post("/v1/chat/completions", json=_body(), headers=_auth(LOOM, sid))
+    assert client.get("/v1/sessions", headers=_auth(LOOM)).json()["sessions"] == [
+        "acme/s2",
+        "acme/s3",
+    ]
+    assert client.get("/v1/sessions", headers=_auth(OTHER)).json()["sessions"] == [
+        "acme/o1"
+    ]
