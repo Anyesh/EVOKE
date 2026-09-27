@@ -865,6 +865,7 @@ def create_app(
                     engine_lock,
                     starts_in_think,
                     scheduler=scheduler,
+                    owner=caller.key_id if caller else None,
                     session_label=label,
                     pin_prefix=pin_n,
                     include_usage=bool(
@@ -919,7 +920,9 @@ def create_app(
                     return result, session._config.suppress_thinking_strip, metrics
 
             try:
-                async with scheduler.turn(session_id) as waited:
+                async with scheduler.turn(
+                    session_id, owner=caller.key_id if caller else None
+                ) as waited:
                     async with lock:
                         result, suppress, metrics = await asyncio.to_thread(
                             _run_turn, waited
@@ -1046,6 +1049,7 @@ async def _stream_completion(
     keepalive_interval: float = 5.0,
     *,
     scheduler: TurnScheduler | None = None,
+    owner: str | None = None,
     session_label: str | None = None,
     pin_prefix: int = 0,
     include_usage: bool = False,
@@ -1089,7 +1093,7 @@ async def _stream_completion(
             # response has already started, and a silent queue wait behind
             # another session's generation would trip client read timeouts.
             wait_start = time.monotonic()
-            acquire = asyncio.ensure_future(scheduler.acquire(session_id))
+            acquire = asyncio.ensure_future(scheduler.acquire(session_id, owner=owner))
             while not acquire.done():
                 await asyncio.wait({acquire}, timeout=keepalive_interval)
                 if not acquire.done():

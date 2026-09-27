@@ -153,3 +153,32 @@ def test_counters_report_running_and_waiting():
         await asyncio.gather(h, w)
 
     _run(main())
+
+
+def test_round_robin_is_across_owners_not_sessions():
+    # Owner x opens three sessions, owner y one; y must not wait behind all of
+    # x's sessions, so opening more sessions buys no extra share of the engine.
+    async def main():
+        sched = TurnScheduler()
+        order: list[str] = []
+        gate = asyncio.Event()
+
+        async def holder():
+            async with sched.turn("h", owner="z"):
+                await gate.wait()
+
+        async def worker(sid: str, owner: str):
+            async with sched.turn(sid, owner=owner):
+                order.append(sid)
+
+        h = asyncio.create_task(holder())
+        await asyncio.sleep(0)
+        tasks = []
+        for sid, owner in (("x1", "x"), ("x2", "x"), ("x3", "x"), ("y1", "y")):
+            tasks.append(asyncio.create_task(worker(sid, owner)))
+            await asyncio.sleep(0)
+        gate.set()
+        await asyncio.gather(h, *tasks)
+        return order
+
+    assert _run(main()) == ["x1", "y1", "x2", "x3"]
