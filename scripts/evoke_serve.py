@@ -112,6 +112,7 @@ def main() -> int:
         "EVOKE_POSITION_MODE",
         "sparse" if recovery_match == "identity" else "compact",
     ).lower()
+    gap_fill_budget_aware = os.environ.get("EVOKE_GAP_FILL_BUDGET_AWARE", "0") == "1"
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -172,6 +173,7 @@ def main() -> int:
                 recovery_protect_threshold=recovery_protect_threshold,
                 position_mode=position_mode,
                 recovery_match=recovery_match,
+                gap_fill_budget_aware=gap_fill_budget_aware,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"

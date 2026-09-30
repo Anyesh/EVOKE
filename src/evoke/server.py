@@ -996,6 +996,7 @@ def create_app(
                         pinned=req.evoke_pinned,
                         task_boundary=req.evoke_task_boundary,
                         pin_prefix=pin_n,
+                        reserve_tokens=max_new,
                     )
                     result = session.generate(max_tokens=max_new, stop_strings=stops)
                     metrics = _measure(
@@ -1242,6 +1243,7 @@ async def _stream_completion(
                             pinned=evoke_pinned,
                             task_boundary=evoke_task_boundary,
                             pin_prefix=pin_prefix,
+                            reserve_tokens=max_new,
                         )
                         n_out = 0
                         for chunk in session.stream_generate(
