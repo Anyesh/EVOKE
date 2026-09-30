@@ -188,6 +188,13 @@ def yarn_context_params(factor: float, orig_ctx: int) -> dict[str, float | int]:
         "rope_scaling_type": ROPE_SCALING_YARN,
         "rope_freq_scale": 1.0 / factor,
         "yarn_orig_ctx": orig_ctx,
+        # Left at "from the model" (-1) the extrapolation mix is 0 for a GGUF
+        # without YaRN metadata, which is plain position interpolation and
+        # wrecks short contexts (measured: gibberish from about 3K tokens).
+        "yarn_ext_factor": 1.0,
+        "yarn_attn_factor": 1.0,
+        "yarn_beta_fast": 32.0,
+        "yarn_beta_slow": 1.0,
     }
 
 
