@@ -60,3 +60,6 @@ paper/*.md
 paper/neurips_*
 paper/*.tex
 .playwright-mcp/
+
+# Fetched by scripts/fetch_trajectories.py, not versioned
+data/trajectories/
