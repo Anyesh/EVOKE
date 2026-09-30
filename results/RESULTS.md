@@ -536,3 +536,23 @@ Same hardware and model. Changes from v3:
 The critical regression at 512 budget is fixed. Source-aware scoring protects conversation blocks from eviction while document blocks are demoted first. Budget-capped promotion without neighbor expansion prevents the thrashing cycle.
 
 Raw data: `results/bench_qwen25_7b_v2.txt`
+
+## Budget-aware gap-fill and static YaRN (Qwen3-8B, 26-turn session)
+
+Files in `results/gap_fill/`, one per arm, each a list of per-turn replies with `usage.evoke` and wall time
+(driver: `scripts/measure_gap_fill.py`, needle probe: `scripts/long_needle.py`):
+
+- `*_q8.json`: reference (no eviction), restore-everything (`everything`) and budget-aware (`aware`) with q8_0 KV
+  actually applied. Peak resident tokens 25.9K, 26.0K and 13.8K; VRAM 8.4, 8.4 and 6.8 GB; the budget-aware
+  replies match the reference on 26 of 26 turns.
+- `reference.json`, `everything.json`, `aware.json`, `beyond.json`, `*_early.json`, `*_tight_early.json`: earlier runs
+  whose "q8_0" setting was silently ignored (f16 KV, no embeddings) because of a mis-sized context-params struct;
+  the eviction behaviour holds, the VRAM and latency figures do not. `*_early` and `*_tight_early` plant the fact in
+  an unpinned early turn: at budget 6000 budget-aware loses it (0/3) and restore-everything keeps it (3/3, peak 25.7K).
+- `fix_y2_q8.json`, `fix_y4_q8.json`, `fix_beyond_recent.json`, `beyond_recent.json`: static YaRN with the K-shift
+  fix (factor 2 over 40960 and factor 4 over 32768 match the unscaled replies on all 26 turns) and a 60-turn run
+  past the trained window.
+- `needle_base.json`, `needle_yarn.json`: retrieval at 33K, 66K and 85K tokens with and without YaRN factor 2
+  (7/9 and 8/9; no difference up to 66K). `stock0.json`, `stock2.json`: stock llama-server control for YaRN.
+- `results/loom/instance_q8.json`: the Loom-scale instance measurement re-run with q8_0 applied (8.3 to 8.4 GB card,
+  9.5 GB host RAM with two live sessions).
