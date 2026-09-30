@@ -110,3 +110,103 @@ def test_cap_is_a_share_of_the_budget_left_after_the_system_pin():
     error = resp.json()["error"]
     assert 400 < error["pin_cap"] < 460
     assert error["pinned_tokens"] > error["pin_cap"]
+
+
+def _rendered_len(messages: list[dict]) -> int:
+    from evoke.templates import format_qwen_chat
+
+    plain = [{k: v for k, v in m.items() if k != "evoke_keep"} for m in messages]
+    return len(format_qwen_chat(plain, add_generation_prompt=False))
+
+
+def assert_covers_body(pinned: int, whole_message_tokens: int) -> None:
+    # A span runs from just after the next-turn opener of the previous message to
+    # just after the opener of the following one, so it may drop the role header
+    # (up to "user\n") and it takes in the following "\n<|im_start|>".
+    assert whole_message_tokens - 20 <= pinned <= whole_message_tokens + 20
+
+
+def _tool_conversation() -> list[dict]:
+    return [
+        {"role": "system", "content": "You are an agent."},
+        {"role": "user", "content": "read main.py"},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_0",
+                    "type": "function",
+                    "function": {"name": "read_file", "arguments": "{}"},
+                }
+            ],
+        },
+        {"role": "tool", "tool_call_id": "call_0", "content": "print('hi')\n" * 30},
+        {"role": "user", "content": "now fix it"},
+    ]
+
+
+def test_pinned_span_is_exactly_the_marked_tool_message():
+    client = _client(4000)
+    messages = _tool_conversation()
+    messages[3]["evoke_keep"] = "pin"
+    whole = _rendered_len(messages[:4]) - _rendered_len(messages[:3])
+    evoke = _post(client, messages).json()["usage"]["evoke"]
+    assert_covers_body(evoke["pinned_tokens"], whole)
+
+
+def test_adjacent_marked_messages_add_up():
+    client = _client(4000)
+    messages = _tool_conversation()
+    messages[3]["evoke_keep"] = "pin"
+    messages[4]["evoke_keep"] = "pin"
+    whole = _rendered_len(messages[:5]) - _rendered_len(messages[:3])
+    evoke = _post(client, messages).json()["usage"]["evoke"]
+    assert_covers_body(evoke["pinned_tokens"], whole)
+
+
+def test_streaming_request_honours_marks_and_the_cap():
+    client = _client(4000)
+    messages = _tool_conversation()
+    messages[3]["evoke_keep"] = "pin"
+    body = {
+        "model": "evoke-mock",
+        "messages": messages,
+        "max_tokens": 4,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    resp = client.post("/v1/chat/completions", json=body, headers=SESSION)
+    assert resp.status_code == 200
+    usage_chunks = [
+        line
+        for line in resp.text.splitlines()
+        if line.startswith("data: {") and '"usage"' in line
+    ]
+    assert usage_chunks
+    import json
+
+    evoke = json.loads(usage_chunks[-1][len("data: ") :])["usage"]["evoke"]
+    assert evoke["pinned_tokens"] > 0
+
+    tight = _client(200, pin_cap=0.1)
+    refused = tight.post("/v1/chat/completions", json=body, headers=SESSION)
+    assert refused.status_code == 400
+    assert refused.json()["error"]["code"] == "evoke_pin_budget_exceeded"
+
+
+def test_mark_on_a_message_that_is_not_resident_yet_and_a_repeat_do_not_double_count():
+    client = _client(4000)
+    messages = _tool_conversation()
+    messages[3]["evoke_keep"] = "pin"
+    first = _post(client, messages).json()["usage"]["evoke"]
+    again = _post(client, messages).json()["usage"]["evoke"]
+    assert again["pinned_tokens"] == first["pinned_tokens"]
+
+
+def test_healthz_says_whether_marks_reach_resident_blocks():
+    assert _client(4000).get("/healthz").json()["keep_marks_on_resident"] is True
+    compact = EvokeConfig(max_active_tokens=4000, position_mode="compact")
+    engine = MockEngine(n_ctx=16384)
+    client = TestClient(create_app(engine, "evoke-mock", compact))
+    assert client.get("/healthz").json()["keep_marks_on_resident"] is False

@@ -486,6 +486,13 @@ def create_app(
     def _budget() -> int:
         return (pool._config or Session._default_config(active_n_ctx)).max_active_tokens
 
+    def _keep_marks_on_resident() -> bool:
+        # Marks on already-decoded blocks need absolute positions to line up with
+        # the prompt, which only sparse positions with identity recovery give;
+        # otherwise a mark applies to content decoded on that request only.
+        config = pool._config or Session._default_config(active_n_ctx)
+        return config.position_mode == "sparse" and config.recovery_match == "identity"
+
     def _logical_window() -> int:
         config = pool._config or Session._default_config(active_n_ctx)
         return config.logical_window or active_n_ctx
@@ -504,6 +511,7 @@ def create_app(
             "budget": _budget(),
             "pin_system_prompt": pin_system_prompt,
             "pin_cap_fraction": pin_cap,
+            "keep_marks_on_resident": _keep_marks_on_resident(),
             "auth_required": keyring is not None,
             "session_required": require_session,
             "kv_block_primitives": active_kv_block,
