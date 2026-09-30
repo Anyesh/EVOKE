@@ -909,17 +909,20 @@ class Session:
             # Blocks never straddle the pin boundary, so the pinned head
             # (the operator's fixed system prompt) is decoded as its own call.
             pin_end = min(len(tail), max(0, pin_prefix - divergence))
+            chunk = self._config.prefill_chunk_tokens or len(tail)
             for part, part_pinned in ((tail[:pin_end], True), (tail[pin_end:], pinned)):
-                if not part:
-                    continue
-                self._manager.add_context_tokens(
-                    part,
-                    key=f"turn{self._turn_id}",
-                    priority=priority,
-                    pinned=part_pinned,
-                )
-                self._turn_id += 1
-            self._cached_tokens.extend(tail)
+                for i in range(0, len(part), chunk):
+                    self._manager.add_context_tokens(
+                        part[i : i + chunk],
+                        key=f"turn{self._turn_id}",
+                        priority=priority,
+                        pinned=part_pinned,
+                    )
+                    self._turn_id += 1
+            if self._config.prefill_chunk_tokens:
+                self._cached_tokens = self._manager.get_token_view()
+            else:
+                self._cached_tokens.extend(tail)
             if (
                 tail_text
                 and not self._config.smart_recover_before_decode

@@ -187,6 +187,12 @@ class EvokeConfig:
     # the budget applies only at end of turn.
     gap_fill_budget_aware: bool = False
 
+    # Prompt tokens decoded per add_context_tokens call when a turn's new tail is
+    # long; end-of-turn-style eviction runs between chunks, so residency during
+    # prefill stays near the budget plus one chunk instead of the whole tail.
+    # 0 decodes the tail in one call.
+    prefill_chunk_tokens: int = 0
+
     recovery_mode: str = "discard"
     # On hybrid (Mamba + Attention) memory models, mid-cache eviction of the
     # <think>...</think> range is impossible (the recurrent half rejects

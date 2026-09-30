@@ -119,3 +119,34 @@ def test_trailing_saved_block_is_always_restored():
     assert stats.blocks_recovered == 1
     assert engine.next_write_pos == 20
     assert engine._token_at_pos[16] == 16
+
+
+def _chunk_config(budget: int, chunk: int) -> EvokeConfig:
+    config = _config(budget)
+    config.prefill_chunk_tokens = chunk
+    return config
+
+
+def test_chunked_prefill_bounds_peak_residency():
+    prompt = list(range(80))
+    unchunked = Session(RecordingEngine(), config=_chunk_config(16, 0))
+    unchunked.sync_prefix(prompt)
+    chunked_engine = RecordingEngine()
+    chunked = Session(chunked_engine, config=_chunk_config(16, 8))
+    chunked.sync_prefix(prompt)
+    assert unchunked._manager._turn_peak_active_tokens == 80
+    assert chunked._manager._turn_peak_active_tokens <= 16 + 8
+    assert [len(c) for c in chunked_engine.decoded] == [8] * 10
+    assert chunked_engine.next_write_pos == 80
+    assert chunked._manager.get_stats().active_tokens <= 16
+
+
+def test_chunked_prefill_keeps_pinned_prefix_and_tail_positions():
+    engine = RecordingEngine()
+    session = Session(engine, config=_chunk_config(16, 8))
+    prompt = list(range(60))
+    session.sync_prefix(prompt, pin_prefix=8)
+    starts = _resident_starts(session)
+    assert 0 in starts
+    assert engine._token_at_pos[0] == 0 and engine._token_at_pos[7] == 7
+    assert engine._token_at_pos[59] == 59
