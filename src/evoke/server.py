@@ -503,7 +503,7 @@ def create_app(
             "logical_window": _logical_window(),
             "budget": _budget(),
             "pin_system_prompt": pin_system_prompt,
-            "pin_cap": int(pin_cap * _budget()),
+            "pin_cap_fraction": pin_cap,
             "auth_required": keyring is not None,
             "session_required": require_session,
             "kv_block_primitives": active_kv_block,
@@ -909,26 +909,29 @@ def create_app(
         ]
 
     def _check_pin_cap(keep_spans: list[KeepSpan], pin_n: int) -> None:
-        if not any(span.mode == "pin" for span in keep_spans):
-            return
-        covered = [(0, pin_n)] if pin_n else []
-        for span in keep_spans:
-            if span.mode == "pin":
-                covered.append((span.start, span.end))
+        # Only client pins count against the cap, and the cap is a share of the
+        # budget left after the operator's pinned system prompt: a Loom system
+        # prompt already fills most of the budget, so a share of the whole
+        # budget would refuse every marked request.
+        covered = sorted(
+            (max(span.start, pin_n), span.end)
+            for span in keep_spans
+            if span.mode == "pin" and span.end > pin_n
+        )
         pinned = 0
         end = 0
-        for start, stop in sorted(covered):
+        for start, stop in covered:
             start = max(start, end)
             if stop > start:
                 pinned += stop - start
                 end = stop
-        cap = int(pin_cap * _budget())
+        cap = int(pin_cap * max(0, _budget() - pin_n))
         if pinned > cap:
             raise ApiError(
                 400,
                 "evoke_pin_budget_exceeded",
                 f"{pinned} pinned tokens exceed the pin cap of {cap} "
-                f"({pin_cap:g} of the budget)",
+                f"({pin_cap:g} of the budget left after the system prompt)",
                 extra={"pinned_tokens": pinned, "pin_cap": cap},
             )
 

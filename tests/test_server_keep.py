@@ -97,3 +97,16 @@ def test_pinned_message_is_restored_after_it_was_evicted():
     restored = _post(client, messages).json()["usage"]["evoke"]
     assert restored["blocks_recovered"] > 0
     assert restored["pinned_tokens"] >= len(BLOB)
+
+
+def test_cap_is_a_share_of_the_budget_left_after_the_system_pin():
+    client = _client(2000, pin_cap=0.5, pin_system_prompt=True)
+    system = {"role": "system", "content": "You are an agent. " * 60}
+    small = {"role": "user", "content": "x" * 300, "evoke_keep": "pin"}
+    assert _post(client, [system, small]).status_code == 200
+    large = {"role": "user", "content": "x" * 600, "evoke_keep": "pin"}
+    resp = _post(client, [system, large])
+    assert resp.status_code == 400
+    error = resp.json()["error"]
+    assert 400 < error["pin_cap"] < 460
+    assert error["pinned_tokens"] > error["pin_cap"]
