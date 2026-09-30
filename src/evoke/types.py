@@ -13,6 +13,15 @@ class BlockSource(str, Enum):
     ASSISTANT = "assistant"
 
 
+@dataclass(frozen=True)
+class KeepSpan:
+    # [start, end) in prompt positions. "pin" makes the tokens unevictable and
+    # restores them if evicted; "prefer" only raises their score.
+    start: int
+    end: int
+    mode: str
+
+
 @dataclass
 class ActiveBlock:
     block_id: int
@@ -31,6 +40,11 @@ class ActiveBlock:
     # entirely (alongside is_sink and current-turn-pin).
     priority: float = 1.0
     pinned: bool = False
+    # Per-request keep marks from the client (see KeepSpan). Kept apart from
+    # pinned/priority because they are restated on every request and must be
+    # released when the mark is dropped, unlike the operator's fixed pin.
+    keep_pinned: bool = False
+    keep_boost: float = 1.0
     # Recovery-aware eviction: tracks "the model recently signaled this
     # block matters" via the smart_recover path. Set to recovery_strength_init
     # on each recover() call and decayed by recovery_decay on each per-turn

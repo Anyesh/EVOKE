@@ -193,6 +193,9 @@ class EvokeConfig:
     # 0 decodes the tail in one call.
     prefill_chunk_tokens: int = 0
 
+    # Score multiplier for client "prefer" marks on a message.
+    keep_prefer_boost: float = 2.0
+
     # Largest logical context (prompt plus completion, in positions) a session
     # accepts. 0 means the engine's n_ctx. Above n_ctx, positions run past the
     # KV cell count and the cells hold only the resident subset, which needs

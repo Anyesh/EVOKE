@@ -7,7 +7,7 @@ from evoke.engine import InferenceEngine
 from evoke.position import PositionManager
 from evoke.recovery import Breadcrumb, make_recovery_backend
 from evoke.scorer import RelevanceScorer
-from evoke.types import ActiveBlock, BlockSource, CacheStats, EvokeEvent
+from evoke.types import ActiveBlock, BlockSource, CacheStats, EvokeEvent, KeepSpan
 
 
 class EvokeManager:
@@ -120,6 +120,7 @@ class EvokeManager:
         *,
         priority: float = 1.0,
         pinned: bool = False,
+        keep: str | None = None,
     ) -> None:
         if not tokens:
             return
@@ -143,6 +144,8 @@ class EvokeManager:
                 representative_embedding=self._last_token_embedding(bstart, len(chunk)),
                 priority=priority,
                 pinned=pinned,
+                keep_pinned=keep == "pin",
+                keep_boost=self._config.keep_prefer_boost if keep else 1.0,
             )
             self._positions.append_block(block, bstart)
             new_blocks.append(block)
@@ -346,7 +349,9 @@ class EvokeManager:
 
     @property
     def pinned_token_count(self) -> int:
-        return sum(b.size for b in self._positions.active_blocks if b.pinned)
+        return sum(
+            b.size for b in self._positions.active_blocks if b.pinned or b.keep_pinned
+        )
 
     @property
     def turn_peak_active_tokens(self) -> int:
@@ -407,6 +412,19 @@ class EvokeManager:
                 block.representative_embedding = None
                 new_blocks.append(block)
         self._positions._active_blocks = new_blocks
+
+    def apply_keep(self, spans: list[KeepSpan]) -> None:
+        # Marks are restated on every request, so a block that no span covers
+        # loses its previous mark. A block overlapping a span by any amount is
+        # marked whole, over-pinning at most the block's own tokens.
+        for block in self._positions.active_blocks:
+            modes = {
+                s.mode
+                for s in spans
+                if s.start < block.logical_end and block.logical_start < s.end
+            }
+            block.keep_pinned = "pin" in modes
+            block.keep_boost = self._config.keep_prefer_boost if modes else 1.0
 
     def get_relevance_scores(self) -> dict[int, float]:
         blocks = self._positions.active_blocks
@@ -535,7 +553,7 @@ class EvokeManager:
         )
         evictable = []
         for block in blocks:
-            if block.is_sink or block.pinned:
+            if block.is_sink or block.pinned or block.keep_pinned:
                 continue
             if scores.get(block.block_id, 0.0) >= 1.0:
                 continue

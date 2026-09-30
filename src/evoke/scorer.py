@@ -145,7 +145,7 @@ class RelevanceScorer:
         # so even very high priority cannot out-rank sinks. Pinned blocks are
         # excluded from eviction candidates upstream (in
         # EvokeManager._evictable_blocks), so priority is independent of pin.
-        scaled = raw * block.priority
+        scaled = raw * block.priority * block.keep_boost
         return min(scaled, 1.0)
 
     def _score_attention(self, block: ActiveBlock) -> float | None:

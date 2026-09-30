@@ -19,7 +19,7 @@ import os
 import sys
 import threading
 from dataclasses import dataclass
-from typing import Callable, Iterator
+from typing import Callable, Iterator, Sequence
 
 import numpy as np
 
@@ -29,6 +29,7 @@ from evoke.jlens_scorer import JLensScorer
 from evoke.llama_engine import LlamaCppEngine
 from evoke.manager import EvokeManager
 from evoke.templates import parse_qwen_response
+from evoke.types import KeepSpan
 
 
 @dataclass
@@ -588,7 +589,11 @@ class Session:
         return avg / norm
 
     def _identity_gap_fill(
-        self, prompt_tokens: list[int], cursor: int, reserve_tokens: int = 0
+        self,
+        prompt_tokens: list[int],
+        cursor: int,
+        reserve_tokens: int = 0,
+        keep_spans: Sequence[KeepSpan] = (),
     ) -> tuple[int, int]:
         # Identity-keyed in-place recovery. Sparse eviction leaves a hole at a
         # block's original position and the kv_restore backend holds its K/V keyed
@@ -693,7 +698,7 @@ class Session:
                 sys.stderr.flush()
             break
         cursor, recovered = self._restore_pending(
-            pending, cursor, n - cursor + reserve_tokens, _debug
+            pending, cursor, n - cursor + reserve_tokens, _debug, keep_spans
         )
         # No enforcement here: evicting during gap-fill would re-evict the very
         # blocks just recovered to rebuild the prefix, leaving the decode that
@@ -704,6 +709,32 @@ class Session:
         self._gapfill_recovered += recovered
         self._gapfill_mismatch += mismatched
         return cursor, recovered
+
+    @staticmethod
+    def _tail_parts(
+        tail: list[int],
+        start: int,
+        pin_prefix: int,
+        pinned: bool,
+        keep_spans: Sequence[KeepSpan],
+    ) -> list[tuple[list[int], bool, str | None]]:
+        # Blocks never straddle the operator's pin boundary or a client mark
+        # boundary, so the tail is decoded as separate calls at each of them.
+        cuts = {0, len(tail), min(len(tail), max(0, pin_prefix - start))}
+        for span in keep_spans:
+            cuts.update(
+                min(len(tail), max(0, edge - start)) for edge in (span.start, span.end)
+            )
+        edges = sorted(cuts)
+        pin_end = min(len(tail), max(0, pin_prefix - start))
+        parts = []
+        for a, b in zip(edges, edges[1:]):
+            modes = {
+                s.mode for s in keep_spans if s.start - start < b and a < s.end - start
+            }
+            keep = "pin" if "pin" in modes else "prefer" if modes else None
+            parts.append((tail[a:b], a < pin_end or pinned, keep))
+        return parts
 
     def _drop_from(self, position: int) -> bool:
         if self._engine.next_write_pos > position:
@@ -718,6 +749,7 @@ class Session:
         cursor: int,
         extra_tokens: int,
         debug: bool,
+        keep_spans: Sequence[KeepSpan] = (),
     ) -> tuple[int, int]:
         # Decides which matched saved blocks to splice back, then splices them
         # in position order. Deciding before the first splice keeps the
@@ -725,14 +757,29 @@ class Session:
         # evicted again before generation. A saved block that ends exactly at
         # the cursor is always restored, because the tail decodes at the engine
         # write cursor and a hole at the top would misalign it with the prompt.
+        # A block the client marked "pin" is restored regardless of headroom.
+        pins = [s for s in keep_spans if s.mode == "pin"]
+
+        def forced(start: int, length: int) -> bool:
+            return start + length == cursor or any(
+                s.start < start + length and start < s.end for s in pins
+            )
+
         chosen = {start for start, _, _ in pending}
         if self._config.gap_fill_budget_aware and pending:
             headroom = self._manager.gap_fill_headroom(cursor, extra_tokens)
             chosen = set()
+            optional = []
             for start, _, length in sorted(pending, reverse=True):
-                if start + length == cursor or length <= headroom:
+                if forced(start, length):
                     chosen.add(start)
                     headroom = max(0, headroom - length)
+                else:
+                    optional.append((start, length))
+            for start, length in optional:
+                if length <= headroom:
+                    chosen.add(start)
+                    headroom -= length
         recovered = 0
         for start, key, length in sorted(pending):
             if start not in chosen:
@@ -755,6 +802,7 @@ class Session:
         task_boundary: bool = False,
         pin_prefix: int = 0,
         reserve_tokens: int = 0,
+        keep_spans: Sequence[KeepSpan] = (),
     ) -> SyncStats:
         # Decay the previous turn's recovery_strength signal before any of
         # this turn's recoveries or evictions run. The decay must precede
@@ -794,7 +842,7 @@ class Session:
         gap_filled = False
         if identity_match and divergence < len(prompt_tokens):
             gapfill_cursor, recovered = self._identity_gap_fill(
-                prompt_tokens, divergence, reserve_tokens
+                prompt_tokens, divergence, reserve_tokens, keep_spans
             )
             gap_filled = True
             # The walk's cursor is the genuine new-content boundary even
@@ -891,6 +939,9 @@ class Session:
                     self.reset()
                     divergence = 0
 
+        if identity_match:
+            self._manager.apply_keep(list(keep_spans))
+
         tail = prompt_tokens[divergence:]
         # A trailing template-injected empty think pair (Qwen3 with
         # enable_thinking=false) must not be absorbed into document blocks:
@@ -922,17 +973,17 @@ class Session:
                 and not identity_match
             ):
                 recovered = self._smart_recover(k=self._recovery_k)
-            # Blocks never straddle the pin boundary, so the pinned head
-            # (the operator's fixed system prompt) is decoded as its own call.
-            pin_end = min(len(tail), max(0, pin_prefix - divergence))
-            chunk = self._config.prefill_chunk_tokens or len(tail)
-            for part, part_pinned in ((tail[:pin_end], True), (tail[pin_end:], pinned)):
+            for part, part_pinned, keep in self._tail_parts(
+                tail, divergence, pin_prefix, pinned, keep_spans
+            ):
+                chunk = self._config.prefill_chunk_tokens or len(part)
                 for i in range(0, len(part), chunk):
                     self._manager.add_context_tokens(
                         part[i : i + chunk],
                         key=f"turn{self._turn_id}",
                         priority=priority,
                         pinned=part_pinned,
+                        keep=keep,
                     )
                     self._turn_id += 1
             if self._config.prefill_chunk_tokens:
