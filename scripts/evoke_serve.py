@@ -56,6 +56,8 @@ def main() -> int:
         kv_engine_kwargs["yarn_ext_factor"] = float(
             os.environ.get("EVOKE_YARN_EXT_FACTOR", "1")
         )
+    if os.environ.get("EVOKE_NO_EMBEDDINGS") == "1":
+        kv_engine_kwargs["embeddings"] = False
     flash_env = os.environ.get("EVOKE_FLASH_ATTN")
     if flash_env is not None:
         # -1 auto, 0 off, 1 on; forcing on breaks Qwen3 (QK-norm), see memory notes

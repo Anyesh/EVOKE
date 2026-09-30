@@ -70,6 +70,9 @@ def run(args: argparse.Namespace) -> None:
     if args.token:
         headers["Authorization"] = f"Bearer {args.token}"
     chunks = _chunks(args.chunk_chars)
+    extra_body = json.loads(args.body_extra)
+    if args.no_thinking:
+        extra_body["chat_template_kwargs"] = {"enable_thinking": False}
     system = SYSTEM if args.fact_turn < 0 and not args.recent_fact else SYSTEM_NO_FACT
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
     rows: list[dict] = []
@@ -87,7 +90,12 @@ def run(args: argparse.Namespace) -> None:
             t0 = time.monotonic()
             resp = client.post(
                 "/v1/chat/completions",
-                json={"model": "evoke", "messages": messages, "max_tokens": 24},
+                json={
+                    "model": "evoke",
+                    "messages": messages,
+                    "max_tokens": 24,
+                    **extra_body,
+                },
             )
             wall = time.monotonic() - t0
             if resp.status_code != 200:
@@ -96,6 +104,7 @@ def run(args: argparse.Namespace) -> None:
             body = resp.json()
             reply = body["choices"][0]["message"]["content"] or ""
             messages.append({"role": "assistant", "content": reply})
+            evoke = body["usage"].get("evoke", {})
             rows.append(
                 {
                     "turn": i,
@@ -115,9 +124,9 @@ def run(args: argparse.Namespace) -> None:
             )
             print(
                 f"turn {i} wall={wall:.1f}s "
-                f"peak={body['usage']['evoke']['peak_resident_tokens']} "
-                f"end={body['usage']['evoke']['resident_tokens_end']} "
-                f"logical={body['usage']['evoke']['logical_tokens']}",
+                f"peak={evoke.get('peak_resident_tokens')} "
+                f"end={evoke.get('resident_tokens_end')} "
+                f"logical={evoke.get('logical_tokens')}",
                 flush=True,
             )
     out = {
@@ -142,6 +151,8 @@ def compare(reference: str, other: str) -> None:
             if first_diff is None:
                 first_diff = r["turn"]
             print(f"turn {r['turn']}: {r.get('reply')!r} != {g.get('reply')!r}")
+    sane = sum(t.get("reply", "").strip() in ("noted.", "noted") for t in got)
+    print(f"replies that are exactly 'noted.': {sane} of {len(got)}")
     recalls = [t for t in got if t.get("recall")]
     ok = sum(t["recall_ok"] for t in recalls)
     print(
@@ -161,6 +172,16 @@ def main() -> None:
         "--recent-fact",
         action="store_true",
         help="plant a fresh code every 8 turns and ask for the latest one",
+    )
+    parser.add_argument(
+        "--body-extra",
+        default="{}",
+        help="JSON merged into every request body, e.g. chat_template_kwargs",
+    )
+    parser.add_argument(
+        "--no-thinking",
+        action="store_true",
+        help="send chat_template_kwargs enable_thinking=false (stock llama-server)",
     )
     parser.add_argument("--recall-every", type=int, default=8)
     parser.add_argument(

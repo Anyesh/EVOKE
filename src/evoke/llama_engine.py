@@ -216,6 +216,7 @@ class LlamaCppEngine:
         yarn_orig_ctx: int = 0,
         yarn_ext_factor: float = 1.0,
         flash_attn: int = -1,
+        embeddings: bool = True,
     ):
         # n_rs_seq: number of per-token snapshots the recurrent half keeps for
         # partial rollback. 0 disables (upstream default — recurrent seq_rm
@@ -251,7 +252,7 @@ class LlamaCppEngine:
         ctx_params.n_ubatch = min(n_batch, 512)
         ctx_params.n_seq_max = 1
         ctx_params.n_rs_seq = n_rs_seq
-        ctx_params.embeddings = True
+        ctx_params.embeddings = embeddings
         ctx_params.pooling_type = llama_cpp.LLAMA_POOLING_TYPE_NONE
         # FA AUTO, not forced-on: forcing flash_attn_type=ENABLED bypasses the
         # engine's per-architecture guard and feeds QK-norm models (Qwen3) a FA
