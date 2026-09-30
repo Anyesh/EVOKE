@@ -67,7 +67,7 @@ class _StallingMockEngine(MockEngine):
 
 
 class MockServer:
-    def __init__(self) -> None:
+    def __init__(self, budget_aware: bool = False) -> None:
         self.engine = _StallingMockEngine(n_ctx=16384)
         config = EvokeConfig(
             max_active_tokens=2560,
@@ -76,6 +76,7 @@ class MockServer:
             recovery_mode="kv_restore",
             recovery_match="identity",
             position_mode="sparse",
+            gap_fill_budget_aware=budget_aware,
         )
         self._store_dir = tempfile.TemporaryDirectory()
         keyring = KeyRing.from_tokens(
@@ -88,6 +89,7 @@ class MockServer:
             config=config,
             keyring=keyring,
             pin_system_prompt=True,
+            pin_cap=0.9,
             queue_timeout=300.0,
         )
         with socket.socket() as sock:
@@ -156,6 +158,64 @@ def _messages(*extra: dict) -> list[dict]:
         {"role": "user", "content": "What does main.py do?"},
         *extra,
     ]
+
+
+def _blob(tokens: int, chars_per_token: int, label: str) -> str:
+    unit = f"{label} output line. "
+    return (unit * (tokens * chars_per_token // len(unit) + 1))[
+        : tokens * chars_per_token
+    ]
+
+
+def record_keep(
+    client: httpx.Client,
+    base_url: str,
+    session: dict,
+    out: Path,
+    mock: MockServer | None,
+) -> None:
+    chat = f"{base_url}/v1/chat/completions"
+    chars_per_token = 1 if mock else 4
+    k_session = {**session, "X-Evoke-Session": "tenant-acme/session-keep"}
+
+    def post(messages: list[dict]) -> httpx.Response:
+        if mock:
+            mock.script(REPLY_TEXT)
+        body = {"model": "evoke-qwen3-8b", "messages": messages, "max_tokens": 64}
+        return client.post(chat, json=body, headers=k_session)
+
+    health = client.get(f"{base_url}/healthz").json()
+    probe = post(_messages())
+    pinned_sys = probe.json()["usage"]["evoke"]["pinned_tokens"]
+    available = health["budget"] - pinned_sys
+    cap = int(health["pin_cap_fraction"] * available)
+    blob_tokens = available // 3
+
+    def tool(i: int, keep: str | None = None, tokens: int = blob_tokens) -> dict:
+        message = {
+            "role": "user",
+            "content": f"Tool result {i}:\n" + _blob(tokens, chars_per_token, f"t{i}"),
+        }
+        if keep:
+            message["evoke_keep"] = keep
+        return message
+
+    r = post(_messages(tool(0, "pin")))
+    _write(out, "keep_marked_request.json", _record(r, r.json()))
+
+    r = post(_messages(tool(1, "pin", tokens=cap * 3 // 2)))
+    _write(out, "keep_pin_cap_refusal.json", _record(r, r.json()))
+
+    history = [tool(i) for i in range(6)]
+    for upto in range(1, len(history) + 1):
+        r = post(_messages(*history[:upto]))
+    last = r.json()["usage"]["evoke"]
+    print(f"keep: blocks_evicted={last['blocks_evicted']} before the marked replay")
+    history[0]["evoke_keep"] = "pin"
+    r = post(_messages(*history))
+    _write(out, "keep_pinned_restored.json", _record(r, r.json()))
+    recovered = r.json()["usage"]["evoke"]["blocks_recovered"]
+    print(f"keep: blocks_recovered={recovered} on the marked replay")
 
 
 def record(base_url: str, admin_key: str, out: Path, mock: MockServer | None) -> None:
@@ -239,10 +299,24 @@ def record(base_url: str, admin_key: str, out: Path, mock: MockServer | None) ->
         r = client.post(chat, json=turn3, headers=session)
         _write(out, "nonstream_turn3.json", _record(r, r.json()))
 
+        if not mock:
+            record_keep(client, base_url, auth, out, None)
+
         r = client.delete(f"{base_url}/admin/keys/{FIXTURE_KEY_ID}", headers=admin)
         _write(out, "admin_revoke_key.json", _record(r, r.json()))
         r = client.post(chat, json=turn3, headers=session)
         _write(out, "revoked_key_rejection.json", _record(r, r.json()))
+
+
+def record_keep_standalone(
+    base_url: str, admin_key: str, out: Path, mock: MockServer
+) -> None:
+    admin = {"Authorization": f"Bearer {admin_key}"}
+    with httpx.Client(timeout=600) as client:
+        r = issue_key(client, base_url, admin_key, FIXTURE_KEY_ID)
+        auth = {"Authorization": f"Bearer {r.json()['token']}"}
+        record_keep(client, base_url, auth, out, mock)
+        client.delete(f"{base_url}/admin/keys/{FIXTURE_KEY_ID}", headers=admin)
 
 
 def main() -> int:
@@ -256,6 +330,12 @@ def main() -> int:
         return 0
     with MockServer() as mock:
         record(f"http://127.0.0.1:{mock.port}", MOCK_ADMIN_TOKEN, args.out, mock)
+    # The keep fixtures need budget-aware gap-fill, or every evicted block is
+    # restored on the marked replay and the pin shows nothing.
+    with MockServer(budget_aware=True) as mock:
+        record_keep_standalone(
+            f"http://127.0.0.1:{mock.port}", MOCK_ADMIN_TOKEN, args.out, mock
+        )
     return 0
 
 
