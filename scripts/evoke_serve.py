@@ -53,6 +53,13 @@ def main() -> int:
     if yarn_factor or yarn_orig_ctx:
         kv_engine_kwargs["yarn_factor"] = yarn_factor
         kv_engine_kwargs["yarn_orig_ctx"] = yarn_orig_ctx
+        kv_engine_kwargs["yarn_ext_factor"] = float(
+            os.environ.get("EVOKE_YARN_EXT_FACTOR", "1")
+        )
+    flash_env = os.environ.get("EVOKE_FLASH_ATTN")
+    if flash_env is not None:
+        # -1 auto, 0 off, 1 on; forcing on breaks Qwen3 (QK-norm), see memory notes
+        kv_engine_kwargs["flash_attn"] = int(flash_env)
 
     budget_env = os.environ.get("EVOKE_BUDGET")
     recovery_mode = os.environ.get("EVOKE_RECOVERY_MODE", "kv_restore")

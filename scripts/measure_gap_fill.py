@@ -133,15 +133,21 @@ def compare(reference: str, other: str) -> None:
     ref = json.loads(Path(reference).read_text())["turns"]
     got = json.loads(Path(other).read_text())["turns"]
     same = diff = 0
+    first_diff = None
     for r, g in zip(ref, got):
         if r.get("reply") == g.get("reply"):
             same += 1
         else:
             diff += 1
+            if first_diff is None:
+                first_diff = r["turn"]
             print(f"turn {r['turn']}: {r.get('reply')!r} != {g.get('reply')!r}")
     recalls = [t for t in got if t.get("recall")]
     ok = sum(t["recall_ok"] for t in recalls)
-    print(f"identical replies {same}, different {diff}; recall {ok}/{len(recalls)}")
+    print(
+        f"identical replies {same}, different {diff}; recall {ok}/{len(recalls)}; "
+        f"first different turn {first_diff}"
+    )
 
 
 def main() -> None:

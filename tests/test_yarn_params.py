@@ -27,3 +27,7 @@ def test_factor_needs_original_context():
 def test_factor_below_one_is_rejected():
     with pytest.raises(ValueError):
         yarn_context_params(0.5, 32768)
+
+
+def test_extrapolation_mix_can_be_overridden_for_bisecting():
+    assert yarn_context_params(2.0, 40960, ext_factor=0.0)["yarn_ext_factor"] == 0.0

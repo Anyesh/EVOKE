@@ -177,7 +177,9 @@ def _resolve_kv_type(value: str | int | None, default: int = 1) -> int:
 ROPE_SCALING_YARN = 2
 
 
-def yarn_context_params(factor: float, orig_ctx: int) -> dict[str, float | int]:
+def yarn_context_params(
+    factor: float, orig_ctx: int, ext_factor: float = 1.0
+) -> dict[str, float | int]:
     if factor == 0.0 and orig_ctx == 0:
         return {}
     if factor < 1.0:
@@ -191,7 +193,7 @@ def yarn_context_params(factor: float, orig_ctx: int) -> dict[str, float | int]:
         # Left at "from the model" (-1) the extrapolation mix is 0 for a GGUF
         # without YaRN metadata, which is plain position interpolation and
         # wrecks short contexts (measured: gibberish from about 3K tokens).
-        "yarn_ext_factor": 1.0,
+        "yarn_ext_factor": ext_factor,
         "yarn_attn_factor": 1.0,
         "yarn_beta_fast": 32.0,
         "yarn_beta_slow": 1.0,
@@ -212,6 +214,8 @@ class LlamaCppEngine:
         type_v: str | int | None = None,
         yarn_factor: float = 0.0,
         yarn_orig_ctx: int = 0,
+        yarn_ext_factor: float = 1.0,
+        flash_attn: int = -1,
     ):
         # n_rs_seq: number of per-token snapshots the recurrent half keeps for
         # partial rollback. 0 disables (upstream default — recurrent seq_rm
@@ -255,11 +259,13 @@ class LlamaCppEngine:
         # first token. AUTO keeps FA on where it is correct (it row-aligns V so
         # kv_block save/load take the contiguous single-memcpy path) and lets the
         # engine fall back to the v_trans recovery path where FA cannot run.
-        ctx_params.flash_attn_type = -1
+        ctx_params.flash_attn_type = flash_attn
         ctx_params.no_perf = True
         ctx_params.type_k = _resolve_kv_type(type_k, default=ctx_params.type_k)
         ctx_params.type_v = _resolve_kv_type(type_v, default=ctx_params.type_v)
-        for name, value in yarn_context_params(yarn_factor, yarn_orig_ctx).items():
+        for name, value in yarn_context_params(
+            yarn_factor, yarn_orig_ctx, yarn_ext_factor
+        ).items():
             setattr(ctx_params, name, value)
         self._kv_type_k = ctx_params.type_k
         self._kv_type_v = ctx_params.type_v
