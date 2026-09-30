@@ -180,6 +180,13 @@ class EvokeConfig:
     # "similarity" is the legacy _smart_recover cosine path, kept for ablation.
     recovery_match: str = "identity"
 
+    # When True, identity gap-fill restores saved blocks only while the resident
+    # set, the new tail and the generation reserve still fit under the budget
+    # target; the rest stay as holes whose content matches the resent prompt.
+    # When False every matching saved block is restored before generation and
+    # the budget applies only at end of turn.
+    gap_fill_budget_aware: bool = False
+
     recovery_mode: str = "discard"
     # On hybrid (Mamba + Attention) memory models, mid-cache eviction of the
     # <think>...</think> range is impossible (the recurrent half rejects

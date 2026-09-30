@@ -452,8 +452,31 @@ class EvokeManager:
             self._enforce_budget()
         return True
 
-    def _enforce_budget(self) -> None:
+    def _budget_limits(self) -> tuple[int, int]:
         cfg = self._config
+        if cfg.eviction_policy == "watermark":
+            return (
+                int(cfg.max_active_tokens * cfg.high_watermark),
+                int(cfg.max_active_tokens * cfg.low_watermark),
+            )
+        return cfg.max_active_tokens, cfg.max_active_tokens
+
+    def gap_fill_headroom(self, keep_below: int, extra_tokens: int) -> int:
+        # Tokens a gap-fill may still restore: the eviction target minus what
+        # stays resident below `keep_below` (residents at or past it are dropped
+        # by the tail-evict that follows), the new tail and the generation
+        # reserve, both passed in as `extra_tokens`. Uses the same target the
+        # end-of-turn pass evicts down to, so a restored block is not evicted
+        # again the moment the turn ends.
+        _, target = self._budget_limits()
+        kept = sum(
+            min(b.logical_end, keep_below) - b.logical_start
+            for b in self._positions.active_blocks
+            if b.logical_start < keep_below
+        )
+        return max(0, target - kept - extra_tokens)
+
+    def _enforce_budget(self) -> None:
         # SnapKV defers eviction until the first process_user_message snapshot
         # has fired so the observation-window scores exist before any block is
         # dropped. Without this gate, add_context's per-chunk _enforce_budget
@@ -475,12 +498,7 @@ class EvokeManager:
         if active_tokens > self._turn_peak_active_tokens:
             self._turn_peak_active_tokens = active_tokens
 
-        if cfg.eviction_policy == "watermark":
-            threshold = int(cfg.max_active_tokens * cfg.high_watermark)
-            target = int(cfg.max_active_tokens * cfg.low_watermark)
-        else:
-            threshold = cfg.max_active_tokens
-            target = cfg.max_active_tokens
+        threshold, target = self._budget_limits()
 
         if active_tokens <= threshold:
             return

@@ -572,7 +572,7 @@ class Session:
         return avg / norm
 
     def _identity_gap_fill(
-        self, prompt_tokens: list[int], cursor: int
+        self, prompt_tokens: list[int], cursor: int, reserve_tokens: int = 0
     ) -> tuple[int, int]:
         # Identity-keyed in-place recovery. Sparse eviction leaves a hole at a
         # block's original position and the kv_restore backend holds its K/V keyed
@@ -620,6 +620,7 @@ class Session:
         recovered = 0
         mismatched = 0
         n = len(prompt_tokens)
+        pending: list[tuple[int, str, int]] = []
         while cursor < n:
             rb = resident_by_start.get(cursor)
             if (
@@ -658,17 +659,10 @@ class Session:
                         )
                     sys.stderr.flush()
                 if tok_match:
-                    ok = self._manager.recover(key, defer_budget=True)
-                    if _debug:
-                        sys.stderr.write(
-                            f"[identity_gap_fill] recover({key}) -> {ok}\n"
-                        )
-                        sys.stderr.flush()
-                    if ok:
-                        recovered += 1
-                        saved_by_start.pop(cursor, None)
-                        cursor += len(toks)
-                        continue
+                    pending.append((cursor, key, len(toks)))
+                    saved_by_start.pop(cursor, None)
+                    cursor += len(toks)
+                    continue
                 else:
                     # A saved block sits at this position but its tokens do not
                     # match the re-sent prompt (e.g. assistant-turn re-tokenization
@@ -682,6 +676,9 @@ class Session:
                 )
                 sys.stderr.flush()
             break
+        cursor, recovered = self._restore_pending(
+            pending, cursor, n - cursor + reserve_tokens, _debug
+        )
         # No enforcement here: evicting during gap-fill would re-evict the very
         # blocks just recovered to rebuild the prefix, leaving the decode that
         # follows incoherent (it crashed llama_decode). The budget is enforced at
@@ -692,6 +689,47 @@ class Session:
         self._gapfill_mismatch += mismatched
         return cursor, recovered
 
+    def _drop_from(self, position: int) -> bool:
+        if self._engine.next_write_pos > position:
+            if not self._engine.evict_ranges([(position, self._engine.next_write_pos)]):
+                return False
+        self._manager.trim_blocks_at(position)
+        return True
+
+    def _restore_pending(
+        self,
+        pending: list[tuple[int, str, int]],
+        cursor: int,
+        extra_tokens: int,
+        debug: bool,
+    ) -> tuple[int, int]:
+        # Decides which matched saved blocks to splice back, then splices them
+        # in position order. Deciding before the first splice keeps the
+        # restore-then-evict churn out of gap-fill: nothing restored here is
+        # evicted again before generation. A saved block that ends exactly at
+        # the cursor is always restored, because the tail decodes at the engine
+        # write cursor and a hole at the top would misalign it with the prompt.
+        chosen = {start for start, _, _ in pending}
+        if self._config.gap_fill_budget_aware and pending:
+            headroom = self._manager.gap_fill_headroom(cursor, extra_tokens)
+            chosen = set()
+            for start, _, length in sorted(pending, reverse=True):
+                if start + length == cursor or length <= headroom:
+                    chosen.add(start)
+                    headroom = max(0, headroom - length)
+        recovered = 0
+        for start, key, length in sorted(pending):
+            if start not in chosen:
+                continue
+            ok = self._manager.recover(key, defer_budget=True)
+            if debug:
+                sys.stderr.write(f"[identity_gap_fill] recover({key}) -> {ok}\n")
+                sys.stderr.flush()
+            if not ok:
+                return start, recovered
+            recovered += 1
+        return cursor, recovered
+
     def sync_prefix(
         self,
         prompt_tokens: list[int],
@@ -700,6 +738,7 @@ class Session:
         pinned: bool = False,
         task_boundary: bool = False,
         pin_prefix: int = 0,
+        reserve_tokens: int = 0,
     ) -> SyncStats:
         # Decay the previous turn's recovery_strength signal before any of
         # this turn's recoveries or evictions run. The decay must precede
@@ -736,10 +775,12 @@ class Session:
             and self._config.position_mode == "sparse"
         )
         recovered = 0
+        gap_filled = False
         if identity_match and divergence < len(prompt_tokens):
             gapfill_cursor, recovered = self._identity_gap_fill(
-                prompt_tokens, divergence
+                prompt_tokens, divergence, reserve_tokens
             )
+            gap_filled = True
             # The walk's cursor is the genuine new-content boundary even
             # when nothing was recovered: it may have snapped divergence
             # back from glue-overshoot to the block boundary, and only a
@@ -748,9 +789,8 @@ class Session:
             divergence = gapfill_cursor
             if recovered:
                 # Gap-fill rebuilt the prefix in place without enforcing the
-                # budget, so [0, gapfill_cursor) is contiguous in the cache.
-                # Decode the tail from there; end-of-turn enforcement trims
-                # afterward.
+                # budget. Decode the tail from the cursor; end-of-turn
+                # enforcement trims afterward.
                 self._cached_tokens = self._manager.get_token_view()
                 if bool(os.environ.get("EVOKE_DEBUG_IDENTITY")):
                     resident_starts = sorted(
@@ -763,7 +803,17 @@ class Session:
                         f"resident_starts={resident_starts}\n"
                     )
                     sys.stderr.flush()
-        if divergence < len(self._cached_tokens):
+        if gap_filled:
+            # The cursor is an absolute position (prompt index), so everything
+            # at or past it is dropped as one engine range even when skipped
+            # blocks left holes below it. Compact eviction realigns the write
+            # cursor to `divergence`, so the tail decodes at its prompt index.
+            if not self._drop_from(divergence):
+                self.reset()
+                divergence = 0
+                recovered = 0
+            self._cached_tokens = self._manager.get_token_view()
+        elif divergence < len(self._cached_tokens):
             if identity_match:
                 cached_len = len(self._cached_tokens)
                 # The gap-fill walk left [0, divergence) tiled with no sparse
