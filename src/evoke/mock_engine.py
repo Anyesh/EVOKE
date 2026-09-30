@@ -41,7 +41,22 @@ class MockEngine:
     def detokenize(self, tokens: list[int]) -> str:
         return "".join(chr(t) if 0 <= t < 0x110000 else "?" for t in tokens)
 
+    def _check_decode(self, n_new: int) -> None:
+        # llama_decode fails when no cell is free, and rejects a batch that is
+        # not consecutive with the highest cached position of the sequence.
+        if len(self._kv_positions) + n_new > self._n_ctx:
+            raise RuntimeError(
+                f"no free KV cell: {len(self._kv_positions)} used + {n_new} new "
+                f"> n_ctx {self._n_ctx}"
+            )
+        if self._kv_positions and self._next_write_pos != max(self._kv_positions) + 1:
+            raise RuntimeError(
+                f"inconsistent sequence positions: write {self._next_write_pos} "
+                f"but max cached {max(self._kv_positions)}"
+            )
+
     def process_tokens(self, tokens: list[int]) -> None:
+        self._check_decode(len(tokens))
         start = self._next_write_pos
         for i, token in enumerate(tokens):
             pos = start + i
@@ -54,6 +69,7 @@ class MockEngine:
         self._gen_queue.extend(tokens)
 
     def generate_next(self) -> int:
+        self._check_decode(1)
         if self._gen_queue:
             token = self._gen_queue.pop(0)
         else:

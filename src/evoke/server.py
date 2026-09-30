@@ -474,6 +474,10 @@ def create_app(
     def _budget() -> int:
         return (pool._config or Session._default_config(active_n_ctx)).max_active_tokens
 
+    def _logical_window() -> int:
+        config = pool._config or Session._default_config(active_n_ctx)
+        return config.logical_window or active_n_ctx
+
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
         # Lock-free on purpose: a stream holds the engine lock for its whole
@@ -484,7 +488,7 @@ def create_app(
             "model": model_name,
             "model_loaded": engine_loaded,
             "kv_cells": active_n_ctx,
-            "logical_window": active_n_ctx,
+            "logical_window": _logical_window(),
             "budget": _budget(),
             "pin_system_prompt": pin_system_prompt,
             "auth_required": keyring is not None,
@@ -510,7 +514,7 @@ def create_app(
                     "context_length": active_n_ctx,
                     "evoke": {
                         "kv_cells": active_n_ctx,
-                        "logical_window": active_n_ctx,
+                        "logical_window": _logical_window(),
                         "budget": _budget(),
                     },
                 }
@@ -897,12 +901,12 @@ def create_app(
             prompt = _render(msgs, req.tools)
             prompt_tokens = engine.tokenize(prompt)
             prompt_n = len(prompt_tokens)
-            if prompt_n >= engine.n_ctx:
+            if prompt_n >= _logical_window():
                 raise ApiError(
                     400,
                     "context_length_exceeded",
-                    f"prompt is {prompt_n} tokens but n_ctx is {engine.n_ctx}; "
-                    "it cannot be decoded",
+                    f"prompt is {prompt_n} tokens but the context window is "
+                    f"{_logical_window()}; it cannot be decoded",
                 )
             pin_n = _pin_length(msgs, req.tools, prompt_tokens)
 
@@ -1097,7 +1101,7 @@ def _measure(
         prompt_tokens_decoded=sync.new_tokens_decoded,
         completion_tokens=completion_n,
         kv_cells=n_ctx,
-        logical_window=n_ctx,
+        logical_window=session.logical_window,
         queue_wait_s=waited,
     )
 

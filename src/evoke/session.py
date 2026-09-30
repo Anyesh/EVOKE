@@ -374,6 +374,16 @@ class Session:
         self._gapfill_recovered = 0
         self._gapfill_mismatch = 0
 
+    @property
+    def logical_window(self) -> int:
+        return self._config.logical_window or self._engine.n_ctx
+
+    def _generation_room(self, gen_start: int) -> int:
+        # Positions may run past the cell count when holes free cells, so the
+        # room is the smaller of the window left and the cells left.
+        cells_left = self._engine.n_ctx - self._engine.get_kv_cache_token_count()
+        return max(0, min(self.logical_window - gen_start, cells_left))
+
     def cached_tokens_view(self) -> list[int]:
         return list(self._cached_tokens)
 
@@ -1096,12 +1106,10 @@ class Session:
         stops = stop_strings or []
         eos = self._engine.eos_token
         gen_start = self._engine.next_write_pos
-        # Clamp to physical capacity: a generation that reaches n_ctx makes
+        # Clamp to capacity: a generation that runs out of cells makes
         # llama_decode fail at the wall (no cell for the next token), so the
         # loop must end with finish="length" before that.
-        remaining = self._engine.n_ctx - gen_start
-        if max_tokens > remaining:
-            max_tokens = max(0, remaining)
+        max_tokens = min(max_tokens, self._generation_room(gen_start))
         output_tokens: list[int] = []
         finish = "length"
         truncated_text: str | None = None
@@ -1155,11 +1163,7 @@ class Session:
         stops = stop_strings or []
         eos = self._engine.eos_token
         gen_start = self._engine.next_write_pos
-        # Same physical capacity clamp as generate(): the loop must end with
-        # finish="length" before the write position reaches n_ctx.
-        remaining = self._engine.n_ctx - gen_start
-        if max_tokens > remaining:
-            max_tokens = max(0, remaining)
+        max_tokens = min(max_tokens, self._generation_room(gen_start))
         output_tokens: list[int] = []
         emitted_len = 0
 

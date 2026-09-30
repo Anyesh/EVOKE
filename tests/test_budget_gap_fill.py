@@ -150,3 +150,28 @@ def test_chunked_prefill_keeps_pinned_prefix_and_tail_positions():
     assert 0 in starts
     assert engine._token_at_pos[0] == 0 and engine._token_at_pos[7] == 7
     assert engine._token_at_pos[59] == 59
+
+
+def test_resend_beyond_cell_count_stays_inside_cells_and_budget():
+    n_ctx, budget, chunk, gen = 64, 32, 8, 4
+    engine = RecordingEngine(n_ctx=n_ctx)
+    config = _config(budget)
+    config.prefill_chunk_tokens = chunk
+    config.logical_window = 2 * n_ctx
+    session = Session(engine, config=config)
+    history: list[int] = []
+    peak = 0
+    turn = 0
+    while len(history) + 16 + gen < config.logical_window:
+        history = history + [1000 + turn * 20 + i for i in range(16)]
+        engine.queue_tokens([500 + i for i in range(gen)])
+        stats = session.sync_prefix(history, reserve_tokens=gen)
+        result = session.generate(max_tokens=gen)
+        history = history + result.output_tokens
+        peak = max(peak, session._manager.turn_peak_active_tokens)
+        assert engine.get_kv_cache_token_count() <= n_ctx
+        assert stats.active_tokens_after <= budget + chunk
+        turn += 1
+    assert len(history) > n_ctx
+    assert engine.next_write_pos > n_ctx
+    assert peak <= budget + chunk + gen

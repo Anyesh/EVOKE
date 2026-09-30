@@ -193,6 +193,12 @@ class EvokeConfig:
     # 0 decodes the tail in one call.
     prefill_chunk_tokens: int = 0
 
+    # Largest logical context (prompt plus completion, in positions) a session
+    # accepts. 0 means the engine's n_ctx. Above n_ctx, positions run past the
+    # KV cell count and the cells hold only the resident subset, which needs
+    # sparse positions and chunked prefill to stay inside the cells.
+    logical_window: int = 0
+
     recovery_mode: str = "discard"
     # On hybrid (Mamba + Attention) memory models, mid-cache eviction of the
     # <think>...</think> range is impossible (the recurrent half rejects

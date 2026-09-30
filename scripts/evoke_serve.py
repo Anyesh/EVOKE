@@ -113,6 +113,15 @@ def main() -> int:
         "sparse" if recovery_match == "identity" else "compact",
     ).lower()
     gap_fill_budget_aware = os.environ.get("EVOKE_GAP_FILL_BUDGET_AWARE", "0") == "1"
+    prefill_chunk_tokens = int(os.environ.get("EVOKE_PREFILL_CHUNK_TOKENS", "0"))
+    logical_window = int(os.environ.get("EVOKE_LOGICAL_WINDOW", "0"))
+    if logical_window > n_ctx and not (
+        prefill_chunk_tokens > 0 and position_mode == "sparse"
+    ):
+        raise SystemExit(
+            "EVOKE_LOGICAL_WINDOW above EVOKE_N_CTX needs EVOKE_PREFILL_CHUNK_TOKENS > 0 "
+            "and sparse positions"
+        )
     config: EvokeConfig | None = None
 
     if policy == "truncate":
@@ -174,6 +183,8 @@ def main() -> int:
                 position_mode=position_mode,
                 recovery_match=recovery_match,
                 gap_fill_budget_aware=gap_fill_budget_aware,
+                prefill_chunk_tokens=prefill_chunk_tokens,
+                logical_window=logical_window,
             )
             print(
                 f"  policy=evoke budget={budget} recovery={recovery_mode}"
