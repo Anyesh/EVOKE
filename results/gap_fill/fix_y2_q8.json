@@ -1,0 +1,786 @@
+{
+  "arm": "fix_y2",
+  "vram_before_mib": 8706,
+  "turns": [
+    {
+      "turn": 0,
+      "wall_s": 0.563,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 1155,
+        "completion_tokens": 4,
+        "total_tokens": 1159,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 1159,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 1155,
+          "resident_tokens_end": 1155,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1155,
+          "prompt_tokens_reused": 0,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8748
+    },
+    {
+      "turn": 1,
+      "wall_s": 1.344,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 2220,
+        "completion_tokens": 4,
+        "total_tokens": 2224,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 2224,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 2220,
+          "resident_tokens_end": 2220,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1065,
+          "prompt_tokens_reused": 1155,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8777
+    },
+    {
+      "turn": 2,
+      "wall_s": 1.328,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 3232,
+        "completion_tokens": 4,
+        "total_tokens": 3236,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 3236,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 3232,
+          "resident_tokens_end": 3232,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1012,
+          "prompt_tokens_reused": 2220,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 3,
+      "wall_s": 1.313,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 4120,
+        "completion_tokens": 4,
+        "total_tokens": 4124,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 4124,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 4120,
+          "resident_tokens_end": 4120,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 888,
+          "prompt_tokens_reused": 3232,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8765
+    },
+    {
+      "turn": 4,
+      "wall_s": 1.344,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 5114,
+        "completion_tokens": 4,
+        "total_tokens": 5118,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 5118,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 5114,
+          "resident_tokens_end": 5114,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 994,
+          "prompt_tokens_reused": 4120,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8764
+    },
+    {
+      "turn": 5,
+      "wall_s": 1.359,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 6141,
+        "completion_tokens": 4,
+        "total_tokens": 6145,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 6145,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 6141,
+          "resident_tokens_end": 6141,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1027,
+          "prompt_tokens_reused": 5114,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8764
+    },
+    {
+      "turn": 6,
+      "wall_s": 1.36,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 7066,
+        "completion_tokens": 4,
+        "total_tokens": 7070,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 7070,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 7066,
+          "resident_tokens_end": 7066,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 925,
+          "prompt_tokens_reused": 6141,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 7,
+      "wall_s": 1.406,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 8115,
+        "completion_tokens": 4,
+        "total_tokens": 8119,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 8119,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 8115,
+          "resident_tokens_end": 8115,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1049,
+          "prompt_tokens_reused": 7066,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 8,
+      "wall_s": 1.453,
+      "reply": "amber-falcon-4417",
+      "recall": true,
+      "recall_ok": true,
+      "usage": {
+        "prompt_tokens": 9140,
+        "completion_tokens": 9,
+        "total_tokens": 9149,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 9149,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 9145,
+          "resident_tokens_end": 9145,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1025,
+          "prompt_tokens_reused": 8115,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 9,
+      "wall_s": 1.438,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 10208,
+        "completion_tokens": 4,
+        "total_tokens": 10212,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 10212,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 10208,
+          "resident_tokens_end": 10208,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1063,
+          "prompt_tokens_reused": 9145,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 10,
+      "wall_s": 1.406,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 11185,
+        "completion_tokens": 4,
+        "total_tokens": 11189,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 11189,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 11185,
+          "resident_tokens_end": 11185,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 977,
+          "prompt_tokens_reused": 10208,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8777
+    },
+    {
+      "turn": 11,
+      "wall_s": 1.468,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 12221,
+        "completion_tokens": 4,
+        "total_tokens": 12225,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 12225,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 12221,
+          "resident_tokens_end": 12221,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1036,
+          "prompt_tokens_reused": 11185,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 12,
+      "wall_s": 1.421,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 13166,
+        "completion_tokens": 4,
+        "total_tokens": 13170,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 13170,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 13166,
+          "resident_tokens_end": 13166,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 945,
+          "prompt_tokens_reused": 12221,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 13,
+      "wall_s": 1.468,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 14169,
+        "completion_tokens": 4,
+        "total_tokens": 14173,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 14173,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 14169,
+          "resident_tokens_end": 14169,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1003,
+          "prompt_tokens_reused": 13166,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 14,
+      "wall_s": 1.484,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 15175,
+        "completion_tokens": 4,
+        "total_tokens": 15179,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 15179,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 15175,
+          "resident_tokens_end": 15175,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1006,
+          "prompt_tokens_reused": 14169,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 15,
+      "wall_s": 1.547,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 16225,
+        "completion_tokens": 4,
+        "total_tokens": 16229,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 16229,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 16225,
+          "resident_tokens_end": 16225,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1050,
+          "prompt_tokens_reused": 15175,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8763
+    },
+    {
+      "turn": 16,
+      "wall_s": 1.61,
+      "reply": "amber-falcon-4417",
+      "recall": true,
+      "recall_ok": true,
+      "usage": {
+        "prompt_tokens": 17262,
+        "completion_tokens": 9,
+        "total_tokens": 17271,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 17271,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 17267,
+          "resident_tokens_end": 17267,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1037,
+          "prompt_tokens_reused": 16225,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8765
+    },
+    {
+      "turn": 17,
+      "wall_s": 1.313,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 18190,
+        "completion_tokens": 4,
+        "total_tokens": 18194,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 18194,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 18190,
+          "resident_tokens_end": 18190,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 923,
+          "prompt_tokens_reused": 17267,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8751
+    },
+    {
+      "turn": 18,
+      "wall_s": 1.359,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 19202,
+        "completion_tokens": 4,
+        "total_tokens": 19206,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 19206,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 19202,
+          "resident_tokens_end": 19202,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1012,
+          "prompt_tokens_reused": 18190,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8751
+    },
+    {
+      "turn": 19,
+      "wall_s": 1.375,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 20198,
+        "completion_tokens": 4,
+        "total_tokens": 20202,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 20202,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 20198,
+          "resident_tokens_end": 20198,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 996,
+          "prompt_tokens_reused": 19202,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8746
+    },
+    {
+      "turn": 20,
+      "wall_s": 1.39,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 21210,
+        "completion_tokens": 4,
+        "total_tokens": 21214,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 21214,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 21210,
+          "resident_tokens_end": 21210,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1012,
+          "prompt_tokens_reused": 20198,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8740
+    },
+    {
+      "turn": 21,
+      "wall_s": 1.421,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 22221,
+        "completion_tokens": 4,
+        "total_tokens": 22225,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 22225,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 22221,
+          "resident_tokens_end": 22221,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1011,
+          "prompt_tokens_reused": 21210,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8740
+    },
+    {
+      "turn": 22,
+      "wall_s": 1.422,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 23209,
+        "completion_tokens": 4,
+        "total_tokens": 23213,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 23213,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 23209,
+          "resident_tokens_end": 23209,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 988,
+          "prompt_tokens_reused": 22221,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8741
+    },
+    {
+      "turn": 23,
+      "wall_s": 1.422,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 24200,
+        "completion_tokens": 4,
+        "total_tokens": 24204,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 24204,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 24200,
+          "resident_tokens_end": 24200,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 991,
+          "prompt_tokens_reused": 23209,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8741
+    },
+    {
+      "turn": 24,
+      "wall_s": 1.5,
+      "reply": "amber-falcon-4417",
+      "recall": true,
+      "recall_ok": true,
+      "usage": {
+        "prompt_tokens": 25130,
+        "completion_tokens": 9,
+        "total_tokens": 25139,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 25139,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 25135,
+          "resident_tokens_end": 25135,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 930,
+          "prompt_tokens_reused": 24200,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8740
+    },
+    {
+      "turn": 25,
+      "wall_s": 1.61,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 26017,
+        "completion_tokens": 4,
+        "total_tokens": 26021,
+        "evoke": {
+          "session": "gapfill/fix_y2",
+          "logical_tokens": 26021,
+          "logical_window": 40960,
+          "kv_cells": 40960,
+          "peak_resident_tokens": 26017,
+          "resident_tokens_end": 26017,
+          "pinned_tokens": 40,
+          "budget": 40000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 882,
+          "prompt_tokens_reused": 25135,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8777
+    }
+  ]
+}
