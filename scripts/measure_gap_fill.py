@@ -27,6 +27,7 @@ SYSTEM = (
     "You are a coding agent. Answer in one short sentence. "
     f"Remember this for the whole session: {FACT}"
 )
+SYSTEM_NO_FACT = "You are a coding agent. Answer in one short sentence."
 
 
 def _vram_mib() -> int | None:
@@ -49,8 +50,10 @@ def _chunks(chars: int) -> list[str]:
     return [text[i : i + chars] for i in range(0, len(text) - chars, chars)]
 
 
-def _turn_user(i: int, chunks: list[str], recall_every: int) -> str:
+def _turn_user(i: int, chunks: list[str], recall_every: int, fact_turn: int) -> str:
     body = f"Tool output {i}:\n{chunks[i % len(chunks)]}\n"
+    if i == fact_turn:
+        body += f"\nRemember this for the whole session: {FACT}\n"
     if i and i % recall_every == 0:
         return body + "\nWhat is the vault passphrase? Reply with the passphrase only."
     return body + "\nAcknowledge with the single word: noted."
@@ -61,13 +64,17 @@ def run(args: argparse.Namespace) -> None:
     if args.token:
         headers["Authorization"] = f"Bearer {args.token}"
     chunks = _chunks(args.chunk_chars)
-    messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM}]
+    system = SYSTEM if args.fact_turn < 0 else SYSTEM_NO_FACT
+    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
     rows: list[dict] = []
     vram_before = _vram_mib()
     with httpx.Client(base_url=args.base_url, headers=headers, timeout=1800) as client:
         for i in range(args.turns):
             messages.append(
-                {"role": "user", "content": _turn_user(i, chunks, args.recall_every)}
+                {
+                    "role": "user",
+                    "content": _turn_user(i, chunks, args.recall_every, args.fact_turn),
+                }
             )
             t0 = time.monotonic()
             resp = client.post(
@@ -131,6 +138,12 @@ def main() -> None:
     parser.add_argument("--turns", type=int, default=40)
     parser.add_argument("--chunk-chars", type=int, default=4000)
     parser.add_argument("--recall-every", type=int, default=8)
+    parser.add_argument(
+        "--fact-turn",
+        type=int,
+        default=-1,
+        help="plant the fact in this user turn instead of the pinned system prompt",
+    )
     parser.add_argument("--out")
     parser.add_argument("--compare", nargs=2, metavar=("REFERENCE", "OTHER"))
     args = parser.parse_args()

@@ -1,0 +1,786 @@
+{
+  "arm": "aware_tight",
+  "vram_before_mib": 8122,
+  "turns": [
+    {
+      "turn": 0,
+      "wall_s": 0.406,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 1051,
+        "completion_tokens": 4,
+        "total_tokens": 1055,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 1055,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 1051,
+          "resident_tokens_end": 1051,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1051,
+          "prompt_tokens_reused": 0,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8160
+    },
+    {
+      "turn": 1,
+      "wall_s": 0.265,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 2061,
+        "completion_tokens": 4,
+        "total_tokens": 2065,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 2065,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 2061,
+          "resident_tokens_end": 2061,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1010,
+          "prompt_tokens_reused": 1051,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8160
+    },
+    {
+      "turn": 2,
+      "wall_s": 0.265,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 3005,
+        "completion_tokens": 4,
+        "total_tokens": 3009,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 3009,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 3005,
+          "resident_tokens_end": 3005,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 944,
+          "prompt_tokens_reused": 2061,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 3,
+      "wall_s": 0.266,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 3949,
+        "completion_tokens": 4,
+        "total_tokens": 3953,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 3953,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 3949,
+          "resident_tokens_end": 3949,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 944,
+          "prompt_tokens_reused": 3005,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 4,
+      "wall_s": 0.313,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 4980,
+        "completion_tokens": 4,
+        "total_tokens": 4984,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 4984,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 4980,
+          "resident_tokens_end": 4980,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1031,
+          "prompt_tokens_reused": 3949,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 5,
+      "wall_s": 0.422,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 5967,
+        "completion_tokens": 4,
+        "total_tokens": 5971,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 5971,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5963,
+          "resident_tokens_end": 4172,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 15,
+          "tokens_evicted": 1795,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 987,
+          "prompt_tokens_reused": 4980,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 6,
+      "wall_s": 0.296,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 6899,
+        "completion_tokens": 4,
+        "total_tokens": 6903,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 6903,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5104,
+          "resident_tokens_end": 5104,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 932,
+          "prompt_tokens_reused": 5967,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 7,
+      "wall_s": 0.468,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 7965,
+        "completion_tokens": 4,
+        "total_tokens": 7969,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 7969,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6166,
+          "resident_tokens_end": 4096,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 17,
+          "tokens_evicted": 2074,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1066,
+          "prompt_tokens_reused": 6899,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 8,
+      "wall_s": 0.5,
+      "reply": "The vault passphrase is not provided in the given context. Please provide additional information or clarify the request.",
+      "recall": true,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 9022,
+        "completion_tokens": 21,
+        "total_tokens": 9043,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 9043,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5170,
+          "resident_tokens_end": 5170,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1057,
+          "prompt_tokens_reused": 7965,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 9,
+      "wall_s": 0.453,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 10034,
+        "completion_tokens": 4,
+        "total_tokens": 10038,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 10038,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6161,
+          "resident_tokens_end": 4198,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 17,
+          "tokens_evicted": 1967,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 995,
+          "prompt_tokens_reused": 9039,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 10,
+      "wall_s": 0.297,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 11033,
+        "completion_tokens": 4,
+        "total_tokens": 11037,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 11037,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5197,
+          "resident_tokens_end": 5197,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 999,
+          "prompt_tokens_reused": 10034,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 11,
+      "wall_s": 0.453,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 12019,
+        "completion_tokens": 4,
+        "total_tokens": 12023,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 12023,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6179,
+          "resident_tokens_end": 4144,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 17,
+          "tokens_evicted": 2039,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 986,
+          "prompt_tokens_reused": 11033,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 12,
+      "wall_s": 0.313,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 13003,
+        "completion_tokens": 4,
+        "total_tokens": 13007,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 13007,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5128,
+          "resident_tokens_end": 5128,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 984,
+          "prompt_tokens_reused": 12019,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 13,
+      "wall_s": 0.453,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 14012,
+        "completion_tokens": 4,
+        "total_tokens": 14016,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 14016,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6133,
+          "resident_tokens_end": 4150,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 17,
+          "tokens_evicted": 1987,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1009,
+          "prompt_tokens_reused": 13003,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 14,
+      "wall_s": 0.313,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 15023,
+        "completion_tokens": 4,
+        "total_tokens": 15027,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 15027,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5161,
+          "resident_tokens_end": 5161,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1011,
+          "prompt_tokens_reused": 14012,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 15,
+      "wall_s": 0.484,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 16073,
+        "completion_tokens": 4,
+        "total_tokens": 16077,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 16077,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6207,
+          "resident_tokens_end": 4139,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 17,
+          "tokens_evicted": 2072,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1050,
+          "prompt_tokens_reused": 15023,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 16,
+      "wall_s": 0.469,
+      "reply": "The vault passphrase is not provided in the given context. Please provide additional information or clarify the request.",
+      "recall": true,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 16993,
+        "completion_tokens": 21,
+        "total_tokens": 17014,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 17014,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5076,
+          "resident_tokens_end": 5076,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 920,
+          "prompt_tokens_reused": 16073,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 17,
+      "wall_s": 0.469,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 18022,
+        "completion_tokens": 4,
+        "total_tokens": 18026,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 18026,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6084,
+          "resident_tokens_end": 4103,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 16,
+          "tokens_evicted": 1985,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1012,
+          "prompt_tokens_reused": 17010,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 18,
+      "wall_s": 0.312,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 19009,
+        "completion_tokens": 4,
+        "total_tokens": 19013,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 19013,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5090,
+          "resident_tokens_end": 5090,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 987,
+          "prompt_tokens_reused": 18022,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 19,
+      "wall_s": 0.468,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 20034,
+        "completion_tokens": 4,
+        "total_tokens": 20038,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 20038,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6111,
+          "resident_tokens_end": 4084,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 16,
+          "tokens_evicted": 2031,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1025,
+          "prompt_tokens_reused": 19009,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 20,
+      "wall_s": 0.312,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 21043,
+        "completion_tokens": 4,
+        "total_tokens": 21047,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 21047,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5093,
+          "resident_tokens_end": 5093,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 1009,
+          "prompt_tokens_reused": 20034,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 21,
+      "wall_s": 0.5,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 22034,
+        "completion_tokens": 4,
+        "total_tokens": 22038,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 22038,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6080,
+          "resident_tokens_end": 4138,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 17,
+          "tokens_evicted": 1946,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 991,
+          "prompt_tokens_reused": 21043,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 22,
+      "wall_s": 0.312,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 23021,
+        "completion_tokens": 4,
+        "total_tokens": 23025,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 23025,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5125,
+          "resident_tokens_end": 5125,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 987,
+          "prompt_tokens_reused": 22034,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 23,
+      "wall_s": 0.469,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 23947,
+        "completion_tokens": 4,
+        "total_tokens": 23951,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 23951,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 6047,
+          "resident_tokens_end": 4172,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 15,
+          "tokens_evicted": 1879,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 926,
+          "prompt_tokens_reused": 23021,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8162
+    },
+    {
+      "turn": 24,
+      "wall_s": 0.469,
+      "reply": "The vault passphrase is not provided in the given context. Please provide additional information or clarify the request.",
+      "recall": true,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 24820,
+        "completion_tokens": 21,
+        "total_tokens": 24841,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 24841,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5062,
+          "resident_tokens_end": 5062,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 0,
+          "tokens_evicted": 0,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 873,
+          "prompt_tokens_reused": 23947,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8164
+    },
+    {
+      "turn": 25,
+      "wall_s": 0.437,
+      "reply": "noted.",
+      "recall": false,
+      "recall_ok": false,
+      "usage": {
+        "prompt_tokens": 25716,
+        "completion_tokens": 4,
+        "total_tokens": 25720,
+        "evoke": {
+          "session": "gapfill/aware_tight",
+          "logical_tokens": 25720,
+          "logical_window": 40960,
+          "kv_cells": 20480,
+          "peak_resident_tokens": 5937,
+          "resident_tokens_end": 4171,
+          "pinned_tokens": 20,
+          "budget": 6000,
+          "blocks_evicted": 14,
+          "tokens_evicted": 1770,
+          "blocks_recovered": 0,
+          "tokens_recovered": 0,
+          "prompt_tokens_decoded": 879,
+          "prompt_tokens_reused": 24837,
+          "queue_wait_ms": 0
+        }
+      },
+      "vram_mib": 8164
+    }
+  ]
+}
