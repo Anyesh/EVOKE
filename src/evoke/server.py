@@ -39,7 +39,7 @@ from evoke.scheduler import QueueTimeout, SessionBusy, TurnScheduler
 from evoke.session import Session, SessionPool, SyncStats
 from evoke.templates import ParsedResponse, format_qwen_chat, parse_qwen_response
 from evoke.turn_metrics import TurnMetrics, measure_turn
-from evoke.types import CacheStats
+from evoke.types import CacheStats, KeepSpan
 
 DEFAULT_SESSION_ID = "default"
 SESSION_HEADER_RE = re.compile(r"[A-Za-z0-9._:@/+=-]{1,256}")
@@ -65,21 +65,29 @@ class ApiError(Exception):
         code: str,
         message: str,
         headers: dict[str, str] | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
         self.headers = headers
+        self.extra = extra
 
 
-def _error_body(status: int, message: str, code: str | None) -> dict[str, Any]:
+def _error_body(
+    status: int,
+    message: str,
+    code: str | None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "error": {
             "message": message,
             "type": _ERROR_TYPES.get(status, "server_error"),
             "code": code,
             "param": None,
+            **(extra or {}),
         }
     }
 
@@ -102,6 +110,9 @@ class ChatMessage(BaseModel):
     # suppress_thinking_strip is set on the session.
     reasoning: str | None = None
     reasoning_content: str | None = None
+    # Per-request keep mark: "pin" or "prefer". Validated in the handler so an
+    # unknown value gets an OpenAI-shaped 400 rather than a 422.
+    evoke_keep: str | None = None
 
     @model_validator(mode="after")
     def flatten_content(self) -> "ChatMessage":
@@ -259,6 +270,7 @@ def create_app(
     queue_timeout: float | None = None,
     max_waiting_per_session: int = 1,
     max_sessions_per_key: int = 2,
+    pin_cap: float = 0.6,
 ) -> FastAPI:
     @contextlib.asynccontextmanager
     async def _lifespan(_: FastAPI):
@@ -294,7 +306,7 @@ def create_app(
     async def _api_error(_: Request, exc: ApiError):
         return JSONResponse(
             status_code=exc.status,
-            content=_error_body(exc.status, exc.message, exc.code),
+            content=_error_body(exc.status, exc.message, exc.code, exc.extra),
             headers=exc.headers,
         )
 
@@ -491,6 +503,7 @@ def create_app(
             "logical_window": _logical_window(),
             "budget": _budget(),
             "pin_system_prompt": pin_system_prompt,
+            "pin_cap": int(pin_cap * _budget()),
             "auth_required": keyring is not None,
             "session_required": require_session,
             "kv_block_primitives": active_kv_block,
@@ -865,6 +878,60 @@ def create_app(
             pin_cache[key] = cached
         return cached
 
+    def _keep_spans(
+        marked: list[ChatMessage],
+        msgs: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        prompt_tokens: list[int],
+    ) -> list[KeepSpan]:
+        # A message's token range is found the way the system prompt's is: the
+        # messages before it plus a sentinel user turn render to the same tokens
+        # as the prompt up to the boundary the sentinel starts at.
+        boundaries: dict[int, int] = {}
+
+        def boundary(count: int) -> int:
+            if count == 0:
+                return 0
+            if count not in boundaries:
+                probe = engine.tokenize(
+                    _render(
+                        msgs[:count] + [{"role": "user", "content": _PIN_SENTINEL}],
+                        tools,
+                    )
+                )
+                boundaries[count] = _common_prefix_len(probe, prompt_tokens)
+            return boundaries[count]
+
+        return [
+            KeepSpan(boundary(i), boundary(i + 1), m.evoke_keep)
+            for i, m in enumerate(marked)
+            if m.evoke_keep
+        ]
+
+    def _check_pin_cap(keep_spans: list[KeepSpan], pin_n: int) -> None:
+        if not any(span.mode == "pin" for span in keep_spans):
+            return
+        covered = [(0, pin_n)] if pin_n else []
+        for span in keep_spans:
+            if span.mode == "pin":
+                covered.append((span.start, span.end))
+        pinned = 0
+        end = 0
+        for start, stop in sorted(covered):
+            start = max(start, end)
+            if stop > start:
+                pinned += stop - start
+                end = stop
+        cap = int(pin_cap * _budget())
+        if pinned > cap:
+            raise ApiError(
+                400,
+                "evoke_pin_budget_exceeded",
+                f"{pinned} pinned tokens exceed the pin cap of {cap} "
+                f"({pin_cap:g} of the budget)",
+                extra={"pinned_tokens": pinned, "pin_cap": cap},
+            )
+
     @app.post("/v1/chat/completions")
     async def chat_completions(
         req: ChatCompletionRequest,
@@ -897,7 +964,17 @@ def create_app(
         try:
             await _ensure_loaded()
 
-            msgs = [m.model_dump(exclude_none=True) for m in req.messages]
+            for m in req.messages:
+                if m.evoke_keep not in (None, "pin", "prefer"):
+                    raise ApiError(
+                        400,
+                        "evoke_keep_invalid",
+                        f"evoke_keep must be 'pin' or 'prefer', got {m.evoke_keep!r}",
+                    )
+            msgs = [
+                m.model_dump(exclude_none=True, exclude={"evoke_keep"})
+                for m in req.messages
+            ]
             prompt = _render(msgs, req.tools)
             prompt_tokens = engine.tokenize(prompt)
             prompt_n = len(prompt_tokens)
@@ -909,6 +986,8 @@ def create_app(
                     f"{_logical_window()}; it cannot be decoded",
                 )
             pin_n = _pin_length(msgs, req.tools, prompt_tokens)
+            keep_spans = _keep_spans(req.messages, msgs, req.tools, prompt_tokens)
+            _check_pin_cap(keep_spans, pin_n)
 
             starts_in_think = _prompt_opens_think(prompt)
 
@@ -963,6 +1042,7 @@ def create_app(
                     authorized=_still_authorized(caller),
                     session_label=label,
                     pin_prefix=pin_n,
+                    keep_spans=keep_spans,
                     include_usage=bool(
                         req.stream_options and req.stream_options.get("include_usage")
                     ),
@@ -1001,6 +1081,7 @@ def create_app(
                         task_boundary=req.evoke_task_boundary,
                         pin_prefix=pin_n,
                         reserve_tokens=max_new,
+                        keep_spans=keep_spans,
                     )
                     result = session.generate(max_tokens=max_new, stop_strings=stops)
                     metrics = _measure(
@@ -1154,6 +1235,7 @@ async def _stream_completion(
     authorized: Callable[[], bool] | None = None,
     session_label: str | None = None,
     pin_prefix: int = 0,
+    keep_spans: list[KeepSpan] | None = None,
     include_usage: bool = False,
 ):
     yield _sse(
@@ -1248,6 +1330,7 @@ async def _stream_completion(
                             task_boundary=evoke_task_boundary,
                             pin_prefix=pin_prefix,
                             reserve_tokens=max_new,
+                            keep_spans=keep_spans or (),
                         )
                         n_out = 0
                         for chunk in session.stream_generate(

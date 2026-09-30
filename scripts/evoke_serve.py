@@ -278,6 +278,7 @@ def main() -> int:
         idle_timeout=idle_timeout,
         keyring=keyring,
         pin_system_prompt=pin_system_prompt,
+        pin_cap=float(os.environ.get("EVOKE_PIN_CAP", "0.6")),
         queue_timeout=queue_timeout,
         max_waiting_per_session=max_waiting,
         max_sessions_per_key=max_per_key,
