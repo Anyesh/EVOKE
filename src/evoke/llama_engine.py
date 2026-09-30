@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from evoke._engine_lib import llama_cpp
+from evoke._engine_lib import CONTEXT_PARAMS_EXTRA_U32, llama_cpp
 from evoke.templates import render_gguf_chat_template
 
 
@@ -218,6 +218,12 @@ class LlamaCppEngine:
         if not verbose:
             _suppress_llama_log()
 
+        if CONTEXT_PARAMS_EXTRA_U32 is None and os.environ.get("LLAMA_CPP_LIB"):
+            raise RuntimeError(
+                "LLAMA_CPP_LIB is set but its llama_context_params layout is not a "
+                "known fork layout; engine settings would be written to the wrong "
+                "offsets. Update evoke._engine_lib."
+            )
         llama_cpp.llama_backend_init()
 
         model_params = llama_cpp.llama_model_default_params()

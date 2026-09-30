@@ -50,10 +50,16 @@ def _chunks(chars: int) -> list[str]:
     return [text[i : i + chars] for i in range(0, len(text) - chars, chars)]
 
 
-def _turn_user(i: int, chunks: list[str], recall_every: int, fact_turn: int) -> str:
+def _turn_user(
+    i: int, chunks: list[str], recall_every: int, fact_turn: int, recent: bool = False
+) -> str:
     body = f"Tool output {i}:\n{chunks[i % len(chunks)]}\n"
+    if recent and i % 8 == 6:
+        body += f"\nThe latest access code is code-{i}-zeta. Remember it.\n"
     if i == fact_turn:
         body += f"\nRemember this for the whole session: {FACT}\n"
+    if recent and i and i % 8 == 0:
+        return body + "\nWhat is the latest access code? Reply with the code only."
     if i and i % recall_every == 0:
         return body + "\nWhat is the vault passphrase? Reply with the passphrase only."
     return body + "\nAcknowledge with the single word: noted."
@@ -64,7 +70,7 @@ def run(args: argparse.Namespace) -> None:
     if args.token:
         headers["Authorization"] = f"Bearer {args.token}"
     chunks = _chunks(args.chunk_chars)
-    system = SYSTEM if args.fact_turn < 0 else SYSTEM_NO_FACT
+    system = SYSTEM if args.fact_turn < 0 and not args.recent_fact else SYSTEM_NO_FACT
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
     rows: list[dict] = []
     vram_before = _vram_mib()
@@ -73,7 +79,9 @@ def run(args: argparse.Namespace) -> None:
             messages.append(
                 {
                     "role": "user",
-                    "content": _turn_user(i, chunks, args.recall_every, args.fact_turn),
+                    "content": _turn_user(
+                        i, chunks, args.recall_every, args.fact_turn, args.recent_fact
+                    ),
                 }
             )
             t0 = time.monotonic()
@@ -93,8 +101,14 @@ def run(args: argparse.Namespace) -> None:
                     "turn": i,
                     "wall_s": round(wall, 3),
                     "reply": reply,
-                    "recall": bool(i and i % args.recall_every == 0),
-                    "recall_ok": "amber-falcon-4417" in reply,
+                    "recall": bool(
+                        i and i % (8 if args.recent_fact else args.recall_every) == 0
+                    ),
+                    "recall_ok": (
+                        f"code-{i - 2}-zeta" in reply
+                        if args.recent_fact
+                        else "amber-falcon-4417" in reply
+                    ),
                     "usage": body["usage"],
                     "vram_mib": _vram_mib(),
                 }
@@ -137,6 +151,11 @@ def main() -> None:
     parser.add_argument("--arm", default="run")
     parser.add_argument("--turns", type=int, default=40)
     parser.add_argument("--chunk-chars", type=int, default=4000)
+    parser.add_argument(
+        "--recent-fact",
+        action="store_true",
+        help="plant a fresh code every 8 turns and ask for the latest one",
+    )
     parser.add_argument("--recall-every", type=int, default=8)
     parser.add_argument(
         "--fact-turn",
