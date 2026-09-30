@@ -174,6 +174,23 @@ def _resolve_kv_type(value: str | int | None, default: int = 1) -> int:
     return _GGML_KV_TYPES[key]
 
 
+ROPE_SCALING_YARN = 2
+
+
+def yarn_context_params(factor: float, orig_ctx: int) -> dict[str, float | int]:
+    if factor == 0.0 and orig_ctx == 0:
+        return {}
+    if factor < 1.0:
+        raise ValueError(f"yarn factor must be >= 1, got {factor}")
+    if orig_ctx <= 0:
+        raise ValueError("yarn needs the model's original context length")
+    return {
+        "rope_scaling_type": ROPE_SCALING_YARN,
+        "rope_freq_scale": 1.0 / factor,
+        "yarn_orig_ctx": orig_ctx,
+    }
+
+
 class LlamaCppEngine:
     def __init__(
         self,
@@ -186,6 +203,8 @@ class LlamaCppEngine:
         n_rs_seq: int = 0,
         type_k: str | int | None = None,
         type_v: str | int | None = None,
+        yarn_factor: float = 0.0,
+        yarn_orig_ctx: int = 0,
     ):
         # n_rs_seq: number of per-token snapshots the recurrent half keeps for
         # partial rollback. 0 disables (upstream default — recurrent seq_rm
@@ -227,6 +246,8 @@ class LlamaCppEngine:
         ctx_params.no_perf = True
         ctx_params.type_k = _resolve_kv_type(type_k, default=ctx_params.type_k)
         ctx_params.type_v = _resolve_kv_type(type_v, default=ctx_params.type_v)
+        for name, value in yarn_context_params(yarn_factor, yarn_orig_ctx).items():
+            setattr(ctx_params, name, value)
         self._kv_type_k = ctx_params.type_k
         self._kv_type_v = ctx_params.type_v
 

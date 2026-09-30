@@ -46,6 +46,13 @@ def main() -> int:
     if kv_quant and kv_quant not in ("f16", "none"):
         kv_engine_kwargs["type_k"] = kv_quant
         kv_engine_kwargs["type_v"] = kv_quant
+    # Qwen3 long context: EVOKE_YARN_FACTOR=4 EVOKE_YARN_ORIG_CTX=32768 reaches
+    # 131072 positions. Static YaRN also rescales short contexts.
+    yarn_factor = float(os.environ.get("EVOKE_YARN_FACTOR", "0"))
+    yarn_orig_ctx = int(os.environ.get("EVOKE_YARN_ORIG_CTX", "0"))
+    if yarn_factor or yarn_orig_ctx:
+        kv_engine_kwargs["yarn_factor"] = yarn_factor
+        kv_engine_kwargs["yarn_orig_ctx"] = yarn_orig_ctx
 
     budget_env = os.environ.get("EVOKE_BUDGET")
     recovery_mode = os.environ.get("EVOKE_RECOVERY_MODE", "kv_restore")
