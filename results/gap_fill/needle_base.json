@@ -1,0 +1,86 @@
+{
+  "arm": "needle_base",
+  "cases": [
+    {
+      "total": 30000,
+      "depth": 0.05,
+      "prompt_tokens": 32788,
+      "needle_position": 1639,
+      "ok": true,
+      "reply": "amber-falcon-826810",
+      "wall_s": 12.8
+    },
+    {
+      "total": 30000,
+      "depth": 0.5,
+      "prompt_tokens": 32963,
+      "needle_position": 16481,
+      "ok": true,
+      "reply": "amber-falcon-661215",
+      "wall_s": 13.8
+    },
+    {
+      "total": 30000,
+      "depth": 0.95,
+      "prompt_tokens": 32933,
+      "needle_position": 31286,
+      "ok": true,
+      "reply": "amber-falcon-200781",
+      "wall_s": 14.0
+    },
+    {
+      "total": 60000,
+      "depth": 0.05,
+      "prompt_tokens": 66030,
+      "needle_position": 3301,
+      "ok": true,
+      "reply": "amber-falcon-509221",
+      "wall_s": 43.4
+    },
+    {
+      "total": 60000,
+      "depth": 0.5,
+      "prompt_tokens": 65497,
+      "needle_position": 32748,
+      "ok": true,
+      "reply": "amber-falcon-198994",
+      "wall_s": 44.4
+    },
+    {
+      "total": 60000,
+      "depth": 0.95,
+      "prompt_tokens": 65820,
+      "needle_position": 62529,
+      "ok": true,
+      "reply": "amber-falcon-753286",
+      "wall_s": 52.2
+    },
+    {
+      "total": 78000,
+      "depth": 0.05,
+      "prompt_tokens": 84962,
+      "needle_position": 4248,
+      "ok": false,
+      "reply": "amber",
+      "wall_s": 70.6
+    },
+    {
+      "total": 78000,
+      "depth": 0.5,
+      "prompt_tokens": 85259,
+      "needle_position": 42629,
+      "ok": false,
+      "reply": "amber-bison-467189",
+      "wall_s": 70.5
+    },
+    {
+      "total": 78000,
+      "depth": 0.95,
+      "prompt_tokens": 85383,
+      "needle_position": 81113,
+      "ok": true,
+      "reply": "amber-falcon-033538",
+      "wall_s": 112.2
+    }
+  ]
+}
