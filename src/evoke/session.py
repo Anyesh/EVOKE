@@ -380,9 +380,15 @@ class Session:
 
     def _generation_room(self, gen_start: int) -> int:
         # Positions may run past the cell count when holes free cells, so the
-        # room is the smaller of the window left and the cells left.
-        cells_left = self._engine.n_ctx - self._engine.get_kv_cache_token_count()
-        return max(0, min(self.logical_window - gen_start, cells_left))
+        # room is the smaller of the window left and the cells left. Cells in
+        # use come from the manager's resident tokens plus a decoded think
+        # prefill, because the engine's running counter cannot tell holes from
+        # live cells after a compact tail-evict and drifts up to the write
+        # position.
+        used = self._manager.get_stats().active_tokens
+        if self._prompt_think_prefill is not None:
+            used += self._prompt_think_prefill[2]
+        return max(0, min(self.logical_window - gen_start, self._engine.n_ctx - used))
 
     def cached_tokens_view(self) -> list[int]:
         return list(self._cached_tokens)

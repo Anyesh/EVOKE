@@ -175,3 +175,27 @@ def test_resend_beyond_cell_count_stays_inside_cells_and_budget():
     assert len(history) > n_ctx
     assert engine.next_write_pos > n_ctx
     assert peak <= budget + chunk + gen
+
+
+class PositionCountingEngine(RecordingEngine):
+    # The llama engine's running token counter treats every evicted position
+    # as a live cell after a compact tail-evict over holes, so it drifts up to
+    # the write position. Generation room must not be read from it.
+    def get_kv_cache_token_count(self) -> int:
+        return self.next_write_pos
+
+
+def test_generation_room_ignores_drifting_engine_counter():
+    engine = PositionCountingEngine(n_ctx=64)
+    config = _config(24)
+    config.prefill_chunk_tokens = 8
+    config.logical_window = 128
+    session = Session(engine, config=config)
+    history = list(range(1000, 1048))
+    session.sync_prefix(history, reserve_tokens=4)
+    history += list(range(2000, 2048))
+    engine.queue_tokens([500, 501, 502, 503])
+    session.sync_prefix(history, reserve_tokens=4)
+    assert engine.next_write_pos > 64 - 4
+    result = session.generate(max_tokens=4)
+    assert len(result.output_tokens) == 4
