@@ -34,11 +34,27 @@ def test_masking_is_stable_and_leaves_ordinary_text_alone():
     assert rec.mask(once) == once
 
 
-def test_request_ids_become_a_stable_placeholder():
-    assert rec.mask_text("chatcmpl-0123456789abcdef") == "chatcmpl-<id>"
-    assert rec.mask_text("data: {\"id\": \"chatcmpl-0123456789abcdef\"}") == (
-        'data: {"id": "chatcmpl-<id>"}'
-    )
+def test_distinct_request_ids_stay_distinct_and_repeats_map_the_same():
+    rec.reset_request_ids()
+    a, b = "chatcmpl-0123456789abcdef", "chatcmpl-fedcba9876543210"
+    assert rec.mask_text(a) == "chatcmpl-000001"
+    assert rec.mask_text(b) == "chatcmpl-000002"
+    assert rec.mask_text(f'data: {{"id": "{a}"}}') == 'data: {"id": "chatcmpl-000001"}'
+
+
+def test_header_and_sse_of_one_recording_keep_matching_ids(tmp_path):
+    rec.reset_request_ids()
+    a, b = "chatcmpl-0123456789abcdef", "chatcmpl-fedcba9876543210"
+    rec._write(tmp_path, "t1.sse", f'data: {{"id": "{a}"}}\n\n')
+    rec._write(tmp_path, "t1.headers.json", {"x-evoke-request-id": a})
+    rec._write(tmp_path, "t2.sse", f'data: {{"id": "{b}"}}\n\n')
+    rec._write(tmp_path, "t2.headers.json", {"x-evoke-request-id": b})
+    h1 = json.loads((tmp_path / "t1.headers.json").read_text())["x-evoke-request-id"]
+    h2 = json.loads((tmp_path / "t2.headers.json").read_text())["x-evoke-request-id"]
+    assert h1 in (tmp_path / "t1.sse").read_text()
+    assert h2 in (tmp_path / "t2.sse").read_text()
+    assert h1 != h2
+    assert h1 not in (tmp_path / "t2.sse").read_text()
 
 
 def test_configured_host_is_masked_even_when_it_is_a_name():

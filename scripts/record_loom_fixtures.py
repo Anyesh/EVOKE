@@ -125,6 +125,18 @@ _POSIX_PATH = re.compile(
 _IPV4 = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
 _REQUEST_ID = re.compile(r"chatcmpl-[0-9a-f]{16}")
 _masked_hosts: tuple[str, ...] = ()
+_request_ids: dict[str, str] = {}
+
+
+def reset_request_ids() -> None:
+    _request_ids.clear()
+
+
+def _request_id_placeholder(match: re.Match) -> str:
+    raw = match.group(0)
+    if raw not in _request_ids:
+        _request_ids[raw] = f"chatcmpl-{len(_request_ids) + 1:06d}"
+    return _request_ids[raw]
 
 
 def set_masked_hosts(hosts: tuple[str, ...]) -> None:
@@ -138,7 +150,7 @@ def mask_text(text: str, hosts: tuple[str, ...] = ()) -> str:
     text = _IPV4.sub("<host>", text)
     for pattern in (_WIN_PATH, _UNC_PATH, _POSIX_PATH):
         text = pattern.sub("<path>", text)
-    return _REQUEST_ID.sub("chatcmpl-<id>", text)
+    return _REQUEST_ID.sub(_request_id_placeholder, text)
 
 
 def mask(value):
@@ -255,6 +267,7 @@ def record_keep(
 
 
 def record(base_url: str, admin_key: str, out: Path, mock: MockServer | None) -> None:
+    reset_request_ids()
     out.mkdir(parents=True, exist_ok=True)
     admin = {"Authorization": f"Bearer {admin_key}"}
     chat = f"{base_url}/v1/chat/completions"
