@@ -152,7 +152,7 @@ You need a CUDA box with the EVOKE-forked llama.cpp ([Anyesh/llama.cpp](https://
 
 ```bash
 # Install the Python package + server extras
-uv sync --extra server
+uv sync --extra server --extra dev   # --extra dev adds pytest
 
 # Start the OpenAI-compatible server (pick a model)
 LLAMA_CPP_LIB=/path/to/EVOKE_llama.cpp/build/bin/llama.dll \
@@ -171,6 +171,8 @@ cp examples/opencode.json ~/your-project/
 # edit baseURL and model name, then:
 cd ~/your-project && opencode
 ```
+
+Every setting, the HTTP interface, logs and troubleshooting are in [OPERATING.md](OPERATING.md).
 
 ## Live opencode integration
 

@@ -13,7 +13,7 @@ Environment:
                       unloaded from VRAM (reloaded on the next request);
                       unset or 0 keeps it resident
 
-Every other EVOKE_* variable is listed in docs/OPERATING.md.
+Every other EVOKE_* variable is listed in OPERATING.md.
 """
 
 from __future__ import annotations
