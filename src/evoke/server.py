@@ -1025,8 +1025,9 @@ def create_app(
             print(
                 f"[req {completion_id}] msgs={len(msgs)} tools={len(req.tools or [])} "
                 f"stream={req.stream} max_new={max_new} prompt_chars={len(prompt)} "
-                f"prompt_tokens={prompt_n} pinned={pin_n} session={session_id} "
-                f"stops={stops}",
+                f"prompt_tokens={prompt_n} pinned={pin_n} "
+                f"keep={[(k.start, k.end, k.mode) for k in keep_spans]} "
+                f"session={session_id} stops={stops}",
                 flush=True,
             )
 
