@@ -47,7 +47,7 @@ def sh(template, **kw):
 
 def wait_healthy(url):
     deadline = time.time() + HEALTH_TIMEOUT
-    while time.time() < deadline:
+    while time.time() < deadline and not stopping:
         try:
             with urllib.request.urlopen(url, timeout=5) as r:
                 if r.status == 200:
@@ -63,7 +63,7 @@ def run_arm(args, task, arm):
     started = time.time()
     sh(args.stop_cmd)
     sh(args.start_cmd, arm=arm)
-    if not wait_healthy(args.health_url):
+    if not wait_healthy(args.health_urls[arm]):
         return {"infra_failure": True, "resolved": None, "seconds": 0, "why": "server not healthy"}
     try:
         proc = subprocess.run(
@@ -101,8 +101,9 @@ def main():
     parser.add_argument("--stop-cmd", required=True)
     parser.add_argument("--run-cmd", required=True, help="uses {task} {arm} {base_url} {result}")
     parser.add_argument("--base-url", required=True)
-    parser.add_argument("--health-url", required=True)
+    parser.add_argument("--health-url", action="append", required=True, help="ARM=URL, once per arm")
     args = parser.parse_args()
+    args.health_urls = dict(item.split("=", 1) for item in args.health_url)
 
     signal.signal(signal.SIGTERM, on_signal)
     signal.signal(signal.SIGINT, on_signal)
