@@ -86,7 +86,7 @@ def test_readonly_endpoints_do_not_reload(tmp_path):
 
 
 def test_native_models_reports_ctx_while_unloaded(tmp_path):
-    # Calcifer parses --ctx-size from the active /models entry to size its
+    # A llama.cpp server manager client parses --ctx-size from the active /models entry to size its
     # prompts; that must not disappear while the model is idle-unloaded,
     # because a reload restores exactly the same context window.
     engines: list[MockEngine] = []

@@ -1,7 +1,7 @@
 # Live agent demo: opencode builds a webapp through EVOKE (Qwen3-8B)
 
 2026-06-11. A real coding agent (opencode 1.16.0, 9 tools) builds a notes
-webapp through the EVOKE OpenAI-compatible server on chihiro, Qwen3-8B-Q4_K_M
+webapp through the EVOKE OpenAI-compatible server on the eval host, Qwen3-8B-Q4_K_M
 (a thinking model, dense attention), n_ctx=16384. Same task, model, and server
 across three arms; only the eviction/recovery policy changes. Raw counters in
 `agent_opencode_qwen3_8b.json`.

@@ -2,7 +2,7 @@
   "experiment": "live opencode agent builds a notes webapp through the EVOKE server",
   "date": "2026-06-11",
   "model": "Qwen3-8B-Q4_K_M (thinking, dense attention)",
-  "server": "EVOKE evoke_serve.py on chihiro (RTX 4070 Ti SUPER 16GB), n_ctx=16384",
+  "server": "EVOKE evoke_serve.py on the eval host (RTX 4070 Ti SUPER 16GB), n_ctx=16384",
   "client": "opencode 1.16.0, isolated HOME, provider @ai-sdk/openai-compatible, 9 tools",
   "task": "build notes webapp (app.py http.server on :8123, REST /api/notes, notes.json, README) using only the Python stdlib",
   "arms": {

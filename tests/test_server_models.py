@@ -31,7 +31,7 @@ def _client(tmp_path: Path, factory_paths: list[str] | None = None) -> TestClien
 
 
 def test_native_models_reports_ctx_size(tmp_path):
-    # Clients built against a llama.cpp server manager (calcifer among them)
+    # Clients built against a llama.cpp server manager (some chat front ends among them)
     # probe GET /models and parse --ctx-size from the active entry's launch
     # args to learn the real context window; without this endpoint they fall
     # back to a guessed default and overrun n_ctx.

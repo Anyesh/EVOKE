@@ -3,12 +3,12 @@
 Pulls rows from the HuggingFace datasets-server rows API (plain HTTP, no
 auth, no extra deps: the same pattern already used in
 /mnt/data/cognitive-cache/benchmark/import_swebench.py), normalizes each row
-with trajectory_normalizers.normalize, and keeps only rows that fit chihiro's
+with trajectory_normalizers.normalize, and keeps only rows that fit the eval host's
 usable context window and have enough revisit steps to be worth scoring.
 
 SWE-agent-trajectories is the primary source: at these filter thresholds it
 gets roughly 10% survival on real data. SWE-rebench-openhands-trajectories
-runs 31-64K tokens per trajectory, past chihiro's usable context window, so
+runs 31-64K tokens per trajectory, past the eval host's usable context window, so
 almost nothing survives length filtering as-is; it's fetched and reported
 separately as a stretch source that needs a windowing function (truncate to
 a suffix of N tool calls) neither this script nor trajectory_bench.py

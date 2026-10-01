@@ -554,7 +554,7 @@ def create_app(
 
     @app.get("/models", dependencies=[Depends(_caller)])
     async def native_models() -> dict[str, Any]:
-        # llama-server manager shape: clients like calcifer read the model
+        # llama-server manager shape: clients of a llama.cpp server manager read the model
         # list from data[].id and the live context window / vision support
         # from --ctx-size / --mmproj in the active entry's status.args.
         # Without this endpoint they fall back to a guessed context window
