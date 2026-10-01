@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import socket
 import sys
 import tempfile
 import threading
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 import uvicorn
@@ -115,12 +117,46 @@ class MockServer:
         self.engine.queue_tokens([ord(c) for c in text] + [self.engine.eos_token])
 
 
+_WIN_PATH = re.compile(r"(?<![A-Za-z])[A-Za-z]:[\\/]+[^\s\"'<>|,;]*")
+_UNC_PATH = re.compile(r"\\{2,4}[\w.$-]+\\[^\s\"']*")
+_POSIX_PATH = re.compile(
+    r"(?<![\w:/.])/(?:home|mnt|Users|opt|var|srv|tmp|usr|root|media|Volumes|data|models|etc)/[^\s\"'<>,;)]*"
+)
+_IPV4 = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
+_REQUEST_ID = re.compile(r"chatcmpl-[0-9a-f]{16}")
+_masked_hosts: tuple[str, ...] = ()
+
+
+def set_masked_hosts(hosts: tuple[str, ...]) -> None:
+    global _masked_hosts
+    _masked_hosts = tuple(h for h in hosts if h)
+
+
+def mask_text(text: str, hosts: tuple[str, ...] = ()) -> str:
+    for host in (*hosts, *_masked_hosts):
+        text = re.sub(rf"(?<![\w.-]){re.escape(host)}(?![\w-])", "<host>", text)
+    text = _IPV4.sub("<host>", text)
+    for pattern in (_WIN_PATH, _UNC_PATH, _POSIX_PATH):
+        text = pattern.sub("<path>", text)
+    return _REQUEST_ID.sub("chatcmpl-<id>", text)
+
+
+def mask(value):
+    if isinstance(value, str):
+        return mask_text(value)
+    if isinstance(value, dict):
+        return {k: mask(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [mask(v) for v in value]
+    return value
+
+
 def _write(out: Path, name: str, payload) -> None:
     path = out / name
     if isinstance(payload, str):
-        path.write_text(payload)
+        path.write_text(mask_text(payload))
     else:
-        path.write_text(json.dumps(payload, indent=2) + "\n")
+        path.write_text(json.dumps(mask(payload), indent=2) + "\n")
     print(f"wrote {path}")
 
 
@@ -326,6 +362,7 @@ def main() -> int:
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     if args.base_url:
+        set_masked_hosts((urlsplit(args.base_url).hostname or "",))
         record(args.base_url.rstrip("/"), args.admin_key, args.out, None)
         return 0
     with MockServer() as mock:
