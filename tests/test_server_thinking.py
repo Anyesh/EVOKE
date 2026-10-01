@@ -42,3 +42,20 @@ def test_enable_thinking_false_reaches_render_without_tools():
     )
     assert resp.status_code == 200
     assert engine.with_tools_calls == [False]
+
+
+def test_request_chat_template_kwargs_cannot_turn_thinking_back_on():
+    engine = _RecordingEngine()
+    client = TestClient(create_app(engine, "mock-model", enable_thinking=False))
+    resp = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "mock-model",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+            "max_tokens": 8,
+            "chat_template_kwargs": {"enable_thinking": True},
+        },
+    )
+    assert resp.status_code == 200
+    assert engine.with_tools_calls == [False]
