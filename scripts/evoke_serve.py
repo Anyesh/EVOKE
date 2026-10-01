@@ -12,6 +12,8 @@ Environment:
   EVOKE_IDLE_TIMEOUT - seconds of inactivity after which the model is
                       unloaded from VRAM (reloaded on the next request);
                       unset or 0 keeps it resident
+
+Every other EVOKE_* variable is listed in docs/OPERATING.md.
 """
 
 from __future__ import annotations
@@ -31,6 +33,9 @@ from evoke.server import create_app
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print(__doc__)
+        return 0
     model_path = os.environ.get("EVOKE_MODEL_PATH")
     if not model_path:
         print("FAIL: set EVOKE_MODEL_PATH to a GGUF model file")
