@@ -1,0 +1,73 @@
+<|im_start|>system
+# Tools
+
+You have access to the following functions:
+
+<tools>
+{"type": "function", "function": {"name": "read", "description": "Read a file; don't use for <dirs> & more, café", "parameters": {"type": "object", "properties": {"path": {"type": "string", "description": "it's the path"}, "limit": {"type": "integer"}}, "required": ["path"]}}}
+{"type": "function", "function": {"name": "glob", "description": "Find files", "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}}, "required": ["pattern"]}}}
+</tools>
+
+If you choose to call a function ONLY reply in the following format with NO suffix:
+
+<tool_call>
+<function=example_function_name>
+<parameter=example_parameter_1>
+value_1
+</parameter>
+<parameter=example_parameter_2>
+This is the value for the second parameter
+that can span
+multiple lines
+</parameter>
+</function>
+</tool_call>
+
+<IMPORTANT>
+Reminder:
+- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags
+- Required parameters MUST be specified
+- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after
+- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
+</IMPORTANT>
+
+You're an agent. Use <tools> & be careful.<|im_end|>
+<|im_start|>user
+Fix the bug in 'a.py' where x < y && z > w.<|im_end|>
+<|im_start|>assistant
+<tool_call>
+<function=read>
+<parameter=path>
+a.py
+</parameter>
+<parameter=limit>
+50
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+if x < y and z > w: print('it\'s ok') # a & b
+</tool_response><|im_end|>
+<|im_start|>assistant
+Looking.
+
+<tool_call>
+<function=glob>
+<parameter=pattern>
+*.py
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+a.py
+b.py
+</tool_response><|im_end|>
+<|im_start|>user
+thanks<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+

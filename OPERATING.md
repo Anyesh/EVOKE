@@ -127,6 +127,7 @@ Settings are environment variables. There is no config file.
 | `EVOKE_LLAMA_LOG` | Send llama.cpp's own log to stderr. Without it the log is discarded, so a `llama_decode failed with code N` carries no reason. |
 | `EVOKE_DEBUG_EVICT` | Print an `[evict_ranges]` line to stdout for every eviction. |
 | `EVOKE_DEBUG_IDENTITY` | Diagnostics for identity gap-fill and identity resets, on stderr. |
+| `EVOKE_DUMP_REQUESTS_DIR`, `EVOKE_DUMP_FIRST`, `EVOKE_DUMP_EVERY` | Off unless the directory is set. Writes the request body and the rendered prompt of the first `EVOKE_DUMP_FIRST` chat requests (default 3) and of every `EVOKE_DUMP_EVERY`-th request (default 25, 0 for none) to `request-NNNNNN.json` files there, to check what the model was sent. The files contain prompt text. |
 | `EVOKE_DEBUG_DRIFT`, `EVOKE_DEBUG_DRIFT_FILE` | When the resent prompt diverges from the cached prefix, write a diagnostic block to the file, or to stderr if no file is given. |
 
 ## Authentication

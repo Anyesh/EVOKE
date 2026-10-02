@@ -35,6 +35,8 @@ from evoke.auth import (
 )
 from evoke.config import EvokeConfig
 from evoke.llama_engine import LlamaCppEngine
+from evoke.request_dump import RequestDumper
+from evoke.request_dump import from_env as request_dump_from_env
 from evoke.scheduler import QueueTimeout, SessionBusy, TurnScheduler
 from evoke.session import Session, SessionPool, SyncStats
 from evoke.templates import ParsedResponse, format_qwen_chat, parse_qwen_response
@@ -269,6 +271,7 @@ def create_app(
     pin_system_prompt: bool = False,
     queue_timeout: float | None = None,
     max_waiting_per_session: int = 1,
+    request_dump: RequestDumper | None = None,
     max_sessions_per_key: int = 2,
     pin_cap: float = 0.6,
 ) -> FastAPI:
@@ -417,6 +420,7 @@ def create_app(
     # model is unloaded.
     engine_loaded = True
     active_n_ctx = engine.n_ctx
+    dumper = request_dump if request_dump is not None else request_dump_from_env()
     active_kv_block = engine.supports_kv_block
     last_used = time.monotonic()
     inflight = 0
@@ -1030,6 +1034,16 @@ def create_app(
                 f"session={session_id} stops={stops}",
                 flush=True,
             )
+            if dumper is not None:
+                dumper.maybe_dump(
+                    {
+                        "id": completion_id,
+                        "session": session_id,
+                        "request": req.model_dump(mode="json"),
+                        "rendered_prompt": prompt,
+                        "prompt_tokens": prompt_n,
+                    }
+                )
 
             if req.stream:
                 stream = _stream_completion(
