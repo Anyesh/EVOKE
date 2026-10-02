@@ -532,7 +532,7 @@ def create_app(
                     "object": "model",
                     "created": 0,
                     "owned_by": "evoke",
-                    "context_length": active_n_ctx,
+                    "context_length": _logical_window(),
                     "evoke": {
                         "kv_cells": active_n_ctx,
                         "logical_window": _logical_window(),

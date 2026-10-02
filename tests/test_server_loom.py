@@ -8,6 +8,7 @@ import json
 from fastapi.testclient import TestClient
 
 from evoke.auth import IssuedKeyStore, KeyRing
+from evoke.config import EvokeConfig
 from evoke.mock_engine import MockEngine
 from evoke.server import create_app
 
@@ -244,6 +245,21 @@ def test_models_entry_advertises_the_context_window():
     assert entry["context_length"] == 16384
     assert entry["evoke"]["kv_cells"] == 16384
     assert entry["evoke"]["logical_window"] == 16384
+
+
+def test_models_context_length_is_the_logical_window_when_it_exceeds_the_cells():
+    config = EvokeConfig(
+        max_active_tokens=8192,
+        block_size=64,
+        logical_window=32768,
+        prefill_chunk_tokens=1024,
+        position_mode="sparse",
+    )
+    client = _client(config=config)
+    entry = client.get("/v1/models", headers=_auth(LOOM)).json()["data"][0]
+    assert entry["context_length"] == 32768
+    assert entry["evoke"]["kv_cells"] == 16384
+    assert entry["evoke"]["logical_window"] == 32768
 
 
 class _BrokenEngine(MockEngine):
