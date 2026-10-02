@@ -1,8 +1,7 @@
 """Fetch, filter, and save real agent trajectories for the EVOKE benchmark.
 
 Pulls rows from the HuggingFace datasets-server rows API (plain HTTP, no
-auth, no extra deps: the same pattern already used in
-/mnt/data/cognitive-cache/benchmark/import_swebench.py), normalizes each row
+auth, no extra deps), normalizes each row
 with trajectory_normalizers.normalize, and keeps only rows that fit the eval host's
 usable context window and have enough revisit steps to be worth scoring.
 
