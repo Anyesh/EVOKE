@@ -69,3 +69,8 @@ data/trajectories/
 .mcp.json
 CLAUDE.md
 .evoke-state/
+
+# window B pilot state, local only
+results/window_b/state.json
+results/window_b/runs/
+results/window_b/void/
