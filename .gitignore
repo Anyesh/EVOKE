@@ -68,3 +68,4 @@ data/trajectories/
 .claude/
 .mcp.json
 CLAUDE.md
+.evoke-state/

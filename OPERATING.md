@@ -40,7 +40,17 @@ uv run python scripts/evoke_serve.py
 
 `uv run python scripts/evoke_serve.py --help` prints the short variable list. The server binds `127.0.0.1:8000` by default; set `EVOKE_HOST` and `EVOKE_PORT` to change that. **`EVOKE_BUDGET` must be set for the eviction policy to take effect** (see below).
 
-To stop it, send SIGINT (Ctrl-C) or SIGTERM to the process. If you run it detached, stop it by process id or by whatever supervises it (systemd, a scheduled task); then confirm the GPU is free (`nvidia-smi`), because an orphaned process keeps its VRAM.
+To run it in the background with a pid file and a log, use the helper scripts (they read the same `EVOKE_*` variables):
+
+```bash
+scripts/serve-start.sh    # refuses a second start, waits up to EVOKE_START_TIMEOUT seconds (default 120) for /healthz
+scripts/serve-status.sh   # pid, log path and the /healthz answer; exit 0 only when the server answers
+scripts/serve-stop.sh     # SIGTERM to the process group, SIGKILL after EVOKE_STOP_TIMEOUT seconds (default 30)
+```
+
+`EVOKE_STATE_DIR` (default `.evoke-state` in the checkout) holds `evoke.pid` and `server.log`; set `EVOKE_HEALTH_HOST` when the server binds an address other than the one to check. The start script runs `uv run python scripts/evoke_serve.py` unless `EVOKE_SERVE_CMD` says otherwise.
+
+To stop a server you started by hand, send SIGINT (Ctrl-C) or SIGTERM to the process. If you run it detached, stop it by process id or by whatever supervises it (systemd, a scheduled task); then confirm the GPU is free (`nvidia-smi`), because an orphaned process keeps its VRAM.
 
 To check on it:
 
