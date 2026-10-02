@@ -411,3 +411,12 @@ def test_issuance_without_a_store_is_501():
     )
     assert resp.status_code == 501
     assert resp.json()["error"]["code"] == "evoke_key_issuance_disabled"
+
+
+def test_each_turn_logs_its_residency_and_eviction_counts(capfd):
+    client = _client()
+    client.post("/v1/chat/completions", json=_body(), headers=_auth(LOOM, "acme/s1"))
+    out = capfd.readouterr().out
+    line = next(l for l in out.splitlines() if l.startswith("[turn]"))
+    for field in ("logical=", "peak=", "end=", "pinned=", "evicted=", "recovered="):
+        assert field in line

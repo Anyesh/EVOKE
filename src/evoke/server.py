@@ -1202,7 +1202,7 @@ def _measure(
     waited: float,
 ) -> TurnMetrics:
     manager = session.manager
-    return measure_turn(
+    metrics = measure_turn(
         session=label,
         before=before,
         after=manager.get_stats(),
@@ -1215,6 +1215,14 @@ def _measure(
         logical_window=session.logical_window,
         queue_wait_s=waited,
     )
+    print(
+        f"[turn] session={label} logical={metrics.logical_tokens} "
+        f"peak={metrics.peak_resident_tokens} end={metrics.resident_tokens_end} "
+        f"pinned={metrics.pinned_tokens} evicted={metrics.blocks_evicted}"
+        f"/{metrics.tokens_evicted}t recovered={metrics.blocks_recovered}",
+        flush=True,
+    )
+    return metrics
 
 
 _MARKERS = ("<think>", "</think>", "<tool_call>", "</tool_call>", "<|im_end|>")
