@@ -4,6 +4,10 @@
 
 Arms are labelled `E` (EVOKE server) and `C` (a plain llama.cpp server with the client's own compaction). Each task runs under both arms back to back, and the arm order alternates with the task's position so neither arm always goes first.
 
+## Arm conditions (clarifications)
+
+- 2026-10-02, before any control run: thinking is off in both arms and is enforced on the server as well as by the client. Arm E ignores a request-level `chat_template_kwargs` and renders with the server's thinking-off setting. Arm C's server runs with a reasoning budget of 0; a request asking for thinking then gets no reasoning text, and requests that leave the setting unset or ask for thinking off get byte-identical content and the same prompt token counts as without the flag (checked on three prompts at temperature 0). The client also sends thinking off on every request, as a second layer. The arms, task set, grader and endpoints are unchanged.
+
 ## Task order
 
 ```bash
