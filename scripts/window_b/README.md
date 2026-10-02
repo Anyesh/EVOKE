@@ -7,6 +7,7 @@ Arms are labelled `E` (EVOKE server) and `C` (a plain llama.cpp server with the 
 ## Arm conditions (clarifications)
 
 - 2026-10-02, before any control run: thinking is off in both arms and is enforced on the server as well as by the client. Arm E ignores a request-level `chat_template_kwargs` and renders with the server's thinking-off setting. Arm C's server runs with a reasoning budget of 0; a request asking for thinking then gets no reasoning text, and requests that leave the setting unset or ask for thinking off get byte-identical content and the same prompt token counts as without the flag (checked on three prompts at temperature 0). The client also sends thinking off on every request, as a second layer. The arms, task set, grader and endpoints are unchanged.
+- 2026-10-02, before any control run: a task refused before any work was done (low disk, runtime or environment unavailable) never counts as an attempt and does not exclude the task; the batch stops and resumes from the same state.
 
 ## Task order
 
@@ -41,6 +42,7 @@ State is written after every run to `results/window_b/state.json` (override with
 
 - SIGINT or SIGTERM finish bookkeeping and stop the server; an arm that was running is put back to pending and does not use a retry.
 - If a runner call fails and the arm's server no longer answers its health check (the host went off or away), the arm is treated as interrupted instead of an infrastructure failure: it goes back to pending without using its retry and the scheduler exits with status 3. Start it again once the host is back.
+- The runner exits 75 (or writes `tempfail: true` in its result file) when it refuses a task before doing any work, for example for low disk, a missing container runtime or a missing environment. The scheduler then puts the arm back to pending without using an attempt, stops the server, logs `tempfail: <reason>` and exits with status 75; fix the cause and rerun the same command.
 - A run found as `running` at startup (power loss) is treated the same way and its `interrupted` counter is incremented.
 - An infrastructure failure is retried once; a second failure marks the task failed and excludes it from both arms.
 - If one arm of a pair finished and the other did not, the other arm runs next and needs time for one arm only.

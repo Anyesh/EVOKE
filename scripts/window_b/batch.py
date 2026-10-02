@@ -12,6 +12,7 @@ from pathlib import Path
 from schedule import new_state, next_job, record, recover, start
 
 RUN_TIMEOUT = 2 * 3600 + 900
+TEMPFAIL_EXIT = 75
 HEALTH_TIMEOUT = 600
 
 stopping = False
@@ -59,6 +60,13 @@ def wait_healthy(url):
     return False
 
 
+def read_result(path):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+
+
 def server_alive(url):
     try:
         with urllib.request.urlopen(url, timeout=10) as r:
@@ -88,9 +96,14 @@ def run_arm(args, task, arm):
             shell=True,
             timeout=RUN_TIMEOUT,
         )
-        ok = proc.returncode == 0 and result_path.exists()
+        returncode = proc.returncode
     except subprocess.TimeoutExpired:
-        ok = False
+        returncode = None
+    data = read_result(result_path)
+    if returncode == TEMPFAIL_EXIT or (data and data.get("tempfail")):
+        reason = (data or {}).get("infra_reason") or f"exit {returncode}"
+        return {"tempfail": True, "reason": reason}
+    ok = returncode == 0 and data is not None
     if not ok and not server_alive(args.health_urls[arm]):
         # the host went away mid-run (power off, network), which is not the task's fault
         return {"interrupted": True, "seconds": time.time() - started}
@@ -101,7 +114,7 @@ def run_arm(args, task, arm):
             "seconds": time.time() - started,
             "why": "runner failed or timed out",
         }
-    result = json.loads(result_path.read_text())
+    result = data
     result.setdefault("infra_failure", False)
     result["seconds"] = time.time() - started
     result["night"] = datetime.fromtimestamp(started).strftime("%Y-%m-%d")
@@ -146,6 +159,16 @@ def main():
         start(state, task, arm)
         save(args.state, state)
         result = run_arm(args, task, arm)
+        if result.get("tempfail"):
+            recover(state)
+            save(args.state, state)
+            sh(args.stop_cmd)
+            print(
+                f"{task} {arm} tempfail: {result['reason']}; batch stopped, "
+                "rerun the same command to resume",
+                flush=True,
+            )
+            return TEMPFAIL_EXIT
         if result.get("interrupted") or (stopping and result.get("infra_failure")):
             recover(state)
             save(args.state, state)

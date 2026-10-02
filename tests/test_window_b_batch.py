@@ -43,3 +43,77 @@ def test_runner_failure_with_live_server_is_an_infra_failure(tmp_path, monkeypat
     result = batch.run_arm(_args(tmp_path, "exit 1"), "t", "E")
     assert result["infra_failure"] is True
     assert not result.get("interrupted")
+
+
+def test_exit_75_is_a_tempfail_with_the_reason_from_the_result_file(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(batch, "wait_healthy", lambda url: True)
+    monkeypatch.setattr(batch, "server_alive", lambda url: True)
+    cmd = 'echo \'{{"tempfail": true, "infra_reason": "insufficient_disk"}}\' > {result}; exit 75'
+    result = batch.run_arm(_args(tmp_path, cmd), "t", "E")
+    assert result["tempfail"] is True
+    assert result["reason"] == "insufficient_disk"
+
+
+def test_exit_75_without_a_result_file_is_still_a_tempfail(tmp_path, monkeypatch):
+    monkeypatch.setattr(batch, "wait_healthy", lambda url: True)
+    monkeypatch.setattr(batch, "server_alive", lambda url: True)
+    result = batch.run_arm(_args(tmp_path, "exit 75"), "t", "E")
+    assert result["tempfail"] is True
+    assert result["reason"] == "exit 75"
+
+
+def test_tempfail_result_file_with_exit_zero_is_a_tempfail(tmp_path, monkeypatch):
+    monkeypatch.setattr(batch, "wait_healthy", lambda url: True)
+    monkeypatch.setattr(batch, "server_alive", lambda url: True)
+    cmd = (
+        'echo \'{{"tempfail": true, "infra_reason": "docker_unavailable"}}\' > {result}'
+    )
+    result = batch.run_arm(_args(tmp_path, cmd), "t", "E")
+    assert result["tempfail"] is True
+    assert result["reason"] == "docker_unavailable"
+
+
+def test_tempfail_never_consumes_an_attempt_and_the_batch_stops(tmp_path, monkeypatch):
+    perm = tmp_path / "perm.json"
+    perm.write_text('{"order": ["a", "b"]}')
+    state = tmp_path / "state.json"
+    monkeypatch.setattr(
+        batch,
+        "run_arm",
+        lambda args, task, arm: {"tempfail": True, "reason": "insufficient_disk"},
+    )
+    monkeypatch.setattr(batch, "sh", lambda template, **kw: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "batch.py",
+            "--perm",
+            str(perm),
+            "--state",
+            str(state),
+            "--runs",
+            str(tmp_path),
+            "--stop-at",
+            "none",
+            "--start-cmd",
+            "x",
+            "--stop-cmd",
+            "y",
+            "--run-cmd",
+            "z",
+            "--base-url",
+            "http://x",
+            "--health-url",
+            "E=http://x",
+            "--health-url",
+            "C=http://x",
+        ],
+    )
+    assert batch.main() == 75
+    cells = batch.load(state)["tasks"]["a"]
+    assert cells["E"]["status"] == "pending"
+    assert cells["E"]["attempts"] == 0
+    assert "b" not in batch.load(state)["tasks"]
