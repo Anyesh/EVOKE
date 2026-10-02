@@ -139,6 +139,7 @@ def render_gguf_chat_template(
         extensions=["jinja2.ext.do", "jinja2.ext.loopcontrols"],
     )
     env.globals["raise_exception"] = _jinja_raise
+    env.filters["tojson"] = _tojson
     render_kwargs: dict[str, Any] = {
         "messages": _normalize_messages(messages),
         "tools": tools,
@@ -153,6 +154,18 @@ def render_gguf_chat_template(
         return template.render(**render_kwargs)
     except TemplateError as exc:
         raise RuntimeError(f"jinja template render failed: {exc}") from exc
+
+
+def _tojson(value, ensure_ascii=False, indent=None, separators=None, sort_keys=False):
+    # jinja2's built-in tojson sorts keys and escapes < > & ' as \\uXXXX, which would put a
+    # different tool block in the prompt than llama.cpp's renderer and transformers produce.
+    return json.dumps(
+        value,
+        ensure_ascii=ensure_ascii,
+        indent=indent,
+        separators=separators,
+        sort_keys=sort_keys,
+    )
 
 
 def _render_tools(tools: list[dict[str, Any]] | None) -> str:

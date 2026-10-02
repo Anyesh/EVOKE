@@ -262,3 +262,28 @@ class TestEngineTemplateRouting:
         out = LlamaCppEngine.apply_chat_template_with_tools(stub, MESSAGES, None)
         assert out == "C-PATH"
         assert stub.c_path_calls == 1
+
+
+def test_tools_block_keeps_characters_and_key_order_as_given():
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "read",
+                "description": "Read a file; don't use for <dirs> & more, café",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}, "limit": {"type": "integer"}},
+                    "required": ["path"],
+                },
+            },
+        }
+    ]
+    template = open(QWEN3_FIXTURE).read()
+    out = render_gguf_chat_template(
+        template, [{"role": "user", "content": "hi"}], tools, enable_thinking=False
+    )
+    assert "don't use for <dirs> & more, café" in out
+    assert "\\u00" not in out
+    assert out.index('"type": "function", "function"') < out.index('"name": "read"')
+    assert out.index('"path"') < out.index('"limit"')
