@@ -63,3 +63,8 @@ paper/*.tex
 
 # Fetched by scripts/fetch_trajectories.py, not versioned
 data/trajectories/
+
+# agent files
+.claude/
+.mcp.json
+CLAUDE.md
