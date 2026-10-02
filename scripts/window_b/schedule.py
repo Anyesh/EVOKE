@@ -68,12 +68,16 @@ def _excluded(state, task):
 
 
 def next_job(state, perm, now, stop_at, arm_seconds=None, limit=None):
-    arm_seconds = arm_seconds if arm_seconds is not None else estimate_arm_seconds(state)
+    arm_seconds = (
+        arm_seconds if arm_seconds is not None else estimate_arm_seconds(state)
+    )
     for index, task in enumerate(perm[:limit]):
         if _excluded(state, task):
             continue
         remaining = [
-            arm for arm in arm_order(index) if _cell(state, task, arm)["status"] != "done"
+            arm
+            for arm in arm_order(index)
+            if _cell(state, task, arm)["status"] != "done"
         ]
         if not remaining:
             continue

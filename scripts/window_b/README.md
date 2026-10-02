@@ -29,6 +29,7 @@ python scripts/window_b/batch.py \
 ```
 
 - `--stop-at` is a local wall-clock time (`HH:MM`, the clock and time zone of the machine running the scheduler; a time already past means tomorrow). A task pair is started only if both arms are expected to finish before it, using the median of observed arm durations plus 120 s for a server swap (600 s per arm before any run has finished).
+- `--stop-at none` removes the deadline: pairs keep starting until the task list (up to `--limit`) is done or the process is stopped. Use it for a continuous run; resume covers any stop.
 - `--limit` caps how many tasks of the permutation are considered.
 - The start command is run per arm with `{arm}` filled in; the stop command runs before each start and at the end. Only one server runs at a time.
 - The health check polls for up to 600 s; a server that never answers counts as an infrastructure failure.
@@ -39,6 +40,7 @@ python scripts/window_b/batch.py \
 State is written after every run to `results/window_b/state.json` (override with `--state`), and per-run result files go to `results/window_b/runs/` (`--runs`). Starting the same command again resumes where it stopped.
 
 - SIGINT or SIGTERM finish bookkeeping and stop the server; an arm that was running is put back to pending and does not use a retry.
+- If a runner call fails and the arm's server no longer answers its health check (the host went off or away), the arm is treated as interrupted instead of an infrastructure failure: it goes back to pending without using its retry and the scheduler exits with status 3. Start it again once the host is back.
 - A run found as `running` at startup (power loss) is treated the same way and its `interrupted` counter is incremented.
 - An infrastructure failure is retried once; a second failure marks the task failed and excludes it from both arms.
 - If one arm of a pair finished and the other did not, the other arm runs next and needs time for one arm only.

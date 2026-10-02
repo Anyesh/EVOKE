@@ -34,6 +34,8 @@ def save(path, state):
 
 
 def parse_stop(text):
+    if text == "none":
+        return float("inf")
     h, m = map(int, text.split(":"))
     stop = datetime.now().replace(hour=h, minute=m, second=0, microsecond=0)
     if stop <= datetime.now():
@@ -57,6 +59,14 @@ def wait_healthy(url):
     return False
 
 
+def server_alive(url):
+    try:
+        with urllib.request.urlopen(url, timeout=10) as r:
+            return r.status == 200
+    except OSError:
+        return False
+
+
 def run_arm(args, task, arm):
     result_path = Path(args.runs) / f"{task}__{arm}.json"
     result_path.unlink(missing_ok=True)
@@ -64,7 +74,12 @@ def run_arm(args, task, arm):
     sh(args.stop_cmd)
     sh(args.start_cmd, arm=arm)
     if not wait_healthy(args.health_urls[arm]):
-        return {"infra_failure": True, "resolved": None, "seconds": 0, "why": "server not healthy"}
+        return {
+            "infra_failure": True,
+            "resolved": None,
+            "seconds": 0,
+            "why": "server not healthy",
+        }
     try:
         proc = subprocess.run(
             args.run_cmd.format(
@@ -76,6 +91,9 @@ def run_arm(args, task, arm):
         ok = proc.returncode == 0 and result_path.exists()
     except subprocess.TimeoutExpired:
         ok = False
+    if not ok and not server_alive(args.health_urls[arm]):
+        # the host went away mid-run (power off, network), which is not the task's fault
+        return {"interrupted": True, "seconds": time.time() - started}
     if not ok:
         return {
             "infra_failure": True,
@@ -96,12 +114,18 @@ def main():
     parser.add_argument("--state", default="results/window_b/state.json")
     parser.add_argument("--runs", default="results/window_b/runs")
     parser.add_argument("--limit", type=int, default=60)
-    parser.add_argument("--stop-at", required=True, help="HH:MM local time")
+    parser.add_argument(
+        "--stop-at", required=True, help="HH:MM local time, or none for no deadline"
+    )
     parser.add_argument("--start-cmd", required=True, help="uses {arm}")
     parser.add_argument("--stop-cmd", required=True)
-    parser.add_argument("--run-cmd", required=True, help="uses {task} {arm} {base_url} {result}")
+    parser.add_argument(
+        "--run-cmd", required=True, help="uses {task} {arm} {base_url} {result}"
+    )
     parser.add_argument("--base-url", required=True)
-    parser.add_argument("--health-url", action="append", required=True, help="ARM=URL, once per arm")
+    parser.add_argument(
+        "--health-url", action="append", required=True, help="ARM=URL, once per arm"
+    )
     args = parser.parse_args()
     args.health_urls = dict(item.split("=", 1) for item in args.health_url)
 
@@ -122,10 +146,12 @@ def main():
         start(state, task, arm)
         save(args.state, state)
         result = run_arm(args, task, arm)
-        if stopping and result.get("infra_failure"):
+        if result.get("interrupted") or (stopping and result.get("infra_failure")):
             recover(state)
-        else:
-            record(state, task, arm, result)
+            save(args.state, state)
+            print(f"{task} {arm} interrupted, stopping", flush=True)
+            return 3
+        record(state, task, arm, result)
         save(args.state, state)
         print(f"{task} {arm} {result}", flush=True)
 
