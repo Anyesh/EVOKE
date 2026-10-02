@@ -61,3 +61,30 @@ def test_server_dumps_the_request_and_the_rendered_prompt(tmp_path):
     assert data["request"]["messages"][0]["content"] == "it's <b> & done"
     assert "it's <b> & done" in data["rendered_prompt"]
     assert data["prompt_tokens"] > 0
+
+
+def test_dump_is_written_as_utf8_whatever_the_locale(tmp_path):
+    d = RequestDumper(tmp_path, first=1, every=0)
+    d.maybe_dump({"text": "arrow → café"})
+    raw = (tmp_path / "request-000001.json").read_bytes()
+    assert "arrow → café".encode("utf-8") in raw
+
+
+def test_a_failing_dump_does_not_fail_the_request(tmp_path):
+    class Broken(RequestDumper):
+        def maybe_dump(self, payload):
+            raise OSError("disk full")
+
+    client = TestClient(
+        create_app(MockEngine(n_ctx=16384), "mock-model", request_dump=Broken(tmp_path))
+    )
+    resp = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "mock-model",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+            "max_tokens": 4,
+        },
+    )
+    assert resp.status_code == 200

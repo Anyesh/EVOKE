@@ -1035,15 +1035,19 @@ def create_app(
                 flush=True,
             )
             if dumper is not None:
-                dumper.maybe_dump(
-                    {
-                        "id": completion_id,
-                        "session": session_id,
-                        "request": req.model_dump(mode="json"),
-                        "rendered_prompt": prompt,
-                        "prompt_tokens": prompt_n,
-                    }
-                )
+                try:
+                    dumper.maybe_dump(
+                        {
+                            "id": completion_id,
+                            "session": session_id,
+                            "request": req.model_dump(mode="json"),
+                            "rendered_prompt": prompt,
+                            "prompt_tokens": prompt_n,
+                        }
+                    )
+                except (OSError, ValueError, TypeError) as exc:
+                    # a diagnostic aid must never fail the request it observes
+                    print(f"[dump] request dump failed: {exc!r}", flush=True)
 
             if req.stream:
                 stream = _stream_completion(

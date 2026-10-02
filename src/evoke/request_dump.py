@@ -24,7 +24,9 @@ class RequestDumper:
             return False
         self.directory.mkdir(parents=True, exist_ok=True)
         path = self.directory / f"request-{self._count:06d}.json"
-        path.write_text(json.dumps(payload, indent=1, ensure_ascii=False))
+        path.write_bytes(
+            json.dumps(payload, indent=1, ensure_ascii=False).encode("utf-8")
+        )
         return True
 
 
