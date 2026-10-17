@@ -7,7 +7,11 @@ from pathlib import Path
 
 import numpy as np
 
-from evoke._engine_lib import CONTEXT_PARAMS_EXTRA_U32, llama_cpp
+from evoke._engine_lib import (
+    CONTEXT_PARAMS_EXTRA_U32,
+    MODEL_PARAMS_LOAD_MODE,
+    llama_cpp,
+)
 from evoke.templates import render_gguf_chat_template
 
 
@@ -235,6 +239,12 @@ class LlamaCppEngine:
                 "LLAMA_CPP_LIB is set but its llama_context_params layout is not a "
                 "known fork layout; engine settings would be written to the wrong "
                 "offsets. Update evoke._engine_lib."
+            )
+        if MODEL_PARAMS_LOAD_MODE is None and os.environ.get("LLAMA_CPP_LIB"):
+            raise RuntimeError(
+                "LLAMA_CPP_LIB is set but its llama_model_params layout is not a "
+                "known fork layout; the model load flags would be read from the "
+                "wrong offsets. Update evoke._engine_lib."
             )
         llama_cpp.llama_backend_init()
 
